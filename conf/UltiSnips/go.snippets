@@ -1,0 +1,57 @@
+snippet printfv "fmt.Printf(...)" b
+fmt.Printf("${1:var}: %#v\n", ${2:$1})
+endsnippet
+
+snippet errp "if err, panic"
+if err != nil {
+	panic(err)
+}
+endsnippet
+
+snippet errj "if err, plain return"
+if err != nil {
+	return
+}
+endsnippet
+
+snippet errty "if err, return typhon response"
+if err != nil {
+	return typhon.Response{Error: ${1:err}}
+}
+endsnippet
+
+snippet terr "if err, terror wrap return"
+if err != nil {
+	return terrors.Wrap(err, ${1:nil})
+}
+endsnippet
+
+snippet terrc "if err, terror wrap with code and return"
+if err != nil {
+	return $3terrors.WrapWithCode(err, ${1:nil}, ${2:terrors.ErrInternalService})
+}
+endsnippet
+
+snippet cxt "context param"
+cxt context.Context
+endsnippet
+
+snippet tyreq "typhon.NewRequest"
+body := ${3/Request/Response/}{}
+rsp := typhon.NewRequest(
+	cxt, "$1", "$2", &$3{
+		$4
+	}).Send().Response()
+
+err = rsp.Decode(&body)
+if err != nil {
+	return
+}
+endsnippet
+
+snippet tyreqf "typhon.NewRequest future"
+${5:reqFuture} := typhon.NewRequest(cxt, "$1", "$2", &$3{
+	$4
+}).Send()
+endsnippet
+

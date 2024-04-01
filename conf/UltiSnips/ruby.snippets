@@ -1,0 +1,35 @@
+snippet rpry "pry-remote" b
+require 'pry-remote'; binding.remote_pry
+endsnippet
+
+snippet bl "brace block"
+\{ ${2:|${1:n}| }$0 }
+endsnippet
+
+snippet do "do block"
+do ${2:|${1:n}|}
+  $0
+end
+endsnippet
+
+snippet def "method"
+def ${1:function}${3:(${2:args})}
+	$0
+end
+endsnippet
+
+snippet model
+class ${1:Model} < ActiveRecord::Base
+	$0
+end
+endsnippet
+
+snippet as
+assert { $0 }
+endsnippet
+
+snippet test
+test "$1" do
+  $0
+end
+endsnippet
