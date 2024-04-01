@@ -1,4 +1,4 @@
-{ pkgs, pkgsUnstable, myUsername, ... }:
+{ pkgs, pkgsUnstable, ... }:
 with builtins;
 with pkgs.lib;
 with pkgs.stdenv;
