@@ -26,11 +26,12 @@
         };
       forAllSystems = genAttrs platforms.all;
 
-      deps = ({ pkgs ? null, system ? null, ... }@args:
-        assert assertMsg ((pkgs != null) || (system != null))
-          "hm: deps: either pkgs or system must be given";
-        let pkgs = pkgs || (importPkgs nixpkgs system);
-        in {
+      deps = ({ pkgs, ... }@args:
+        # assert assertMsg ((pkgs != null) || (system != null))
+        #   "hm: deps: either pkgs or system must be given";
+        # let pkgs = pkgs || (importPkgs nixpkgs system);
+        # in
+          {
           inherit nu-scripts;
           pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
         });
