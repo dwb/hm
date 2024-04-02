@@ -40,7 +40,7 @@
 
       home = import ./home.nix;
 
-      homeModule = { username, ... }@args: seq (throw "asdf") {
+      homeModule = { username, ... }@args: {
         imports = [ depsModule ];
         home-manager.users.${username} = home args;
       };
