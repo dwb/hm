@@ -41,7 +41,7 @@
       home = import ./home.nix;
 
       homeModule = { username, ... }@args: {
-        imports = [ depsModule ];
+        imports = trace args [ depsModule ];
         home-manager.users.${username} = home args;
       };
 
