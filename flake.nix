@@ -31,7 +31,7 @@
           "hm: deps: either pkgs or system must be given";
         let pkgs = pkgs || (importPkgs nixpkgs system);
         in {
-          inherit pkgs nu-scripts;
+          inherit nu-scripts;
           pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
         });
 
