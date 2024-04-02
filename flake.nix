@@ -36,7 +36,7 @@
           pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
         });
 
-      depsModule = args: { config._module.args = deps args; };
+      depsModule = { pkgs, ... }@args: { config._module.args = deps args; };
 
       home = import ./home.nix;
 
