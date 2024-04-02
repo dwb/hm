@@ -52,7 +52,7 @@
             (args: home (args // (deps args))));
       });
 
-      nixosModules.home = throw "Asdf";
+      nixosModules.home = homeModule;
       darwinModules.home = homeModule;
 
       devShells = forAllSystems (system:
