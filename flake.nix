@@ -28,8 +28,8 @@
 
       deps = ({ pkgs ? null, system ? null, ... }@args:
         assert assertMsg ((pkgs != null) || (system != null))
-          "hm: deps: either pkgs or system must be given: " +
-            (pipe [ attrNames (intersperse ", ") ] args);
+          ("hm: deps: either pkgs or system must be given: [ "
+            + (pipe [ attrNames (concatStringsSep ", ") ] args) + " ]");
         let pkgs = pkgs || (importPkgs nixpkgs system);
         in {
           inherit pkgs nu-scripts;
@@ -41,7 +41,7 @@
       home = import ./home.nix;
 
       homeModule = { username, ... }@args: {
-        imports = trace args [ depsModule ];
+        imports = seq (error "asdf") [ depsModule ];
         home-manager.users.${username} = home args;
       };
 
