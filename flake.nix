@@ -40,7 +40,7 @@
 
       home = import ./home.nix;
 
-      homeModule = { username, ... }@args: {
+      homeModule = { pkgs, username, ... }@args: {
         imports = [ depsModule ];
         home-manager.users.${username} = home args;
       };
@@ -50,7 +50,7 @@
       packages = forAllSystems (system: {
         ${system}.homeConfigurations = genAttrs usernames
           (home-manager.lib.homeManagerConfiguration
-            (args: home (args // (deps args))));
+            ({ pkgs, ... }@args: home (args // (deps args))));
       });
 
       nixosModules.home = homeModule;
