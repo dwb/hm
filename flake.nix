@@ -36,13 +36,13 @@
           pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
         });
 
-      depsModule = { pkgs, ... }@args: { config._module.args = deps args; };
+      # depsModule = { pkgs, ... }@args: { config._module.args = deps args; };
 
       home = import ./home.nix;
 
       homeModule = { pkgs, username, ... }@args: {
-        imports = [ depsModule ];
-        home-manager.users.${username} = home args;
+        # imports = [ depsModule ];
+        home-manager.users.${username} = home (args // (deps args));
       };
 
     in {
