@@ -26,22 +26,14 @@
         };
       forAllSystems = genAttrs platforms.all;
 
-      deps = ({ pkgs, ... }@args:
-        # assert assertMsg ((pkgs != null) || (system != null))
-        #   "hm: deps: either pkgs or system must be given";
-        # let pkgs = pkgs || (importPkgs nixpkgs system);
-        # in
-          {
-          inherit nu-scripts;
-          pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
-        });
-
-      # depsModule = { pkgs, ... }@args: { config._module.args = deps args; };
+      deps = ({ pkgs, ... }: {
+        inherit nu-scripts;
+        pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
+      });
 
       home = import ./home.nix;
 
       homeModule = { pkgs, username, ... }@args: {
-        # imports = [ depsModule ];
         home-manager.users.${username} = home (args // (deps args));
       };
 
