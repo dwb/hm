@@ -27,9 +27,9 @@
       forAllSystems = genAttrs platforms.all;
 
       deps = args: let
-        pkgs = if args ? config
+        pkgs = seq (throw "asdf") (if args ? pkgs
                then args.config.nixpkgs.pkgs
-               else args.pkgs;
+               else args.pkgs);
       in {
         inherit pkgs nu-scripts;
         pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
@@ -54,7 +54,7 @@
             (home-manager.lib.homeManagerConfiguration (args: home (args // (deps args))));
         });
 
-        nixosModules.home = homeModule;
+        nixosModules.home = throw "Asdf";
         darwinModules.home = homeModule;
 
         devShells = forAllSystems (system:
