@@ -28,7 +28,8 @@
 
       deps = ({ pkgs ? null, system ? null, ... }@args:
         assert assertMsg ((pkgs != null) || (system != null))
-          "hm: deps: either pkgs or system must be given: " + (pipe [attrNames toString] args);
+          "hm: deps: either pkgs or system must be given: " +
+            (pipe [ attrNames (intersperse ", ") ] args);
         let pkgs = pkgs || (importPkgs nixpkgs system);
         in {
           inherit pkgs nu-scripts;
