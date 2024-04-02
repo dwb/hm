@@ -26,18 +26,16 @@
         };
       forAllSystems = genAttrs platforms.all;
 
-      deps = args: let
-        pkgs = if args ? pkgs
-               then args.config.nixpkgs.pkgsx
-               else args.pkgs;
-      in {
-        inherit pkgs nu-scripts;
-        pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
-      };
+      deps = ({ pkgs ? null, system ? null, ... }@args:
+        assert assertMsg (pkgs || system)
+          "hm: deps: either pkgs or system must be given: " + (pipe [attrNames toString] args);
+        let pkgs = pkgs || (importPkgs nixpkgs system);
+        in {
+          inherit pkgs nu-scripts;
+          pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
+        });
 
-      depsModule = args: {
-        config._module.args = deps args;
-      };
+      depsModule = args: { config._module.args = deps args; };
 
       home = import ./home.nix;
 
@@ -46,28 +44,29 @@
         home-manager.users.${username} = home args;
       };
 
-    in
-      {
-        # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
-        packages = forAllSystems (system: {
-          ${system}.homeConfigurations = genAttrs usernames
-            (home-manager.lib.homeManagerConfiguration (args: home (args // (deps args))));
-        });
+    in {
+      # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
+      packages = forAllSystems (system: {
+        ${system}.homeConfigurations = genAttrs usernames
+          (home-manager.lib.homeManagerConfiguration
+            (args: home (args // (deps args))));
+      });
 
-        nixosModules.home = homeModule;
-        darwinModules.home = homeModule;
+      nixosModules.home = throw "Asdf";
+      darwinModules.home = homeModule;
 
-        devShells = forAllSystems (system:
-          with (importPkgs nixpkgs system); {
-            default = mkShellNoCC {
-              packages = [];
-              shellHook = ''
+      devShells = forAllSystems (system:
+        with (importPkgs nixpkgs system); {
+          default = mkShellNoCC {
+            packages = [ ];
+            shellHook = ''
               printf '%s\n' ''' '# dani’s home-manager config #'  '''
             '';
-            };
-          });
+          };
+        });
 
-        formatter = forAllSystems (system: (importPkgs nixpkgsUnstable system).nixfmt);
-      };
+      formatter =
+        forAllSystems (system: (importPkgs nixpkgsUnstable system).nixfmt);
+    };
 
 }
