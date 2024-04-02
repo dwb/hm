@@ -27,9 +27,9 @@
       forAllSystems = genAttrs platforms.all;
 
       deps = args: let
-        pkgs = seq (throw "asdf") (if args ? pkgs
-               then args.config.nixpkgs.pkgs
-               else args.pkgs);
+        pkgs = if args ? pkgs
+               then args.config.nixpkgs.pkgsx
+               else args.pkgs;
       in {
         inherit pkgs nu-scripts;
         pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
