@@ -56,7 +56,9 @@ with pkgs.stdenv;
 
   programs.git = {
     enable = true;
-    package = pkgs.gitAndTools.gitFull;
+    ## XXX: not this because it uses openssh from nixpkgs, which
+    ## doesn't include keychain integration.
+    # package = pkgs.gitAndTools.gitFull;
 
     userName = "Dani Brown";
     userEmail = "d@dani.cool";
