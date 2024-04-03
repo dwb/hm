@@ -138,6 +138,9 @@ endif
 
 set sessionoptions=blank,buffers,curdir,folds,globals,localoptions,slash,tabpages,winsize
 
+" this prevents all attempts to connect to X, like `vim -X`
+set clipboard=exclude:.*
+
 if v:version >= 703
   set undofile
   set undodir=~/.cache/vimundo
