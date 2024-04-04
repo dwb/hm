@@ -34,3 +34,10 @@ export def "from timestamp" []: [int -> datetime, string -> datetime] {
 export def file [...path: glob] {
   ^file --mime --no-buffer --print0 --separator '' ...$path | lines | parse -r "(?P<fn>[^\u{0}]+)\u{0}\\s*(?P<mimetype>[^;]+)(?:; charset=(?P<charset>\\S+))?"
 }
+
+# restarts current shell
+export def reexec [] {
+  let args = [ --interactive ] |
+    if $nu.is-login { append '--login' } else { $in }
+  exec $nu.current-exe ...$args
+}
