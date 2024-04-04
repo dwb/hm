@@ -30,3 +30,7 @@ export def eachkey [fn: closure] {
 export def "from timestamp" []: [int -> datetime, string -> datetime] {
   into string | into datetime --format %s --timezone u
 }
+
+export def file [...path: glob] {
+  ^file --mime --no-buffer --print0 --separator '' ...$path | lines | parse -r "(?P<fn>[^\u{0}]+)\u{0}\\s*(?P<mimetype>[^;]+)(?:; charset=(?P<charset>\\S+))?"
+}
