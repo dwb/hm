@@ -23,6 +23,13 @@ with pkgs.stdenv;
     recursive = true;
   };
 
+  home.file.editrc = {
+    target = ".editrc";
+    text = ''
+      bind -v
+    '';
+  };
+
   home.language.base = "en_GB.UTF-8";
 
   home.packages = with pkgs; [
