@@ -176,6 +176,15 @@ with pkgs.stdenv;
     envFile.source = ./conf/env.nu;
   };
 
+  programs.readline = {
+    enable = true;
+    variables = {
+      editing-mode = "vi";
+      keymap = "vi";
+      enable-keypad = "on";
+    };
+  }
+
   programs.vim = {
     enable = true;
     defaultEditor = true;

@@ -1,3 +1,5 @@
+use std
+
 export def success? [fn: closure] {
   try {
     do -c $fn
@@ -31,8 +33,12 @@ export def "from timestamp" []: [int -> datetime, string -> datetime] {
   into string | into datetime --format %s --timezone u
 }
 
-export def file [...path: glob] {
-  ^file --mime --no-buffer --print0 --separator '' ...$path | lines | parse -r "(?P<fn>[^\u{0}]+)\u{0}\\s*(?P<mimetype>[^;]+)(?:; charset=(?P<charset>\\S+))?"
+export def file [...globs: glob] {
+  let files = ($globs | iter flat-map { glob ($in | into string) })
+  do --capture-errors { ^file --mime --no-buffer --print0 --separator '' ...$files } |
+    lines |
+    parse -r "(?P<file>[^\u{0}]+)\u{0}\\s*(?P<mimetype>[^;]+)(?:; charset=(?P<charset>\\S+))?" |
+    update file { path expand }
 }
 
 # restarts current shell
