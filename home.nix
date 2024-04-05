@@ -5,6 +5,20 @@ with pkgs.stdenv;
 {
   home.stateVersion = "23.11";
 
+  home.language.base = "en_GB.UTF-8";
+
+  home.packages = with pkgs; [
+    aws-vault
+    fd
+    mosh
+    pkgsUnstable.nixd
+    wget
+    zstd
+  ] ++ optionals hostPlatform.isDarwin [
+    reattach-to-user-namespace
+    shortcat
+  ];
+
   home.file.nushell-my-scripts = {
     source = ./conf/nushell;
     target = ".config/nushell/scripts/my";
@@ -26,20 +40,6 @@ with pkgs.stdenv;
       bind -v
     '';
   };
-
-  home.language.base = "en_GB.UTF-8";
-
-  home.packages = with pkgs; [
-    aws-vault
-    fd
-    mosh
-    pkgsUnstable.nixd
-    wget
-    zstd
-  ] ++ optionals hostPlatform.isDarwin [
-    reattach-to-user-namespace
-    shortcat
-  ];
 
   home.shellAliases = {
     g = "git";
