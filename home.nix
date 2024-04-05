@@ -183,7 +183,7 @@ with pkgs.stdenv;
       keymap = "vi";
       enable-keypad = "on";
     };
-  }
+  };
 
   programs.vim = {
     enable = true;
