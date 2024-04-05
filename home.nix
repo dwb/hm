@@ -8,19 +8,16 @@ with pkgs.stdenv;
   home.file.nushell-my-scripts = {
     source = ./conf/nushell;
     target = ".config/nushell/scripts/my";
-    recursive = true;
   };
 
   home.file.nushell-contrib-custom-completions-scripts = {
     source = "${nu-scripts}/custom-completions";
     target = ".config/nushell/scripts/contrib/custom-completions";
-    recursive = true;
   };
 
   home.file.nushell-contrib-nu-hooks-scripts = {
     source = "${nu-scripts}/nu-hooks";
     target = ".config/nushell/scripts/contrib/nu-hooks";
-    recursive = true;
   };
 
   home.file.editrc = {
