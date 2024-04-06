@@ -46,7 +46,7 @@ with pkgs.stdenv;
     text = ''
       editMode: Vi
     '';
-  }
+  };
 
   home.file.psqlrc = {
     target = ".psqlrc";
@@ -68,7 +68,7 @@ with pkgs.stdenv;
 
   programs.carapace = {
     enable = true;
-  }
+  };
 
   programs.direnv = {
     enable = true;
@@ -219,7 +219,7 @@ with pkgs.stdenv;
     newSession = true;
     mouse = true;
     clock24 = true;
-  }
+  };
 
   programs.vim = {
     enable = true;
