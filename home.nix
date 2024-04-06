@@ -41,11 +41,34 @@ with pkgs.stdenv;
     '';
   };
 
+  home.file.haskeline = {
+    target = ".haskeline";
+    text = ''
+      editMode: Vi
+    '';
+  }
+
+  home.file.psqlrc = {
+    target = ".psqlrc";
+    text = ''
+      \pset linestyle unicode
+      \pset border 2
+      \pset null ␀
+      \set PROMPT1 '%[%033[33;1m%]%x%[%033[0m%]%[%033[1m%]%/%[%033[0m%]%R%# '
+      \timing
+      \x auto
+    '';
+  };
+
   home.shellAliases = {
     g = "git";
     ll = "ls -l";
     la = "ls -la";
   };
+
+  programs.carapace = {
+    enable = true;
+  }
 
   programs.direnv = {
     enable = true;
@@ -188,6 +211,15 @@ with pkgs.stdenv;
       enable-keypad = "on";
     };
   };
+
+  programs.tmux = {
+    enable = true;
+    shortcut = "a";
+    keyMode = "vi";
+    newSession = true;
+    mouse = true;
+    clock24 = true;
+  }
 
   programs.vim = {
     enable = true;
