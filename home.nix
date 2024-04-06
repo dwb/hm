@@ -68,6 +68,7 @@ with pkgs.stdenv;
 
   programs.carapace = {
     enable = true;
+    package = pkgsUnstable.carapace;
   };
 
   programs.direnv = {
