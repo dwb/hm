@@ -40,9 +40,18 @@
     in {
       # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
       packages = forAllSystems (system: {
-        ${system}.homeConfigurations = genAttrs usernames
-          (home-manager.lib.homeManagerConfiguration
-            ({ pkgs, ... }@args: home (args // (deps args))));
+        homeConfigurations = genAttrs usernames
+          (username: home-manager.lib.homeManagerConfiguration {
+            pkgs = importPkgs nixpkgs system;
+            modules = [
+              ({ pkgs, ... }@args: {
+                config._module.args = {
+                  inherit username;
+                } // (deps args);
+              })
+              home
+            ];
+          });
       });
 
       nixosModules.home = homeModule;
@@ -51,7 +60,7 @@
       devShells = forAllSystems (system:
         with (importPkgs nixpkgs system); {
           default = mkShellNoCC {
-            packages = [ ];
+            packages = [ home-manager.packages.${system}.default ];
             shellHook = ''
               printf '%s\n' ''' '# dani’s home-manager config #'  '''
             '';

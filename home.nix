@@ -1,17 +1,28 @@
-{ pkgs, pkgsUnstable, nu-scripts, ... }:
+{ pkgs, pkgsUnstable, nu-scripts, username, ... }:
 with builtins;
 with pkgs.lib;
 with pkgs.stdenv;
 {
-  home.stateVersion = "23.11";
+  imports = [
+    ./nushell-vterm
+  ];
+
+  home.stateVersion = "23.11"; # XXX: remember, don't change!
+
+  home.username = username;
+  home.homeDirectory = if hostPlatform.isDarwin
+                       then /Users/${username}
+                       else /home/${username};
 
   home.language.base = "en_GB.UTF-8";
 
   home.packages = with pkgs; [
     aws-vault
     fd
+    graphviz
     mosh
     pkgsUnstable.nixd
+    plantuml-c4
     wget
     zstd
   ] ++ optionals hostPlatform.isDarwin [
@@ -202,6 +213,7 @@ with pkgs.stdenv;
       ./conf/config.nu
     ]);
     envFile.source = ./conf/env.nu;
+    enableVtermIntegration = true;
   };
 
   programs.readline = {

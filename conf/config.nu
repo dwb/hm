@@ -7,12 +7,10 @@ $env.config.history = {
     isolation: true # only available with sqlite file_format. true enables history isolation, false disables it. true will allow the history to be isolated to the current session using up/down arrows. false will allow the history to be shared across all sessions.
 }
 
-alias ll = ls -l
-alias la = ls -la
 alias gg = g
 alias g = git
 alias priv = nu --no-history
-alias fopen = open
+alias fopen = open # clashes with macOS's `open`
 alias open = ^open
 
 # doesn't work with alias because
