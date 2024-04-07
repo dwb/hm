@@ -11,8 +11,8 @@ with pkgs.stdenv;
 
   home.username = username;
   home.homeDirectory = if hostPlatform.isDarwin
-                       then /Users/${username}
-                       else /home/${username};
+                       then "/Users/${username}"
+                       else "/home/${username}";
 
   home.language.base = "en_GB.UTF-8";
 
