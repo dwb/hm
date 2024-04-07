@@ -5,8 +5,6 @@ if (( $SHLVL == 1 )) && (( $+commands[screen] )) \
   exec screen -DR
 fi
 
-### HELPERS ###
-
 ### ENV CUSTOMISATION ###
 
 e() {
@@ -30,7 +28,13 @@ if (( $+commands[nu] )) && \
    [[ -o interactive ]] && \
    [[ ! -f ~/.inhibit-nushell-autoexec ]]; then
 
-  exec nu -il
+  () {
+    local args=()
+    if [[ $INSIDE_EMACS == vterm ]]; then
+      args+=( --config ~/.config/nushell/emacs-vterm-config.nu )
+    fi
+    exec nu -il "${args[@]}"
+  }
 fi
 
 ### OK THEN ###
@@ -243,11 +247,3 @@ alias alu='alfred-url'
 archivebox() {
   (cd ~/Dump/ArchiveBox && docker-compose run --service-ports archivebox "$@")
 }
-
-sourceifpresent ~/.zshrc-local
-
-sourceifpresent ~/.config/zsh/plugins.zsh
-
-for fn in ~/.config/zsh/emacs-vterm.zsh ~/.config/zsh/fzfgit.zsh ~/.config/zsh/iterm2_shell_integration.zsh /usr/local/opt/asdf/libexec/asdf.sh ~/.config/broot/launcher/bash/br ; do
-  sourceifpresent "$fn"
-done

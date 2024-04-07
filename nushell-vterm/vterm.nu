@@ -56,7 +56,3 @@ module vprompt {
     $"(create_left_prompt)(complete-escape-by-env $'51;A(whoami)@(hostname):(pwd)')"
   }
 }
-
-use vterm
-use vprompt
-$env.PROMPT_COMMAND = {|| vprompt left-prompt-track-cwd }

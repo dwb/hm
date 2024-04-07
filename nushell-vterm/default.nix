@@ -14,8 +14,12 @@ in
     lib.mkEnableOption "emacs vterm integration";
 
   config = lib.mkIf enabled {
-    programs.nushell.extraConfig = ''
+    home.file.".config/nushell/emacs-vterm-config.nu".text = ''
+      source '~/${configDir}/config.nu'
       source '${./vterm.nu}'
+      use vterm
+      use vprompt
+      $env.PROMPT_COMMAND = {|| vprompt left-prompt-track-cwd }
     '';
   };
 }
