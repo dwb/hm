@@ -18,9 +18,15 @@ def --env newrepo [
   do $make
 
   cd $dest
-  git init
-  git add .
-  git commit -m 'Initial commit'
+  "use flake\n" | save .envrc
+  do -c {
+    git init
+    git add .
+    direnv allow
+    nix flake lock
+    git add flake.lock
+    git commit -m 'Initial commit'
+  }
 }
 
 export module dev {

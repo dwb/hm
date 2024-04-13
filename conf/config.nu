@@ -31,5 +31,8 @@ use contrib/custom-completions/yarn/yarn-v4-completions.nu *
 
 use my/ollama.nu *
 use my/my-nix.nu *
+use my/new.nu *
 use my/nix.nu *
 use my/utils.nu *
+
+use new
