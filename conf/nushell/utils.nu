@@ -15,8 +15,8 @@ export def when [cond, fn: closure] {
     bool => (if $cond { $val | (do $fn) } else { $val })
     closure => (if (do $cond $val) { $val | (do $fn) } else { $val })
     _ => (error make {
-            msg: "cond must be bool or closure"
-            label: { text: "cond" span: (metadata $cond).span }
+            msg: "type error"
+            label: { text: "condition must be bool or closure" span: (metadata $cond).span }
           })
   }
 }
