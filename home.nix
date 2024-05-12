@@ -1,9 +1,9 @@
-{ pkgs, pkgsUnstable, nu-scripts, username, guiEnabled ? false, ... }:
+{ pkgs, pkgsUnstable, nu-scripts, username, ... }@args:
 with builtins;
 with pkgs.lib;
 with pkgs.stdenv;
 let
-  guiEnabled = hostPlatform.isDarwin || guiEnabled;
+  guiEnabled = args.guiEnabled or hostPlatform.isDarwin;
 in
 {
   imports = [
