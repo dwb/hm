@@ -1,7 +1,10 @@
-{ pkgs, pkgsUnstable, nu-scripts, username, ... }:
+{ pkgs, pkgsUnstable, nu-scripts, username, guiEnabled ? false, ... }:
 with builtins;
 with pkgs.lib;
 with pkgs.stdenv;
+let
+  guiEnabled = hostPlatform.isDarwin || guiEnabled;
+in
 {
   imports = [
     ./nushell-vterm
@@ -90,7 +93,7 @@ with pkgs.stdenv;
 
   programs.emacs = {
     enable = true;
-    package = pkgs.emacs29-pgtk;
+    package = if guiEnabled then pkgs.emacs29-pgtk else pkgs.emacs29-nox;
   };
 
   programs.git = {
