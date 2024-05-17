@@ -1,4 +1,4 @@
-{ pkgs, pkgsUnstable, nu-scripts, username, ... }@args:
+{ pkgs, pkgsUnstable, nixpkgs, nixpkgsUnstable, nu-scripts, username, ... }@args:
 with builtins;
 with pkgs.lib;
 with pkgs.stdenv;
@@ -9,6 +9,19 @@ in
   imports = [
     ./nushell-vterm
   ];
+
+  nix.registry = trace (attrNames args) {
+    nixpkgs = {
+      exact = true;
+      from = { type = "indirect"; id = "nixpkgs"; };
+      flake = nixpkgs;
+    };
+    nixpkgsUnstable = {
+      exact = true;
+      from = { type = "indirect"; id = "nixpkgsUnstable"; };
+      flake = nixpkgsUnstable;
+    };
+  };
 
   home.stateVersion = "23.11"; # XXX: remember, don't change!
 

@@ -2,6 +2,12 @@
   description = "dani's home-manager config";
 
   inputs = {
+    nixpkgs = {
+      url = "github:NixOS/nixpkgs/release-23.11";
+    };
+    nixpkgsUnstable = {
+      url = "github:NixOS/nixpkgs";
+    };
     home-manager = {
       url = "github:nix-community/home-manager/release-23.11";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -12,7 +18,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgsUnstable, home-manager, nu-scripts }:
+  outputs = inputs@{ self, nixpkgs, nixpkgsUnstable, home-manager, nu-scripts }:
     with builtins;
     with nixpkgs.lib;
 
@@ -26,8 +32,7 @@
         };
       forAllSystems = genAttrs platforms.all;
 
-      deps = ({ pkgs, ... }: {
-        inherit nu-scripts;
+      deps = ({ pkgs, ... }: inputs // {
         pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
       });
 
@@ -45,10 +50,11 @@
             pkgs = importPkgs nixpkgs system;
             modules = [
               ({ pkgs, ... }@args: {
-                config._module.args = {
+                _module.args = {
                   inherit username;
                 } // (deps args);
               })
+
               home
             ];
           });
