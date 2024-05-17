@@ -10,7 +10,7 @@ in
     ./nushell-vterm
   ];
 
-  nix.registry = trace (attrNames args) {
+  nix.registry = {
     nixpkgs = {
       exact = true;
       from = { type = "indirect"; id = "nixpkgs"; };
