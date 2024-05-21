@@ -224,11 +224,23 @@ in
   programs.nushell = {
     enable = true;
     package = pkgsUnstable.nushellFull;
-    configFile.text = concatLines (map readFile [
+    configFile.text = pipe [
       ./conf/default_config.nu
       ./conf/config.nu
-    ]);
-    envFile.source = ./conf/env.nu;
+      ./conf/local_config.nu
+    ] [
+      (filter pathExists)
+      (map readFile)
+      concatLines
+    ];
+    envFile.text = pipe [
+      ./conf/env.nu
+      ./conf/local_env.nu
+    ] [
+      (filter pathExists)
+      (map readFile)
+      concatLines
+    ];
     enableVtermIntegration = true;
   };
 
