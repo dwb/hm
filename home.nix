@@ -115,6 +115,8 @@ in
     ## doesn't include keychain integration.
     # package = pkgs.gitAndTools.gitFull;
 
+    package = pkgsUnstable.git;
+
     userName = "Dani Brown";
     userEmail = "d@dani.cool";
 
