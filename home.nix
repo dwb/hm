@@ -8,20 +8,8 @@ in
 {
   imports = [
     ./nushell-vterm
+    (import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; })
   ];
-
-  nix.registry = {
-    nixpkgs = {
-      exact = true;
-      from = { type = "indirect"; id = "nixpkgs"; };
-      flake = nixpkgs;
-    };
-    nixpkgsUnstable = {
-      exact = true;
-      from = { type = "indirect"; id = "nixpkgsUnstable"; };
-      flake = nixpkgsUnstable;
-    };
-  };
 
   home.stateVersion = "23.11"; # XXX: remember, don't change!
 

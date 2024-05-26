@@ -37,6 +37,7 @@
       });
 
       home = import ./home.nix;
+      registryPins = import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; };
 
       homeModule = { pkgs, username, ... }@args: {
         home-manager.users.${username} = home (args // (deps args));
@@ -60,8 +61,15 @@
           });
       });
 
-      nixosModules.home = homeModule;
-      darwinModules.home = homeModule;
+      nixosModules = {
+        inherit registryPins;
+        home = homeModule;
+      };
+
+      darwinModules = {
+        inherit registryPins;
+        home = homeModule;
+      };
 
       devShells = forAllSystems (system:
         with (importPkgs nixpkgs system); {
