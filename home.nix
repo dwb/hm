@@ -26,7 +26,7 @@ in
     graphviz
     mosh
     pkgsUnstable.nixd
-    plantuml-c4
+    plantuml
     wget
     zstd
   ] ++ optionals hostPlatform.isDarwin [
