@@ -31,7 +31,7 @@
           config = {
             allowUnfree = true;
             packageOverrides = pkgs: {
-              jre = pks.jre_headless;
+              jre = pkgs.jre_headless;
             };
           };
         };
