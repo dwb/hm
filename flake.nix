@@ -28,7 +28,12 @@
       importPkgs = input: system:
         import input {
           inherit system;
-          config.allowUnfree = true;
+          config = {
+            allowUnfree = true;
+            packageOverrides = pkgs: {
+              jre = pks.jre_headless;
+            };
+          };
         };
       forAllSystems = genAttrs platforms.all;
 
