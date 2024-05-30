@@ -8,4 +8,4 @@ all:
 up:
 	@if ! git diff-index --quiet HEAD --; then echo 'commit changes first'; exit 1; fi
 	nix flake update
-	git diff-index --quiet HEAD -- && git commit -am 'nix flake update'
+	git diff-index --quiet HEAD -- || git commit -am 'nix flake update'
