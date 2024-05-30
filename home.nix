@@ -254,7 +254,7 @@ in
 
   programs.vim = {
     enable = true;
-    package = pkgs.vim-full.override {
+    packageConfigurable = pkgs.vim-full.override {
       config = {
         vim = {
           gui = "none";
