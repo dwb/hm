@@ -254,6 +254,13 @@ in
 
   programs.vim = {
     enable = true;
+    package = pkgs.vim-full.override {
+      config = {
+        vim = {
+          gui = "none";
+        };
+      };
+    };
     defaultEditor = true;
     extraConfig = readFile ./conf/vimrc.vim;
   };
