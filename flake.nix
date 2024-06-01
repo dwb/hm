@@ -48,6 +48,21 @@
         home-manager.users.${username} = home (args // (deps args));
       };
 
+      nixpkgsConfig = {
+        global = { ... }: {
+          config.nixpkgs.config = {
+            allowUnfree = true;
+          }
+        };
+        noGUI = { ... }: {
+          config.nixpkgs.config = {
+            packageOverrides = pkgs: {
+              jre = pks.jre_headless;
+            };
+          }
+        };
+      };
+
     in {
       # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
       packages = forAllSystems (system: {
@@ -67,12 +82,12 @@
       });
 
       nixosModules = {
-        inherit registryPins;
+        inherit registryPins nixpkgsConfig;
         home = homeModule;
       };
 
       darwinModules = {
-        inherit registryPins;
+        inherit registryPins nixpkgsConfig;
         home = homeModule;
       };
 
