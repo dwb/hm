@@ -52,14 +52,14 @@
         global = { ... }: {
           config.nixpkgs.config = {
             allowUnfree = true;
-          }
+          };
         };
         noGUI = { ... }: {
           config.nixpkgs.config = {
             packageOverrides = pkgs: {
               jre = pks.jre_headless;
             };
-          }
+          };
         };
       };
 
