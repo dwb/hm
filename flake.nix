@@ -48,6 +48,7 @@
         home-manager.users.${username} = home (args // (deps args));
       };
 
+      # TODO: use these
       nixpkgsConfig = {
         global = { ... }: {
           config.nixpkgs.config = {
