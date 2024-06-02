@@ -89,6 +89,7 @@ in
   programs.direnv = {
     enable = true;
     enableNushellIntegration = true;
+    enableFishIntegration = false;
     nix-direnv.enable = true;
   };
 
