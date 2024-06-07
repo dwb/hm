@@ -21,6 +21,9 @@ def --env newrepo [
   "use flake\n" | save .envrc
   do -c {
     git init
+    if not ('.envrc' | path exists) {
+      'use flake' | save .envrc
+    }
     git add .
     direnv allow
     nix flake lock

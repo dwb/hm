@@ -214,7 +214,7 @@ in
 
   programs.nushell = {
     enable = true;
-    package = pkgsUnstable.nushellFull;
+    package = pkgsUnstable.nushell;
     configFile.text = pipe [
       ./conf/default_config.nu
       ./conf/config.nu
@@ -225,6 +225,7 @@ in
       concatLines
     ];
     envFile.text = pipe [
+      ./conf/default_env.nu
       ./conf/env.nu
       ./conf/local_env.nu
     ] [
