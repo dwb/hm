@@ -25,10 +25,10 @@ def --env newrepo [
       'use flake' | save .envrc
     }
     git add .
-    direnv allow
     nix flake lock
     git add flake.lock
     git commit -m 'Initial commit'
+    direnv allow
   }
 }
 
@@ -40,6 +40,16 @@ export module dev {
     }
   }
 
+  export module clojure {
+    export def --env app [dest: path] {
+      newrepo $dest (metadata $dest) {
+          nix flake new -t ~/Developer/my-templates#clojure $dest
+      }
+      nix develop --command lein new app ($dest | path basename) --to-dir . --force
+      git add .
+      git commit -m 'lein new app'
+    }
+  }
 }
 
 export def main [] {
