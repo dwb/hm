@@ -1,10 +1,7 @@
 { pkgs, pkgsUnstable, nixpkgs, nixpkgsUnstable, nu-scripts, username, ... }@args:
-with builtins;
-with pkgs.lib;
-with pkgs.stdenv;
 let
-  guiEnabled = args.guiEnabled or hostPlatform.isDarwin;
-  lib = pkgs.lib;
+  inherit (pkgs) lib stdenv;
+  guiEnabled = args.guiEnabled or stdenv.hostPlatform.isDarwin;
 in
 {
   imports = [
@@ -15,25 +12,26 @@ in
   home.stateVersion = "23.11"; # XXX: remember, don't change!
 
   home.username = username;
-  home.homeDirectory = if hostPlatform.isDarwin
+  home.homeDirectory = if stdenv.hostPlatform.isDarwin
                        then "/Users/${username}"
                        else "/home/${username}";
 
   home.language.base = "en_GB.UTF-8";
 
-  home.packages = with pkgs; [
+  home.packages = (with pkgs; [
     aws-vault
     fd
     graphviz
     mosh
-    pkgsUnstable.nixd
     plantuml
     wget
     zstd
-  ] ++ optionals hostPlatform.isDarwin [
+  ]) ++ (with pkgsUnstable; [
+    nixd
+  ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
     shortcat
-  ];
+  ]);
 
   home.file.nushell-my-scripts = {
     source = ./conf/nushell;
@@ -200,7 +198,7 @@ in
         relativePaths = true;
         submoduleSummary = true;
       };
-      credential = if hostPlatform.isDarwin then {} else {
+      credential = if stdenv.hostPlatform.isDarwin then {} else {
         helper = "osxkeychain";
       };
       branch.sort = "committerdate";
@@ -220,23 +218,23 @@ in
   programs.nushell = {
     enable = true;
     package = pkgsUnstable.nushell;
-    configFile.text = pipe [
+    configFile.text = lib.pipe [
       ./conf/default_config.nu
       ./conf/config.nu
       ./conf/local_config.nu
     ] [
-      (filter pathExists)
-      (map readFile)
-      concatLines
+      (lib.filter lib.pathExists)
+      (map builtins.readFile)
+      lib.concatLines
     ];
-    envFile.text = pipe [
+    envFile.text = lib.pipe [
       ./conf/default_env.nu
       ./conf/env.nu
       ./conf/local_env.nu
     ] [
-      (filter pathExists)
-      (map readFile)
-      concatLines
+      (lib.filter lib.pathExists)
+      (map builtins.readFile)
+      lib.concatLines
     ];
     enableVtermIntegration = true;
   };
@@ -269,12 +267,12 @@ in
       };
     };
     defaultEditor = !guiEnabled;
-    extraConfig = readFile ./conf/vimrc.vim;
+    extraConfig = builtins.readFile ./conf/vimrc.vim;
   };
 
   programs.zsh = {
     enable = true;
-    initExtra = readFile ./conf/zshrc.zsh;
+    initExtra = builtins.readFile ./conf/zshrc.zsh;
   };
 
   programs.fzf.enable = true;
