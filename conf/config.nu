@@ -35,3 +35,6 @@ use my/nix.nu *
 use my/utils.nu *
 
 use new
+
+use std *
+use std iter *

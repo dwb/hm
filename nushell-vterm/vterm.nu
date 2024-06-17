@@ -56,3 +56,8 @@ module vprompt {
     $"(create_left_prompt)(complete-escape-by-env $'51;A(whoami)@(hostname):(pwd)')"
   }
 }
+
+export def e [fn: path] {
+  use vterm
+  vterm open $fn
+}

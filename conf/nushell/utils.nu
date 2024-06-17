@@ -1,4 +1,13 @@
-use std
+use std iter
+
+export def e [fn: path] {
+  ^$env.EDITOR $fn
+}
+
+export def --env gcd [] {
+  let dir = (do -c { git rev-parse --show-toplevel })
+  cd $dir
+}
 
 export def success? [fn: closure] {
   try {

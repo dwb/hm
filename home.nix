@@ -4,6 +4,7 @@ with pkgs.lib;
 with pkgs.stdenv;
 let
   guiEnabled = args.guiEnabled or hostPlatform.isDarwin;
+  lib = pkgs.lib;
 in
 {
   imports = [
@@ -73,6 +74,10 @@ in
       \timing
       \x auto
     '';
+  };
+
+  home.sessionVariables = lib.mkIf guiEnabled {
+    EDITOR = "emacsclient";
   };
 
   home.shellAliases = {
@@ -263,7 +268,7 @@ in
         };
       };
     };
-    defaultEditor = true;
+    defaultEditor = !guiEnabled;
     extraConfig = readFile ./conf/vimrc.vim;
   };
 
