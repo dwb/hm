@@ -160,6 +160,7 @@ in
       pur = "pull --rebase";
       purph = "!git pull --rebase && git push";
       re = "rebase";
+      root = "rev-parse --show-toplevel";
       sf = "status";
       sm = "submodule";
       squash = "rebase --autosquash";
