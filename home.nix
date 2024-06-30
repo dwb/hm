@@ -90,7 +90,8 @@ in
   };
 
   programs.direnv = {
-    enable = true;
+    # XXX: temp disable
+    enable = false;
     enableNushellIntegration = true;
     enableFishIntegration = false;
     nix-direnv.enable = true;
