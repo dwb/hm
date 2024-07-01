@@ -68,3 +68,8 @@ export def reexec [] {
     if $nu.is-login { append '--login' } else { $in }
   exec $nu.current-exe ...$args
 }
+
+# gets structured data from a remote host
+export def --wrapped sshs [host: string, cmd: string, ...args: string] {
+  ssh $host $cmd ...$args | ^jc -- $"--($cmd)" | from json
+}
