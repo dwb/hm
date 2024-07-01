@@ -4,9 +4,21 @@ export def e [fn: path] {
   ^$env.EDITOR $fn
 }
 
-export def --env gcd [] {
-  let dir = (do -c { git rev-parse --show-toplevel })
-  cd $dir
+export def gcd-subpath-completer [context: string] {
+  let root = (do -c { git rev-parse --show-toplevel })
+  let dir = ($context | split words | get -i 1)
+  glob --no-file ($root | path join $"($dir)*") |
+    each { path relative-to $root }
+}
+
+# chdir to directory relative to git repository root
+export def --env gcd [subpath?: string@gcd-subpath-completer] {
+  let root = (do -c { git rev-parse --show-toplevel })
+  cd (if $subpath == null {
+    $root
+  } else {
+    $root | path join $subpath
+  })
 }
 
 export def success? [fn: closure] {
