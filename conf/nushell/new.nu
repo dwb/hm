@@ -18,11 +18,10 @@ def --env newrepo [
   do $make
 
   cd $dest
-  "use flake\n" | save .envrc
   do -c {
     git init
     if not ('.envrc' | path exists) {
-      'use flake' | save .envrc
+      "use flake\n" | save .envrc
     }
     git add .
     nix flake lock
@@ -34,6 +33,12 @@ def --env newrepo [
 
 export module dev {
 
+  export def --env plain [dest: path] {
+    newrepo $dest (metadata $dest) {
+        nix flake new -t git+https://git.sheep-interval.ts.net/dwb/templates#plain $dest
+    }
+  }
+
   export def --env haskell [dest: path] {
     newrepo $dest (metadata $dest) {
         nix flake new -t templates#haskell-flake $dest
@@ -43,7 +48,7 @@ export module dev {
   export module clojure {
     export def --env app [dest: path] {
       newrepo $dest (metadata $dest) {
-          nix flake new -t ~/Developer/my-templates#clojure $dest
+          nix flake new -t git+https://git.sheep-interval.ts.net/dwb/templates#clojure $dest
       }
       nix develop --command lein new app ($dest | path basename) --to-dir . --force
       git add .
