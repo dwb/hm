@@ -7,6 +7,7 @@ in
   imports = [
     ./nushell-vterm
     (import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; })
+    ./linkapps.nix
   ];
 
   # XXX: not in 24.05 branch yet
@@ -35,7 +36,7 @@ in
     nixd
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
-    shortcat
+    (callPackage ./pkgs/shortcat.nix {})
   ]);
 
   home.file.nushell-my-scripts = {
