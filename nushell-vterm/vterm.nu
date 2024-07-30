@@ -53,7 +53,7 @@ module vprompt {
 
   # Output text prompt that vterm can use to track current directory
   export def left-prompt-track-cwd [] {
-    $"(create_left_prompt)(complete-escape-by-env $'51;A(whoami)@(hostname):(pwd)')"
+    complete-escape-by-env $'51;A(whoami)@(hostname):(pwd)'
   }
 }
 

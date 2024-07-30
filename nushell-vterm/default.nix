@@ -19,7 +19,10 @@ in
       source '${./vterm.nu}'
       use vterm
       use vprompt
-      $env.PROMPT_COMMAND = {|| vprompt left-prompt-track-cwd }
+      do {
+        let oldprompt = $env.PROMPT_COMMAND
+        $env.PROMPT_COMMAND = { $"(do $oldprompt)(vprompt left-prompt-track-cwd)" }
+      }
     '';
   };
 }
