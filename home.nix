@@ -27,6 +27,7 @@ in
   home.packages = (with pkgs; [
     aws-vault
     fd
+    git-absorb
     graphviz
     mosh
     plantuml
@@ -36,7 +37,6 @@ in
     nixd
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
-    (callPackage ./pkgs/shortcat.nix {})
   ]);
 
   home.file.nushell-my-scripts = {
