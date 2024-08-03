@@ -1,4 +1,4 @@
-{ pkgs, pkgsUnstable, nixpkgs, nixpkgsUnstable, nu-scripts, username, ... }@args:
+{ pkgs, pkgsUnstable, nixpkgs, nixpkgsUnstable, doomemacs, nu-scripts, username, ... }@args:
 let
   inherit (pkgs) lib stdenv;
   guiEnabled = args.guiEnabled or stdenv.hostPlatform.isDarwin;
