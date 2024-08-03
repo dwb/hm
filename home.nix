@@ -7,7 +7,7 @@ in
   imports = [
     ({ ... }: {
       config._module.args = {
-        inherit guiEnabled;
+        inherit guiEnabled doomemacs;
       };
     })
     ./emacs.nix

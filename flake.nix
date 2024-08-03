@@ -23,7 +23,7 @@
     };
   };
 
-  outputs = inputs@{ nixpkgs, nixpkgsUnstable, home-manager, doomemacs, ... }:
+  outputs = inputs@{ nixpkgs, nixpkgsUnstable, home-manager, ... }:
     let
       inherit (nixpkgs) lib;
 
