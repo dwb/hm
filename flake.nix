@@ -12,17 +12,21 @@
       url = "github:nix-community/home-manager/release-24.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    doomemacs = {
+      url = "github:doomemacs/doomemacs/master";
+      flake = false;
+    };
     nu-scripts = {
       url = "github:nushell/nu_scripts";
       flake = false;
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, nixpkgsUnstable, home-manager, nu-scripts }:
-    with builtins;
-    with nixpkgs.lib;
-
+  outputs = inputs@{ nixpkgs, nixpkgsUnstable, home-manager, ... }:
     let
+      inherit (nixpkgs) lib;
+
       usernames = [ "dan" "dwb" ];
 
       importPkgs = input: system:
@@ -35,7 +39,7 @@
             };
           };
         };
-      forAllSystems = genAttrs platforms.all;
+      forAllSystems = lib.genAttrs lib.platforms.all;
 
       deps = ({ pkgs, ... }: inputs // {
         pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
@@ -44,7 +48,7 @@
       home = import ./home.nix;
       registryPins = import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; };
 
-      homeModule = { pkgs, username, ... }@args: {
+      homeModule = { username, ... }@args: {
         home-manager.users.${username} = home (args // (deps args));
       };
 
@@ -58,7 +62,7 @@
         noGUI = { ... }: {
           config.nixpkgs.config = {
             packageOverrides = pkgs: {
-              jre = pks.jre_headless;
+              jre = pkgs.jre_headless;
             };
           };
         };
@@ -67,14 +71,14 @@
     in {
       # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
       packages = forAllSystems (system: {
-        homeConfigurations = genAttrs usernames
+        homeConfigurations = lib.genAttrs usernames
           (username: home-manager.lib.homeManagerConfiguration {
             pkgs = importPkgs nixpkgs system;
             modules = [
               ({ pkgs, ... }@args: {
                 _module.args = {
                   inherit username;
-                } // (deps args);
+                } // inputs // (deps args);
               })
 
               home
@@ -93,8 +97,8 @@
       };
 
       devShells = forAllSystems (system:
-        with (importPkgs nixpkgs system); {
-          default = mkShellNoCC {
+        let pkgs = (importPkgs nixpkgs system); in {
+          default = pkgs.mkShellNoCC {
             packages = [ home-manager.packages.${system}.default ];
             shellHook = ''
               printf '%s\n' ''' '# dani’s home-manager config #'  '''

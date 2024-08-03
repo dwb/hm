@@ -5,6 +5,12 @@ let
 in
 {
   imports = [
+    ({ ... }: {
+      config._module.args = {
+        inherit guiEnabled;
+      };
+    })
+    ./emacs.nix
     ./nushell-vterm
     (import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; })
     ./linkapps.nix
@@ -80,10 +86,6 @@ in
     '';
   };
 
-  home.sessionVariables = lib.mkIf guiEnabled {
-    EDITOR = "emacsclient";
-  };
-
   home.shellAliases = {
     g = "git";
     ll = "ls -l";
@@ -100,11 +102,6 @@ in
     enableNushellIntegration = true;
     enableFishIntegration = false;
     nix-direnv.enable = true;
-  };
-
-  programs.emacs = {
-    enable = true;
-    package = if guiEnabled then pkgs.emacs29-pgtk else pkgs.emacs29-nox;
   };
 
   programs.git = {
