@@ -48,7 +48,7 @@
       home = import ./home.nix;
       registryPins = import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; };
 
-      homeModule = { username, ... }@args: {
+      homeModule = { pkgs, username, ... }@args: {
         home-manager.users.${username} = home (args // (deps args));
       };
 
