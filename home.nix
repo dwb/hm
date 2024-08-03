@@ -5,9 +5,9 @@ let
 in
 {
   imports = [
-    ({ ... }: {
-      config._module.args = {
-        inherit guiEnabled doomemacs;
+    ({ ... }@args: {
+      config._module.args = args // {
+        inherit guiEnabled;
       };
     })
     ./emacs.nix
