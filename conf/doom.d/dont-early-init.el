@@ -1,0 +1,5 @@
+;; auto-compile (requires auto-compile in packages.el)
+(setq load-prefer-newer t)
+(require 'auto-compile)
+(auto-compile-on-load-mode)
+(auto-compile-on-save-mode)

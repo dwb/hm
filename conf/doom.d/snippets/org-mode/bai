@@ -1,0 +1,10 @@
+# -*- mode: snippet -*-
+# name: begin_ai
+# uuid:
+# key: bai
+# condition: t
+# binding: C-c & c
+# --
+#+begin_ai
+$0
+#+end_ai

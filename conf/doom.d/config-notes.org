@@ -1,0 +1,42 @@
+#+TITLE: Emacs config notes
+
+* Current problems
+** DONE on closing the last good buffer in a perspective, purpose dedication fucks us around.
+and somehow a buffer from another persp sneaks in i still don't know why.
+for instance, in a perspective with a terminal, purpose dedicated, and an edit window, ditto, killing the last persp buffer will switch to another edit buffer from another perspective in the edit-dedicated window, split it for the fallback buffer, and keep the terminal. it should probably de-dedicate the edit window (the current one) and show the fallback.
+*** plan
+- advise =purpose--dummy-buffer-purpose= to allow for trailing stuff on buffer name, so i can have one per project
+- then de-advise =doom--switch-to-fallback-buffer-maybe-a=; re-advise =kill-current-buffer= in the same vein to create a purpose dummy buffer particular to the current project
+*** what actually happened
+got rid of purpose haha
+** DONE no modeline in terms, should disable =hide-mode-line-mode= on hook
+** TODO opening a window to the left of one with a "my/preserved" size, it kills off the size preservation
+- is this to do with the window not being a "side" window or something? yes.
+** TODO lispy(ville) key themes not quite all coming through?
+** DONE set SSH_AUTH_SOCK properly for magit
+** DONE some buffers (mainly help) aren't added to the perspective
+add all buffers to the active perspective? apart from messages/scratch?
+** TODO exact snippet matches order lower than inexact code completions
+** DONE vterm should disable word wrap mode
+** DONE fix esc in vterm somehow
+** DONE main persp gets all buffers on startup for some reason
+** TODO flycheck and next-error not working well together.
+* Features
+** DONE key bindings / hooks for sticky-width terminal
+** DONE multiple terminals
+- owned by persp
+- renameable
+- fuzzy switching
+- mru
+** TODO switch to open buffer in any workspace
+** TODO opening buffers prefers windows that have previously had buffers of the same purpose
+- how does this previous purpose stick around, and how can you clear it?
+** DONE kill other workspace edit buffers
+** DONE "subprojects"
+useful parts of a monorepo - apps, libraries, etc.
+** TODO search in subproject
+** DONE magit branch select order is not useful - ideally MRU
+** TODO conditionally switch from doom's workspaces to emacs 28's tab bar
+** TODO binary search movement hydra
+** TODO tree sitter movement
+** TODO nodejs in an emacs loadable module. everyone would hate me.

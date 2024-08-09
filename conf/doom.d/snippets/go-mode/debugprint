@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: debugprint
+# uuid:
+# key: trigger-key
+# condition: t
+# --
+fmt.Printf("$1: %#v\n", $1)

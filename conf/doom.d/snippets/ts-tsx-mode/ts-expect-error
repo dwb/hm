@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: ts-expect-error
+# uuid:
+# key: trigger-key
+# condition: t
+# --
+// @ts-expect-error${0: }
