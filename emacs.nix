@@ -20,7 +20,7 @@ in {
   ];
 
   home.activation.linkDoomEmacsConfig = let
-    src = builtins.toPath ./conf/.doom.d;
+    src = builtins.toPath ./conf/doom.d;
   in lib.hm.dag.entryAfter ["writeBoundary"] ''
     run ${pkgs.rsync}/bin/rsync -r --delete --link-dest=${src} $VERBOSE_ARG \
         ${src}/ ~/.doom.d
