@@ -25,7 +25,7 @@ in {
     checkout=""
     for dir in ~/Developer/hm ~/.config/home-manager; do
       if [[ -d $dir ]]; then
-        checkout=$dir
+        checkout=$dir/conf/doom.d
       fi
     done
 
