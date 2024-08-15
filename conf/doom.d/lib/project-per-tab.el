@@ -126,13 +126,15 @@ call to `format'. The format-string is expected to have a single
     (subproject-parent-or-self project)))
 
 (defun project-per-tab--project-of-buffer (buffer-or-name)
-  (when-let* ((buffer (get-buffer buffer-or-name))
-              (fn (buffer-file-name buffer))
-              (dir (file-name-parent-directory fn)))
-    (project-current nil dir)))
+  (when-let* ((buffer (get-buffer buffer-or-name)))
+    (with-current-buffer buffer
+      (project-current))))
 
 (defun project-per-tab--display-buffer-matcher (buffer _arg)
   (project-per-tab--project-of-buffer buffer))
+
+(defun project-per-tab--buffer-matches-project-p (buffer project)
+  (equal project (project-per-tab--project-of-buffer buffer)))
 
 (defun project-per-tab--display-buffer (buffer alist)
   (when-let ((project (with-current-buffer buffer (project-current)))
@@ -145,18 +147,33 @@ call to `format'. The format-string is expected to have a single
                                 alist))
       (project-per-tab-set-project-of-tab project))))
 
+;; experimental
 (defun project-per-tab--kill-buffer-hook ()
   "Close the tab if the only remaining displayed buffer is unrelated to the project"
   (when-let ((tab (project-per-tab--current-tab))
              (tabname (alist-get 'name tab))
-             (buf (current-buffer))
              (proj (project-current))
              (tabproj (project-per-tab-project-of-tab)))
     (when (and
-           (buffer-file-name buf)
            (not (minibuffer-window-active-p (selected-window)))
-           (equal proj tabproj)
            (one-window-p)
+           (equal proj tabproj)
+           (null (match-buffers #'project-per-tab--buffer-matches-project-p nil tabproj)))
+      (message "Closing %s tab: that was the last project buffer." tabname)
+      (tab-bar-close-tab))))
+
+;; TODO: make work for killing the last buffer of a project anywhere,
+;; don't depend on what's displayed.
+(defun project-per-tab--kill-buffer-hook ()
+  "Close the tab if the only remaining displayed buffer is unrelated to the project"
+  (when-let ((tab (project-per-tab--current-tab))
+             (tabname (alist-get 'name tab))
+             (proj (project-current))
+             (tabproj (project-per-tab-project-of-tab)))
+    (when (and
+           (not (minibuffer-window-active-p (selected-window)))
+           (one-window-p)
+           (equal proj tabproj)
            (null (seq-filter #'(lambda (b)
                                  (with-current-buffer (get-buffer (car b))
                                    (equal tabproj (project-current))))

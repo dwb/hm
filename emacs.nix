@@ -19,6 +19,13 @@ in {
     "~/${configDir}/bin"
   ];
 
+  home.activation.linkDoomEmacsConfig = let
+    src = builtins.toPath ./conf/.doom.d;
+  in lib.hm.dag.entryAfter ["writeBoundary"] ''
+    run ${pkgs.rsync}/bin/rsync -r --delete --link-dest=${src} $VERBOSE_ARG \
+        ${src}/ ~/.doom.d
+  '';
+
   programs.emacs = {
     enable = true;
     package = if guiEnabled then pkgs.emacs29-pgtk else pkgs.emacs29-nox;
