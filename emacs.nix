@@ -22,8 +22,20 @@ in {
   home.activation.linkDoomEmacsConfig = let
     src = builtins.toPath ./conf/doom.d;
   in lib.hm.dag.entryAfter ["writeBoundary"] ''
-    run ${pkgs.rsync}/bin/rsync -r --delete --link-dest=${src} $VERBOSE_ARG \
-        ${src}/ ~/.doom.d
+    checkout=""
+    for dir in ~/Developer/hm ~/.config/home-manager; do
+      if [[ -d $dir ]]; then
+        checkout=$dir
+      fi
+    done
+
+    RSYNC=${pkgs.rsync}/bin/rsync
+
+    if [[ -n $checkout ]]; then
+      run $RSYNC -r --delete --link-dest=$checkout $VERBOSE_ARG $${checkout}/ ~/.doom.d
+    else
+      run $RSYNC -r --delete $VERBOSE_ARG ${src}/ ~/.doom.d
+    fi
   '';
 
   programs.emacs = {
