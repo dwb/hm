@@ -35,8 +35,10 @@ in
     fd
     git-absorb
     graphviz
+    htop
     mosh
     plantuml
+    rsync
     wget
     zstd
   ]) ++ (with pkgsUnstable; [
