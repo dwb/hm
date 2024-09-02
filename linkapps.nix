@@ -13,6 +13,7 @@
         find "$gen_profile_applications" -type l -print | while read -r app; do
             app_target="$app_folder/$(basename "$app")"
             real_app="$(readlink "$app")"
+            [[ -f $app_target ]] && $DRY_RUN_CMD rm "$app_target"
             echo "mkalias '$real_app' '$app_target'" >&2
             $DRY_RUN_CMD ${pkgs.mkalias}/bin/mkalias "$real_app" "$app_target"
         done

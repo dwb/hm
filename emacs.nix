@@ -20,7 +20,7 @@ in {
   ];
 
   home.activation.linkDoomEmacsConfig = let
-    src = builtins.toPath ./conf/doom.d;
+    src = /. + ./conf/doom.d;
   in lib.hm.dag.entryAfter ["writeBoundary"] ''
     checkout=""
     for dir in ~/Developer/hm ~/.config/home-manager; do
