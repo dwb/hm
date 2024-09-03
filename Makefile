@@ -2,6 +2,9 @@ ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 
 .PHONY: all
 all:
+	@[[ $$(uname) == Darwin ]] && \
+		[[ $$(/usr/libexec/PlistBuddy -c "print :Accounts:0:AccountID" ~/Library/Preferences/MobileMeAccounts.plist) == d@dani.cool ]] && \
+		echo "update from nix-dani on your main machine please"; false
 	home-manager switch --verbose --print-build-logs --flake '$(ROOT_DIR)'
 
 .PHONY: up
