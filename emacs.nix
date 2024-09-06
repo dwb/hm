@@ -32,7 +32,7 @@ in {
     RSYNC=${pkgs.rsync}/bin/rsync
 
     if [[ -n $checkout ]]; then
-      ln -sf "$checkout" ~/.doom.d
+      ln -sF "$checkout" ~/.doom.d
     else
       run $RSYNC -r --delete $VERBOSE_ARG ${src}/ ~/.doom.d
     fi
