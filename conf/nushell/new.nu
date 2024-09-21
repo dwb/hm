@@ -35,24 +35,35 @@ export module dev {
 
   export def --env plain [dest: path] {
     newrepo $dest (metadata $dest) {
-        nix flake new -t git+https://git.sheep-interval.ts.net/dwb/templates#plain $dest
+        nix flake new --refresh -t git+https://git.sheep-interval.ts.net/dwb/templates#plain $dest
     }
   }
 
   export def --env haskell [dest: path] {
     newrepo $dest (metadata $dest) {
-        nix flake new -t templates#haskell-flake $dest
+        nix flake new --refresh -t templates#haskell-flake $dest
     }
   }
 
   export module clojure {
     export def --env app [dest: path] {
       newrepo $dest (metadata $dest) {
-          nix flake new -t git+https://git.sheep-interval.ts.net/dwb/templates#clojure $dest
+          nix flake new --refresh -t git+https://git.sheep-interval.ts.net/dwb/templates#clojure $dest
       }
       nix develop --command lein new app ($dest | path basename) --to-dir . --force
       git add .
       git commit -m 'lein new app'
+    }
+  }
+
+  export module python {
+    export def --env app [dest: path] {
+      newrepo $dest (metadata $dest) {
+          nix flake new --refresh -t git+https://git.sheep-interval.ts.net/dwb/templates#python $dest
+      }
+      nix develop --command poetry init --name=($dest | path basename) --author='Dani Brown <d@dani.cool>'
+      git add .
+      git commit -m 'poetry init'
     }
   }
 }
