@@ -275,7 +275,7 @@
     (use-package! gptai
       :config
       (setf gptai-username user)
-      (setf gptai-model "gpt-4")
+      (setf gptai-model "gpt-4o")
       (setf gptai-api-key secret)))
 
 (use-package chatgpt-shell
