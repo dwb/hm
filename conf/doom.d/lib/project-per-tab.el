@@ -63,17 +63,31 @@
   :group 'project
   :global t
 
+  ;; v1
   (setf display-buffer-alist
         (assq-delete-all
          'project-per-tab--display-buffer-matcher
          display-buffer-alist))
+  ;; v2
+  (setf display-buffer-base-action
+        (pcase display-buffer-base-action
+          (`(,(and (pred listp) fns) . ,alist)
+           `(,(remq #'project-per-tab--display-buffer fns) . ,alist))
+          (`(,(and fn (guard (eql fn #'project-per-tab--display-buffer))) . ,alist)
+           `(nil . ,alist))
+          (else else)))
   (remove-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
 
   (when project-per-tab-mode
     (add-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
-    (push '(project-per-tab--display-buffer-matcher
-            project-per-tab--display-buffer)
-          display-buffer-alist)))
+    (setf display-buffer-base-action
+          (pcase display-buffer-base-action
+            (`(,(and (pred listp) fns) . ,alist)
+             `(,(cons #'project-per-tab--display-buffer fns) . ,alist))
+            (`(,fn . ,alist)
+             `(,(list #'project-per-tab--display-buffer fn) . ,alist))
+            ('nil '(#'project-per-tab--display-buffer . nil))
+            (else (error "project-per-tab-mode: unexpected value of display-buffer-base-action: %s" else))))))
 
 (defun project-per-tab-project-of-tab (&optional tab)
   (let ((tab (or tab (project-per-tab--current-tab))))
@@ -143,7 +157,8 @@ call to `format'. The format-string is expected to have a single
         (display-buffer-in-tab buffer
                                (append
                                 `((tab-name . ,name)
-                                  (tab-group . ,project-per-tab-tab-group))
+                                  (tab-group . ,project-per-tab-tab-group)
+                                  (reusable-frames . 0))
                                 alist))
       (project-per-tab-set-project-of-tab project))))
 
