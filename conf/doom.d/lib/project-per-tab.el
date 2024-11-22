@@ -58,10 +58,21 @@
 
 
 
+(defvar-keymap project-per-tab-map
+  :doc "Overrides to make sure buffers mostly keep to their own project tab"
+  "<remap> <find-file>" #'project-per-tab-find-file
+  "<remap> <switch-to-buffer>" #'pop-to-buffer
+  "<remap> <consult-buffer>" #'project-per-tab-consult-buffer
+  "<remap> <projectile-find-file>" #'project-per-tab-projectile-find-file)
+
+;; reload
+;; (progn (project-per-tab-mode -1) (project-per-tab-mode))
+
 (define-minor-mode project-per-tab-mode
   "Try and keep projects in their own tab"
   :group 'project
   :global t
+  :keymap project-per-tab-map
 
   ;; v1
   (setf display-buffer-alist
@@ -78,7 +89,10 @@
           (else else)))
   (remove-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
 
+  (advice-remove 'find-file #'project-per-tab-find-file)
+
   (when project-per-tab-mode
+    ;; (advice-add 'find-file :override #'project-per-tab-find-file)
     (add-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
     (setf display-buffer-base-action
           (pcase display-buffer-base-action
@@ -124,10 +138,36 @@ call to `format'. The format-string is expected to have a single
   (when-let* ((project (project-per-tab--normalise-project project))
               (dir (project-root project))
               (name (file-name-nondirectory (directory-file-name dir)))
-              (name-template (or (and (boundp 'tab-name-template) tab-group-name-template)
+              (name-template (or (and (boundp 'tab-name-template) tab-name-template)
                                  (and (boundp 'project-name-template) project-name-template)
                                  "%s")))
     (format name-template name)))
+
+;; Key map commands
+
+(defun project-per-tab-find-file (filename &optional wildcards)
+  (interactive
+   (find-file-read-args "Find file: "
+                        (confirm-nonexistent-file-or-buffer)))
+  (let ((value (find-file-noselect filename nil nil wildcards)))
+    (if (listp value)
+        (mapcar 'pop-to-buffer (nreverse value))
+      (pop-to-buffer value))))
+
+(with-eval-after-load 'consult
+  (defun project-per-tab-consult-buffer ()
+    "Variant of `consult-buffer', using `pop-to-buffer'."
+    (interactive)
+    (let ((consult--buffer-display #'pop-to-buffer))
+      (consult-buffer))))
+
+(with-eval-after-load 'projectile
+  (defun project-per-tab-projectile-find-file (&optional invalidate-cache)
+    "Jump to a project's file using completion and show it in the right tab.
+
+With a prefix arg INVALIDATE-CACHE invalidates the cache first."
+    (interactive "P")
+    (projectile--find-file invalidate-cache #'project-per-tab-find-file)))
 
 
 
