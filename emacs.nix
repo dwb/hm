@@ -10,11 +10,6 @@ in {
     EDITOR = "emacsclient";
   });
 
-  # home.file."${configDir}" = {
-  #   source = doomemacs;
-  #   recursive = true;
-  # };
-
   home.sessionPath = [
     "~/${configDir}/bin"
   ];
