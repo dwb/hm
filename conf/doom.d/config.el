@@ -261,6 +261,8 @@
   :custom
   (treesit-auto-install 'prompt)
   :config
+  ;; https://github.com/renzmann/treesit-auto/issues/127
+  (delete 'glsl treesit-auto-langs)
   (treesit-auto-add-to-auto-mode-alist 'all)
   (global-treesit-auto-mode))
 

@@ -10,10 +10,10 @@ in {
     EDITOR = "emacsclient";
   });
 
-  home.file."${configDir}" = {
-    source = doomemacs;
-    recursive = true;
-  };
+  # home.file."${configDir}" = {
+  #   source = doomemacs;
+  #   recursive = true;
+  # };
 
   home.sessionPath = [
     "~/${configDir}/bin"
@@ -30,6 +30,8 @@ in {
     done
 
     RSYNC=${pkgs.rsync}/bin/rsync
+
+    run $RSYNC -rlp --delete --chmod=+w --exclude=/.local/ $VERBOSE_ARG ${doomemacs}/ ~/${configDir}/
 
     if [[ -n $checkout ]]; then
       ln -snf "$checkout" ~/.doom.d
