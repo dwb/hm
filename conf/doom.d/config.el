@@ -577,6 +577,24 @@ end of the workspace list."
                  1 2 3))
   (add-to-list 'compilation-error-regexp-alist 'my-typescript-build))
 
+(after! ediff
+  ;; ediff uses switch-to-buffer all over the place so really doesn't work
+  ;; with switch-to-buffer-obey-display-actions. here we advise all ediff commands
+  ;; to override the option to nil for the duration.
+  (mapatoms
+   (lambda (sym)
+     (when (and (commandp sym)
+                (let ((sn (symbol-name sym)))
+                  (or (equal "ediff" sn)
+                      (string-prefix-p "ediff-" sn))))
+       (let ((advice-name (intern (format "my/trad-switch-to-buffer/%s" sym))))
+         (defalias advice-name
+           (lambda (orig-fun &rest args)
+             (let ((switch-to-buffer-obey-display-actions nil))
+               (apply orig-fun args)))
+           (format "Run %s with switch-to-buffer-obey-display-actions set to nil" sym))
+         (advice-add sym :around advice-name))))))
+
 (after! elisp-mode
   (defun my/eval-print-last-sexp-pp-advice (orig-fun &rest args)
     (let ((result (apply orig-fun args)))
