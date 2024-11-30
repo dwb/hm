@@ -1497,7 +1497,7 @@ revisions (i.e., use a \"...\" range)."
                (yaml-mode . yaml-ts-mode)))
     (add-to-list 'major-mode-remap-alist m))
 
-  (my/setup-go-ts-mode))
+  (after! go-ts (my/setup-go-ts-mode)))
 
 (after! flymake
   (after! consult
