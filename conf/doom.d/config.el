@@ -1612,7 +1612,8 @@ revisions (i.e., use a \"...\" range)."
 
 (load (concat doom-user-dir "config-local.el") t)
 
-(when (not (server-running-p server-name))
-  (server-start))
+(after! server
+  (when (not (server-running-p server-name))
+    (server-start)))
 
 
