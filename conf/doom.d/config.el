@@ -140,7 +140,9 @@
     (ansi-color-apply-on-region (point-min) (point-max))))
 (add-hook 'compilation-filter-hook 'my/colorize-compilation-buffer)
 
-(set-frame-name "dev")
+(setf frame-title-format
+      '((:eval (if (functionp 'my/tab-bar-tab-name) `(,(my/tab-bar-tab-name) " – ") ""))
+        "%b"))
 
 ;; Set font to the first good one
 ;; https://lists.gnu.org/archive/html/bug-gnu-emacs/2022-12/msg00665.html

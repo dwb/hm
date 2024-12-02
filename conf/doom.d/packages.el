@@ -75,9 +75,6 @@
 
 (package! evil-owl)
 
-(package! dirvish
-  :pin "8f1b38d2b8b80bf0adc721d4eb04cdad2b140ac9")
-
 (package! nushell-ts-mode :recipe (:host github :repo "herbertjones/nushell-ts-mode"))
 
 (package! add-node-modules-path)
