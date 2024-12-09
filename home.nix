@@ -213,6 +213,7 @@ in
       pull.ff = "only";
       rebase.autoSquash = true;
       rerere.enabled = true;
+      url."ssh://git@github.com/".insteadOf = "https://github.com/";
     };
   };
 
