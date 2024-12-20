@@ -259,6 +259,11 @@
 
 (use-package! gotest)
 
+(use-package! lilypond-mode
+  :config (defalias 'lilypond-mode 'LilyPond-mode)
+  :mode ("\\.ly$" . lilypond-mode)
+  :commands (lilypond-mode))
+
 (use-package! treesit-auto
   :custom
   (treesit-auto-install 'prompt)
