@@ -12,6 +12,4 @@ up:
 	@if ! git diff-index --quiet HEAD --; then echo 'commit changes first'; exit 1; fi
 	nix flake update
 	git diff-index --quiet HEAD -- || git commit -am 'nix flake update'
-	nix run .#nushellDefaultConfig > "$(ROOT_DIR)/conf/default_config.nu"
-	nix run .#nushellDefaultEnv > "$(ROOT_DIR)/conf/default_env.nu"
 	git diff-index --quiet HEAD -- || git commit -am 'nushell: default config update'
