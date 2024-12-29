@@ -19,8 +19,8 @@ in
       source '${./vterm.nu}'
       use vterm
       use vprompt
-      let prompt_before_vterm = $env.PROMPT_COMMAND
-      $env.PROMPT_COMMAND = { $"(do $prompt_before_vterm)(vprompt left-prompt-track-cwd)" }
+      $env.PROMPT_COMMAND_BEFORE_VTERM = $env.PROMPT_COMMAND
+      $env.PROMPT_COMMAND = { $"(do $env.PROMPT_COMMAND_BEFORE_VTERM)(vprompt left-prompt-track-cwd)" }
     '';
   };
 }
