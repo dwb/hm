@@ -1,8 +1,0 @@
-#!/usr/bin/env nu
-
-cd $env.FILE_PWD
-
-let v = (version).version
-
-http get $"https://raw.githubusercontent.com/nushell/nushell/($v)/crates/nu-utils/src/sample_config/default_config.nu" | save -f conf/default_config.nu
-http get $"https://raw.githubusercontent.com/nushell/nushell/($v)/crates/nu-utils/src/sample_config/default_env.nu" | save -f conf/default_env.nu

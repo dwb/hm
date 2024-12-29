@@ -226,7 +226,6 @@ in
     enable = true;
     package = pkgsUnstable.nushell;
     configFile.text = lib.pipe [
-      ./conf/default_config.nu
       ./conf/config.nu
       ./conf/local_config.nu
     ] [
@@ -235,7 +234,6 @@ in
       lib.concatLines
     ];
     envFile.text = lib.pipe [
-      ./conf/default_env.nu
       ./conf/env.nu
       ./conf/local_env.nu
     ] [

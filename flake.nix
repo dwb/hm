@@ -86,38 +86,6 @@
           });
       });
 
-      apps = forAllSystems (system:
-        let
-          pkgs = importPkgs nixpkgsUnstable system;
-        in {
-          nushellDefaultConfig =
-            let
-              program = pkgs.writeShellApplication {
-                name = "nu-default-config";
-                runtimeInputs = with pkgs; [ nushell ];
-                text = ''
-                  nu -c 'config nu --default'
-                '';
-              };
-            in {
-              type = "app";
-              program = "${program}/bin/${program.meta.mainProgram}";
-            };
-          nushellDefaultEnv =
-            let
-              program = pkgs.writeShellApplication {
-                name = "nu-default-env";
-                runtimeInputs = with pkgs; [ nushell ];
-                text = ''
-                  nu -c 'config env --default'
-                '';
-              };
-            in {
-              type = "app";
-              program = "${program}/bin/${program.meta.mainProgram}";
-            };
-        });
-
       nixosModules = {
         inherit registryPins nixpkgsConfig;
         home = homeModule;
