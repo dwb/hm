@@ -22,6 +22,8 @@ def xdg-state-home [for?: string] {
   $out
 }
 
+$env.PROMPT_COMMAND_DEFUALT = $env.PROMPT_COMMAND
+
 def my_create_left_prompt [] {
     let hostname = (sys host | get hostname | str replace --regex `\..*` '')
     let user = whoami
@@ -30,7 +32,7 @@ def my_create_left_prompt [] {
       (if $nu.history-enabled { "" } else { "🥷  " })
       (if $user =~ "^(dani?|dwb)$" { "" } else { $"($user)@" })
       (if $hostname == "tanxe" { "" } else { $"($hostname) " })
-      (create_left_prompt)
+      (do $env.PROMPT_COMMAND_DEFUALT)
     ] | str join
 }
 
