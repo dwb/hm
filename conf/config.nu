@@ -28,6 +28,7 @@ use contrib/custom-completions/nix/nix-completions.nu *
 use contrib/custom-completions/pnpm/pnpm-completions.nu *
 use contrib/custom-completions/yarn/yarn-v4-completions.nu *
 
+use my/glob-menu.nu
 use my/ollama.nu *
 use my/my-nix.nu *
 use my/new.nu *
