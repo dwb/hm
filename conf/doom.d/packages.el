@@ -109,7 +109,7 @@
   :recipe (:host github :repo "copilot-emacs/copilot.el" :files ("*.el" "dist")))
 
 (package! vterm
-  :pin "2007ece2a771979f735579436137eaae67de5f63"
+  :pin "f1c0c57484b2082586ed3c0d34ca9da995b0ef1f"
   :recipe
   (:host github
          :repo "dwb/emacs-libvterm"
