@@ -37,12 +37,19 @@ in
     graphviz
     htop
     mosh
+    nixd
     plantuml
+    python3
     rsync
+    ruby_3_4.withPackages (ps: with ps; [
+      faraday
+      nokogiri
+      pry
+    ])
     wget
     zstd
   ]) ++ (with pkgsUnstable; [
-    nixd
+    # nothing!
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
   ]);
