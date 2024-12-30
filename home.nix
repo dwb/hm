@@ -41,11 +41,11 @@ in
     plantuml
     python3
     rsync
-    ruby_3_4.withPackages (ps: with ps; [
+    (ruby_3_4.withPackages (ps: with ps; [
       faraday
       nokogiri
       pry
-    ])
+    ]))
     wget
     zstd
   ]) ++ (with pkgsUnstable; [
