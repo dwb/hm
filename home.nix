@@ -49,7 +49,7 @@ in
     wget
     zstd
   ]) ++ (with pkgsUnstable; [
-    # nothing!
+    ghostty
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
   ]);
@@ -73,6 +73,16 @@ in
     target = ".editrc";
     text = ''
       bind -v
+    '';
+  };
+
+  home.file.".config/ghostty/config" = {
+    text = ''
+      font-family = "Iosevka Term SS08"
+      font-size = 12
+      window-theme = light
+      theme = light:zenwritten_light,dark:zenwritten_dark
+      auto-update = off
     '';
   };
 
