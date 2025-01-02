@@ -232,14 +232,15 @@ in
   programs.nushell = {
     enable = true;
     package = pkgsUnstable.nushell;
-    configFile.text = lib.pipe [
+    configFile.text = lib.concatLines ((lib.pipe [
       ./conf/config.nu
       ./conf/local_config.nu
     ] [
       (lib.filter lib.pathExists)
       (map builtins.readFile)
-      lib.concatLines
-    ];
+    ]) ++ [
+      "source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"
+    ]);
     envFile.text = lib.pipe [
       ./conf/env.nu
       ./conf/local_env.nu
