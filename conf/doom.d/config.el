@@ -1,5 +1,7 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+(require 'rx)
+
 ;; Place your private configuration here! Remember, you do not need to run 'doom
 ;; sync' after modifying this file!
 
@@ -69,11 +71,6 @@
 (setq! evil-want-C-u-scroll nil
        evil-want-C-d-scroll nil)
 
-(setf desktop-path (list (concat doom-local-dir "state/desktop")))
-;; this is more annoying than useful tbh
-(desktop-save-mode 0)
-
-(global-visual-fill-column-mode 1)
 (setq-default fill-column 100)
 
 (setq-default term-prompt-regexp nil)
@@ -85,24 +82,30 @@
 
 (add-hook 'focus-out-hook #'my/save-all-file-buffers)
 
-(rx-define my-file-name (+ (not ?/)))
+(setf desktop-path (list (concat doom-local-dir "state/desktop")))
+(with-eval-after-load 'desktop
+  ;; this is more annoying than useful tbh
+  (desktop-save-mode 0))
 
-(setf find-sibling-rules
-      `(;; C
-        (,(rx (group my-file-name) ".c" string-end)
-         ,(rx (backref 1) ".h"))
-        (,(rx (group my-file-name) ".h" string-end)
-         ,(rx (backref 1) ".c"))
-        ;; C++
-        (,(rx (group my-file-name) ".cpp" string-end)
-         ,(rx (backref 1) ".hpp"))
-        (,(rx (group my-file-name) ".hpp" string-end)
-         ,(rx (backref 1) ".cpp"))
-        ;; Go
-        (,(rx (group my-file-name) ".go" string-end)
-         ,(rx (backref 1) "_test.go"))
-        (,(rx (group my-file-name) "_test.go" string-end)
-         ,(rx (backref 1) ".go"))))
+(with-eval-after-load 'rx
+  (rx-define my-file-name (+ (not ?/)))
+
+  (setf find-sibling-rules
+        `(;; C
+          (,(rx (group my-file-name) ".c" string-end)
+           ,(rx (backref 1) ".h"))
+          (,(rx (group my-file-name) ".h" string-end)
+           ,(rx (backref 1) ".c"))
+          ;; C++
+          (,(rx (group my-file-name) ".cpp" string-end)
+           ,(rx (backref 1) ".hpp"))
+          (,(rx (group my-file-name) ".hpp" string-end)
+           ,(rx (backref 1) ".cpp"))
+          ;; Go
+          (,(rx (group my-file-name) ".go" string-end)
+           ,(rx (backref 1) "_test.go"))
+          (,(rx (group my-file-name) "_test.go" string-end)
+           ,(rx (backref 1) ".go")))))
 
 ;; doom tries to be clever but i think this is the cause of whitespace-mode turning on
 ;; when i don't want it to
@@ -222,6 +225,10 @@
 
 (require 'clique)
 (require 'clique-doom)
+
+(use-package! visual-fill-column
+  :config
+  (global-visual-fill-column-mode 1))
 
 ;; (use-package! vundo
 ;;   :bind (("<f7>" . vundo))
