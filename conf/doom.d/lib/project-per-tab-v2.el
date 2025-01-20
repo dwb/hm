@@ -58,22 +58,50 @@
 
 
 
+(defvar-keymap project-per-tab-map
+  :doc "Overrides to make sure buffers mostly keep to their own project tab"
+  "<remap> <find-file>" #'project-per-tab-find-file
+  "<remap> <switch-to-buffer>" #'pop-to-buffer
+  "<remap> <consult-buffer>" #'project-per-tab-consult-buffer
+  "<remap> <projectile-find-file>" #'project-per-tab-projectile-find-file)
+
+;; reload
+;; (progn (project-per-tab-mode -1) (project-per-tab-mode))
+
 (define-minor-mode project-per-tab-mode
   "Try and keep projects in their own tab"
   :group 'project
   :global t
+  :keymap project-per-tab-map
 
+  ;; v1
   (setf display-buffer-alist
         (assq-delete-all
          'project-per-tab--display-buffer-matcher
          display-buffer-alist))
+  ;; v2
+  (setf display-buffer-base-action
+        (pcase display-buffer-base-action
+          (`(,(and (pred listp) fns) . ,alist)
+           `(,(remq #'project-per-tab--display-buffer fns) . ,alist))
+          (`(,(and fn (guard (eql fn #'project-per-tab--display-buffer))) . ,alist)
+           `(nil . ,alist))
+          (else else)))
   (remove-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
 
+  (advice-remove 'find-file #'project-per-tab-find-file)
+
   (when project-per-tab-mode
+    ;; (advice-add 'find-file :override #'project-per-tab-find-file)
     (add-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
-    (push '(project-per-tab--display-buffer-matcher
-            project-per-tab--display-buffer)
-          display-buffer-alist)))
+    (setf display-buffer-base-action
+          (pcase display-buffer-base-action
+            (`(,(and (pred listp) fns) . ,alist)
+             `(,(cons #'project-per-tab--display-buffer fns) . ,alist))
+            (`(,fn . ,alist)
+             `(,(list #'project-per-tab--display-buffer fn) . ,alist))
+            ('nil '(#'project-per-tab--display-buffer . nil))
+            (else (error "project-per-tab-mode: unexpected value of display-buffer-base-action: %s" else))))))
 
 (defun project-per-tab-project-of-tab (&optional tab)
   (let ((tab (or tab (project-per-tab--current-tab))))
@@ -110,10 +138,36 @@ call to `format'. The format-string is expected to have a single
   (when-let* ((project (project-per-tab--normalise-project project))
               (dir (project-root project))
               (name (file-name-nondirectory (directory-file-name dir)))
-              (name-template (or (and (boundp 'tab-name-template) tab-group-name-template)
+              (name-template (or (and (boundp 'tab-name-template) tab-name-template)
                                  (and (boundp 'project-name-template) project-name-template)
                                  "%s")))
     (format name-template name)))
+
+;; Key map commands
+
+(defun project-per-tab-find-file (filename &optional wildcards)
+  (interactive
+   (find-file-read-args "Find file: "
+                        (confirm-nonexistent-file-or-buffer)))
+  (let ((value (find-file-noselect filename nil nil wildcards)))
+    (if (listp value)
+        (mapcar 'pop-to-buffer (nreverse value))
+      (pop-to-buffer value))))
+
+(with-eval-after-load 'consult
+  (defun project-per-tab-consult-buffer ()
+    "Variant of `consult-buffer', using `pop-to-buffer'."
+    (interactive)
+    (let ((consult--buffer-display #'pop-to-buffer))
+      (consult-buffer))))
+
+(with-eval-after-load 'projectile
+  (defun project-per-tab-projectile-find-file (&optional invalidate-cache)
+    "Jump to a project's file using completion and show it in the right tab.
+
+With a prefix arg INVALIDATE-CACHE invalidates the cache first."
+    (interactive "P")
+    (projectile--find-file invalidate-cache #'project-per-tab-find-file)))
 
 
 
@@ -126,13 +180,15 @@ call to `format'. The format-string is expected to have a single
     (subproject-parent-or-self project)))
 
 (defun project-per-tab--project-of-buffer (buffer-or-name)
-  (when-let* ((buffer (get-buffer buffer-or-name))
-              (fn (buffer-file-name buffer))
-              (dir (file-name-parent-directory fn)))
-    (project-current nil dir)))
+  (when-let* ((buffer (get-buffer buffer-or-name)))
+    (with-current-buffer buffer
+      (project-current))))
 
 (defun project-per-tab--display-buffer-matcher (buffer _arg)
   (project-per-tab--project-of-buffer buffer))
+
+(defun project-per-tab--buffer-matches-project-p (buffer project)
+  (equal project (project-per-tab--project-of-buffer buffer)))
 
 (defun project-per-tab--display-buffer (buffer alist)
   (when-let ((project (with-current-buffer buffer (project-current)))
@@ -141,22 +197,38 @@ call to `format'. The format-string is expected to have a single
         (display-buffer-in-tab buffer
                                (append
                                 `((tab-name . ,name)
-                                  (tab-group . ,project-per-tab-tab-group))
+                                  (tab-group . ,project-per-tab-tab-group)
+                                  (reusable-frames . 0))
                                 alist))
       (project-per-tab-set-project-of-tab project))))
 
+;; experimental
 (defun project-per-tab--kill-buffer-hook ()
   "Close the tab if the only remaining displayed buffer is unrelated to the project"
   (when-let ((tab (project-per-tab--current-tab))
              (tabname (alist-get 'name tab))
-             (buf (current-buffer))
              (proj (project-current))
              (tabproj (project-per-tab-project-of-tab)))
     (when (and
-           (buffer-file-name buf)
            (not (minibuffer-window-active-p (selected-window)))
-           (equal proj tabproj)
            (one-window-p)
+           (equal proj tabproj)
+           (null (match-buffers #'project-per-tab--buffer-matches-project-p nil tabproj)))
+      (message "Closing %s tab: that was the last project buffer." tabname)
+      (tab-bar-close-tab))))
+
+;; TODO: make work for killing the last buffer of a project anywhere,
+;; don't depend on what's displayed.
+(defun project-per-tab--kill-buffer-hook ()
+  "Close the tab if the only remaining displayed buffer is unrelated to the project"
+  (when-let ((tab (project-per-tab--current-tab))
+             (tabname (alist-get 'name tab))
+             (proj (project-current))
+             (tabproj (project-per-tab-project-of-tab)))
+    (when (and
+           (not (minibuffer-window-active-p (selected-window)))
+           (one-window-p)
+           (equal proj tabproj)
            (null (seq-filter #'(lambda (b)
                                  (with-current-buffer (get-buffer (car b))
                                    (equal tabproj (project-current))))
@@ -164,5 +236,5 @@ call to `format'. The format-string is expected to have a single
       (message "Closing %s tab: that was the last project buffer." tabname)
       (tab-bar-close-tab))))
 
-(provide 'project-per-tab)
+(provide 'project-per-tab-v2)
 ;;; project-per-tab.el ends here
