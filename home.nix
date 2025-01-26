@@ -49,7 +49,7 @@ in
     wget
     zstd
   ]) ++ (with pkgsUnstable; [
-    ghostty
+    # ghostty ## fucks sake marked broken on darwin
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
   ]);
