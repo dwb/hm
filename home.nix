@@ -35,6 +35,7 @@ in
     fd
     git-absorb
     graphviz
+    home-manager
     htop
     mosh
     nixd
