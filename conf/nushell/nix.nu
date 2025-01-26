@@ -1,6 +1,6 @@
 # nice wrappers for nix commands
 
-#list installed packages
+# list installed packages
 export def --wrapped "nix profile list" [...rest] {
   let $args = ($rest | prepend '--json')
   mut out = (do --capture-errors { ^nix profile list ...$args })
