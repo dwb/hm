@@ -330,12 +330,18 @@
 
 (use-package! copilot
   :config
+  (setf copilot-idle-delay nil)
   (add-hook! go-ts-mode (copilot-mode))
   :bind (:map copilot-completion-map
-              ("<tab>" . 'copilot-accept-completion)
-              ("TAB" . 'copilot-accept-completion)
-              ("C-TAB" . 'copilot-accept-completion-by-word)
-              ("C-<tab>" . 'copilot-accept-completion-by-word)))
+         ("<tab>" . 'copilot-accept-completion)
+         ("TAB" . 'copilot-accept-completion)
+         ("C-TAB" . 'copilot-accept-completion-by-word)
+         ("C-<tab>" . 'copilot-accept-completion-by-word)
+         ("C-j" . 'copilot-next-completion)
+         ("C-k" . 'copilot-previous-completion)
+         ("<escape>" . 'copilot-clear-overlay)
+         :map copilot-mode-map
+         ("C-x o" . 'copilot-complete)))
 
 (use-package nushell-ts-mode)
 
@@ -659,10 +665,12 @@ end of the workspace list."
       (if (not mode)
           (append (list command t) r)
         args)))
-  (advice-add 'compilation-start :filter-args #'my/compilation-start-args-advice)
+  ;; (advice-add 'compilation-start :filter-args #'my/compilation-start-args-advice)
+  ;; i'm not sure this is good, so here's a snippet to disable it
+  ;; (advice-remove 'compilation-start #'my/compilation-start-args-advice)
 
   (set-popup-rule!
-    (rx string-start "*my/compilation*")
+    (rx string-start "*compilation*")
     :side 'right :width 83 :vslot -4 :select t :quit nil :ttl 0))
 
 (after! evil
@@ -1228,6 +1236,8 @@ revisions (i.e., use a \"...\" range)."
                    ((staticcheck . t)
                     (matcher . "CaseSensitive")))))
 
+  (setf eglot-autoshutdown nil)
+
   (defun my/eglot-setup-flymake ()
     (if (eglot-managed-p)
         (add-hook 'flymake-diagnostic-functions 'eglot-flymake-backend nil t)
@@ -1608,7 +1618,7 @@ revisions (i.e., use a \"...\" range)."
   (setq +popup-defaults
         (list :side   'bottom
               :height #'+popup-shrink-to-fit
-              :width  83
+              :width  100
               :quit   t
               :modeline t
               :select t
