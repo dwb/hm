@@ -243,15 +243,15 @@ in
   programs.nushell = {
     enable = true;
     package = pkgsUnstable.nushell;
-    configFile.text = lib.concatLines ((lib.pipe [
-      ./conf/config.nu
-      ./conf/local_config.nu
-    ] [
-      (lib.filter lib.pathExists)
-      (map builtins.readFile)
-    ]) ++ [
-      "source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"
-    ]);
+    configFile.text = lib.concatLines (
+      ["source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"] ++
+      (lib.pipe [
+        ./conf/config.nu
+        ./conf/local_config.nu
+      ] [
+        (lib.filter lib.pathExists)
+        (map builtins.readFile)
+      ]));
     envFile.text = lib.pipe [
       ./conf/env.nu
       ./conf/local_env.nu
@@ -296,7 +296,11 @@ in
 
   programs.zsh = {
     enable = true;
-    initExtra = builtins.readFile ./conf/zshrc.zsh;
+    initExtra = lib.concatLines [
+      (builtins.readFile ./conf/zshrc.zsh)
+      (builtins.readFile ./conf/zshrc-local.zsh)
+    ];
+    envExtra = builtins.readFile ./conf/zshenv-local.zsh;
   };
 
   programs.fzf.enable = true;
