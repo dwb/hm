@@ -37,7 +37,7 @@ in {
 
   programs.emacs = {
     enable = true;
-    package = if guiEnabled then pkgs.emacs29-pgtk else pkgs.emacs29-nox;
+    package = if guiEnabled then pkgs.emacs30-pgtk else pkgs.emacs30-nox;
   };
 
 }
