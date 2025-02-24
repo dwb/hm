@@ -586,6 +586,14 @@ end of the workspace list."
             (+workspace/display))))
     ('error (+workspace-error (cadr ex) t))))
 
+(with-eval-after-load 'completion-preview
+  (let ((map completion-preview-active-mode-map))
+    ;; (keymap-set map "C-i" #'completion-preview-insert)
+    ;; (keymap-set map "M-i" #'completion-preview-complete)
+    (keymap-set map "<up>" #'completion-preview-prev-candidate)
+    (keymap-set map "<down>" #'completion-preview-next-candidate))
+
+  (global-completion-preview-mode))
 
 (after! compile
   ;; typescript project build support
