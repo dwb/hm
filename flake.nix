@@ -49,7 +49,12 @@
       registryPins = import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; };
 
       homeModule = { pkgs, username, ... }@args: {
-        home-manager.users.${username} = home (args // (deps args));
+        home-manager.users.${username} = {
+          imports = [ home ];
+          _module.args = {
+            inherit username;
+          } // inputs // (deps args);
+        };
       };
 
       # TODO: use these
