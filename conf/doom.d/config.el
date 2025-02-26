@@ -252,7 +252,6 @@
 
 (use-package! org-modern)
 
-(use-package! flymake-popon)
 (use-package! eldoc-box
   :config
   (eldoc-box-hover-at-point-mode 1)
@@ -469,7 +468,7 @@ Other values of PRESERVE are reserved for future use."
  :g "C-<escape>" #'my/select-main-window
 
  (:when IS-MAC
-   :g "s-k" #'kill-this-buffer)
+   :g "s-k" #'kill-current-buffer)
 
  :map evil-window-map
  ("<f6>" #'my/select-main-window))

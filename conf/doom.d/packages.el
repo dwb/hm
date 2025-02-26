@@ -60,7 +60,8 @@
 ;; new stuff
 
 ;; Automatically compile Emacs Lisp libraries
-(package! auto-compile :pin "4cbd304698a897baf438400c9a2b31d3dfb3a7f9")
+;; not actually using this so disable for now
+;; (package! auto-compile :pin "4cbd304698a897baf438400c9a2b31d3dfb3a7f9")
 
 (package! posframe)
 
@@ -87,9 +88,12 @@
            :branch "main")
   :pin "06db63fa4eda00d7ef2ccba21c507b9dc1e21ef0")
 
-(package! flymake-popon)
 
-(package! eldoc-box :pin "5c067f5c195198ffd16df2f455da95e46cc8ce02")
+(when (>= emacs-major-version 30)
+  (package! eldoc :built-in t)
+  (package! track-changes :built-in t))
+
+(package! eldoc-box :pin "ebc0e2c13791f5a22cf81be050b32f0ebf726855")
 
 (package! gptai
   :recipe (:host github :repo "antonhibl/gptai"
@@ -147,7 +151,8 @@
    :repo "jmibanez/unison-daemon-el"
    :branch "main"))
 
-(package! just-mode)
+;; disable / not really using / TODO: update to just-ts-mode and pin
+;; (package! just-mode)
 
 (package! lilypond-mode
   :pin "b7908403efe0761cec86c94db0c529db031246a0" ; 2.24.4
