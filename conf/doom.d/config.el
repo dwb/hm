@@ -592,7 +592,8 @@ end of the workspace list."
     (keymap-set map "<up>" #'completion-preview-prev-candidate)
     (keymap-set map "<down>" #'completion-preview-next-candidate))
 
-  (global-completion-preview-mode))
+  ;; not quite good enough for now, going back to company
+  (global-completion-preview-mode 0))
 
 (after! compile
   ;; typescript project build support
