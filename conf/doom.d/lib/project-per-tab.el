@@ -68,12 +68,18 @@
          'project-per-tab--display-buffer-matcher
          display-buffer-alist))
   (remove-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
+  (setf tab-bar-tab-pre-close-functions
+        (delq
+         'project-per-tab--kill-all-buffers
+         tab-bar-tab-pre-close-functions))
 
   (when project-per-tab-mode
     (add-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
     (push '(project-per-tab--display-buffer-matcher
             project-per-tab--display-buffer)
-          display-buffer-alist)))
+          display-buffer-alist)
+    (add-to-list 'tab-bar-tab-pre-close-functions
+                 #'project-per-tab--kill-all-buffers)))
 
 (defun project-per-tab-project-of-tab (&optional tab)
   (let ((tab (or tab (project-per-tab--current-tab))))
@@ -163,6 +169,11 @@ call to `format'. The format-string is expected to have a single
                              (window-prev-buffers))))
       (message "Closing %s tab: that was the last project buffer." tabname)
       (tab-bar-close-tab))))
+
+(defun project-per-tab--kill-all-buffers (tab _onlyinframe)
+  (when-let ((project (project-per-tab-project-of-tab tab))
+             (buffers (project-buffers project)))
+    (seq-do #'kill-buffer buffers)))
 
 (provide 'project-per-tab)
 ;;; project-per-tab.el ends here

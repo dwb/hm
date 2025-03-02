@@ -84,8 +84,7 @@
 
 (setf desktop-path (list (concat doom-local-dir "state/desktop")))
 (with-eval-after-load 'desktop
-  ;; this is more annoying than useful tbh
-  (desktop-save-mode 0))
+  (desktop-save-mode 1))
 
 (with-eval-after-load 'rx
   (rx-define my-file-name (+ (not ?/)))
@@ -751,8 +750,8 @@ end of the workspace list."
   (evil-markdown-set-key-theme (remove 'navigation evil-markdown-key-theme)))
 
 (after! evil-textobj-tree-sitter
-  (define-key evil-outer-text-objects-map "f" (evil-textobj-tree-sitter-get-textobj "function.outer"))
-  (define-key evil-inner-text-objects-map "f" (evil-textobj-tree-sitter-get-textobj "function.inner")))
+  (define-key evil-outer-text-objects-map "f" `("function" . ,(evil-textobj-tree-sitter-get-textobj "function.outer")))
+  (define-key evil-inner-text-objects-map "f" `("function" . ,(evil-textobj-tree-sitter-get-textobj "function.inner"))))
 
 (after! org
   (setq! org-agenda-start-on-weekday t)
@@ -1538,6 +1537,7 @@ revisions (i.e., use a \"...\" range)."
         (treesit-install-language-grammar lang))))
 
   (dolist (m '((python-mode . python-ts-mode)
+               (c-mode . c-ts-mode)
                (go-mode . go-ts-mode)
                (css-mode . css-ts-mode)
                (typescript-mode . typescript-ts-mode)
