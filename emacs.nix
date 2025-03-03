@@ -37,7 +37,13 @@ in {
 
   programs.emacs = {
     enable = true;
-    package = if guiEnabled then pkgs.emacs30-pgtk else pkgs.emacs30-nox;
+    package = with pkgs; (emacsPackagesFor
+      (if guiEnabled
+       then emacs30-pgtk
+       else emacs30-nox)).emacsWithPackages (epkgs: with epkgs; [
+         treesit-grammars.with-all-grammars
+         vterm
+       ]);
   };
 
 }

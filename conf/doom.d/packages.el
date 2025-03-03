@@ -112,24 +112,25 @@
 (package! copilot
   :recipe (:host github :repo "copilot-emacs/copilot.el" :files ("*.el" "dist")))
 
-(package! vterm
-  :pin "f1c0c57484b2082586ed3c0d34ca9da995b0ef1f"
-  :recipe
-  (:host github
-         :repo "dwb/emacs-libvterm"
-         :branch "nix"
-         :files ("CMakeLists.txt"
-                 "flake.nix"
-                 "flake.lock"
-                 "elisp.c"
-                 "elisp.h"
-                 "emacs-module.h"
-                 "etc"
-                 "utf8.c"
-                 "utf8.h"
-                 "vterm.el"
-                 "vterm-module.c"
-                 "vterm-module.h")))
+;; try and move to nix setup
+;; (package! vterm
+;;   :pin "f1c0c57484b2082586ed3c0d34ca9da995b0ef1f"
+;;   :recipe
+;;   (:host github
+;;          :repo "dwb/emacs-libvterm"
+;;          :branch "nix"
+;;          :files ("CMakeLists.txt"
+;;                  "flake.nix"
+;;                  "flake.lock"
+;;                  "elisp.c"
+;;                  "elisp.h"
+;;                  "emacs-module.h"
+;;                  "etc"
+;;                  "utf8.c"
+;;                  "utf8.h"
+;;                  "vterm.el"
+;;                  "vterm-module.c"
+;;                  "vterm-module.h")))
 
 (package! evil-textobj-tree-sitter)
 
