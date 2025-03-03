@@ -270,6 +270,8 @@
   :commands (lilypond-mode))
 
 (use-package! treesit-auto
+  ;; i think this is now done by my nix setup
+  :disabled
   :custom
   (treesit-auto-install 'prompt)
   :config
@@ -1526,9 +1528,10 @@ revisions (i.e., use a \"...\" range)."
           (lua "https://github.com/tjdevries/tree-sitter-lua")
           (unison "https://github.com/kylegoetz/tree-sitter-unison")))
 
-  (dolist (s treesit-language-source-alist)
-    (unless (treesit-language-available-p (car s))
-      (treesit-install-language-grammar (car s))))
+  ;; i think this is now done by my nix setup
+  ;; (dolist (s treesit-language-source-alist)
+  ;;   (unless (treesit-language-available-p (car s))
+  ;;     (treesit-install-language-grammar (car s))))
 
   (defun my/treesit-update-all ()
     (interactive)

@@ -136,7 +136,8 @@
 
 (package! gotest)
 
-(package! treesit-auto :pin "b5fcf8e5515c5c5787073c1bc3f6f2bf5bfb1cf1")
+;; i think this is now done by my nix setup
+;; (package! treesit-auto :pin "b5fcf8e5515c5c5787073c1bc3f6f2bf5bfb1cf1")
 
 (package! unison-ts-mode
   :pin "04cbd1f73f94346e68f9b42f8ab9d7ab8ab43ad3"
