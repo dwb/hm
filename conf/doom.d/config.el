@@ -1,6 +1,8 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+(require 'desktop)
 (require 'rx)
+(require 'server)
 
 ;; Place your private configuration here! Remember, you do not need to run 'doom
 ;; sync' after modifying this file!
@@ -1670,3 +1672,5 @@ revisions (i.e., use a \"...\" range)."
     (server-start)))
 
 
+(with-eval-after-load 'desktop
+  (desktop-read))
