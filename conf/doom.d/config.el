@@ -291,12 +291,14 @@
          (secretf (plist-get entry :secret))
          (secret (if (functionp secretf) (funcall secretf) secretf)))
     (use-package! gptai
+      :disabled
       :config
       (setf gptai-username user)
       (setf gptai-model "gpt-4o")
       (setf gptai-api-key secret)))
 
 (use-package chatgpt-shell
+  :disabled
   :config
   (add-hook! org-mode
     (with-demoted-errors "chatgpt-shell: %S"
@@ -309,6 +311,7 @@
    (chatgpt-shell-model-version "gpt-4")))
 
 (use-package org-ai
+  :disabled
   :ensure t
   :commands (org-ai-mode
              org-ai-global-mode)
@@ -320,12 +323,44 @@
   (org-ai-install-yasnippets))
 
 (use-package! gptel
+ :disabled
  :config
  (setq-default
   gptel-backend
   (gptel-make-ollama "Ollama"
                      :host "localhost:11434"
                      :models '("codellama:34b-instruct-q6_K"))))
+
+(use-package ellama
+  :bind ("C-c l" . ellama-transient-main-menu)
+  ;; send last message in chat buffer with C-c C-c
+  :hook (org-ctrl-c-ctrl-c-final . ellama-chat-send-last-message)
+  :init
+  (setopt ellama-auto-scroll t)
+  (setopt ellama-sessions-directory (expand-file-name "~/ellama-sessions"))
+  (setopt ellama-spinner-enabled t)
+  (require 'llm-ollama)
+  (setopt ellama-provider
+  	  (make-llm-ollama
+  	   ;; this model should be pulled to use it
+  	   ;; value should be the same as you print in terminal during pull
+  	   :chat-model "llama3.3"
+  	   :embedding-model "nomic-embed-text"
+  	   :default-chat-non-standard-params '(("num_ctx" . 8192))
+           ))
+  (setopt ellama-summarization-provider
+  	  (make-llm-ollama
+  	   :chat-model "llama3.3"
+  	   :embedding-model "nomic-embed-text"
+  	   :default-chat-non-standard-params '(("num_ctx" . 8192))))
+  (setopt ellama-coding-provider
+  	  (make-llm-ollama
+  	   :chat-model "llama3.3"
+  	   :embedding-model "nomic-embed-text"
+  	   :default-chat-non-standard-params '(("num_ctx" . 8192))))
+  :config
+  ;; show ellama context in header line in all buffers
+  (ellama-context-header-line-global-mode +1))
 
 (use-package! norns)
 (use-package! combobulate)

@@ -100,12 +100,7 @@
            :branch "main")
   :pin "5cdea5c85b102e1e57904ea6bb826cccd506067f")
 
-(package! chatgpt-shell
-  :recipe
-  (:files ("*.el")))
-
-(package! org-ai)
-(package! gptel)
+(package! ellama)
 
 (package! norns :pin "022b433334cd1db4f83e77f055cd89e9f857076d")
 
