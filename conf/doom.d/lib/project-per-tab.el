@@ -168,12 +168,17 @@ call to `format'. The format-string is expected to have a single
                                    (equal tabproj (project-current))))
                              (window-prev-buffers))))
       (message "Closing %s tab: that was the last project buffer." tabname)
-      (tab-bar-close-tab))))
+      (let ((project-per-tab--clearing-tab-project-buffers t))
+        (tab-bar-close-tab)))))
+
+(defvar project-per-tab--clearing-tab-project-buffers nil)
 
 (defun project-per-tab--kill-all-buffers (tab _onlyinframe)
-  (when-let ((project (project-per-tab-project-of-tab tab))
-             (buffers (project-buffers project)))
-    (seq-do #'kill-buffer buffers)))
+  (when (not project-per-tab--clearing-tab-project-buffers)
+    (when-let ((project-per-tab--clearing-tab-project-buffers t)
+               (project (project-per-tab-project-of-tab tab))
+               (buffers (project-buffers project)))
+      (seq-do #'kill-buffer buffers))))
 
 (provide 'project-per-tab)
 ;;; project-per-tab.el ends here
