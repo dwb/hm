@@ -52,6 +52,8 @@ in
     zstd
   ]) ++ (with pkgsUnstable; [
     # ghostty ## fucks sake marked broken on darwin
+    gopls
+    gotools
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
   ]);
