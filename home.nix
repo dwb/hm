@@ -53,7 +53,14 @@ in
   ]) ++ (with pkgsUnstable; [
     # ghostty ## fucks sake marked broken on darwin
     gopls
-    gotools
+    (symlinkJoin {
+      name = "gotools";
+      paths = [ gotools ];
+      # clashes with ruby bundler!
+      postBuild = ''
+        mv $out/bin/bundle $out/bin/gobundle
+      '';
+    })
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
   ]);
