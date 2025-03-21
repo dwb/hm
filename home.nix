@@ -39,6 +39,7 @@ in
     htop
     mosh
     nixd
+    nodejs_22 # mainly for emacs copilot but generally useful too ig
     plantuml
     python3
     rsync
