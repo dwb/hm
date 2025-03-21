@@ -53,6 +53,7 @@ in
   ]) ++ (with pkgsUnstable; [
     # ghostty ## fucks sake marked broken on darwin
     delve
+    go
     gopls
     (symlinkJoin {
       name = "gotools";
