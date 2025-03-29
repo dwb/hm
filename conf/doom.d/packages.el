@@ -158,3 +158,8 @@
    :repo "https://git.savannah.gnu.org/git/lilypond.git/"
    :files ("elisp/*.el")
    :pre-build ("nix" "shell" "nixpkgs#python3" "-c" "python" "scripts/build/lilypond-words.py" "--el" "--dir=elisp/")))
+
+;; nice big debugger integration
+;; in elpa
+;; https://github.com/svaante/dape
+(package! dape)
