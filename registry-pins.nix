@@ -2,6 +2,10 @@
 { ... }:
 
 {
+  nix.channels = {
+    inherit nixpkgs nixpkgsUnstable;
+  };
+
   nix.registry = {
     nixpkgs = {
       exact = true;

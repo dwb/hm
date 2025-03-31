@@ -16,11 +16,6 @@ in
     ./linkapps.nix
   ];
 
-  # XXX: not in 24.05 branch yet
-  # nix.channels = {
-  #   inherit nixpkgs;
-  # };
-
   home.stateVersion = "23.11"; # XXX: remember, don't change!
 
   home.username = username;
