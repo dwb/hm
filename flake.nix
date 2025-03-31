@@ -47,6 +47,7 @@
 
       home = import ./home.nix;
       registryPins = import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; };
+      channelPins = import ./channel-pins.nix { inherit nixpkgs nixpkgsUnstable; };
 
       homeModule = { pkgs, username, ... }@args: {
         home-manager.users.${username} = {
@@ -100,6 +101,10 @@
         inherit registryPins nixpkgsConfig;
         home = homeModule;
       };
+
+      homeManagerModules = {
+        inherit channelPins;
+      }
 
       devShells = forAllSystems (system:
         let pkgs = (importPkgs nixpkgs system); in {
