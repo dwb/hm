@@ -104,7 +104,7 @@
 
       homeManagerModules = {
         inherit channelPins;
-      }
+      };
 
       devShells = forAllSystems (system:
         let pkgs = (importPkgs nixpkgs system); in {
