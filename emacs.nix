@@ -39,7 +39,7 @@ in {
     enable = true;
     package = with pkgs; (emacsPackagesFor
       (if guiEnabled
-       then emacs30-pgtk
+       then emacs30-pgtk.override { withNativeCompilation = false; }
        else emacs30-nox)).emacsWithPackages (epkgs: with epkgs; [
          treesit-grammars.with-all-grammars
          vterm
