@@ -40,11 +40,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1745234287,
-        "narHash": "sha256-iEVeMtC6YecawlRmC1ZdNO9wZmJWmHHF5w+RF5yAC3g=",
+        "lastModified": 1745247553,
+        "narHash": "sha256-AIjD2iMgfnTmCOCrnTG0D3esMJScDV83a+w7D32VNAw=",
         "ref": "refs/heads/dwb-fix-node-mac-15.4",
-        "rev": "e7e5062aeb0e77e4819624e66bfacac140dce1a9",
-        "revCount": 717175,
+        "rev": "a7ab49eb577a2c70cd97aa6ab846706cedcdea5f",
+        "revCount": 717176,
         "shallow": true,
         "type": "git",
         "url": "file:///Users/dan/Developer/nixpkgs"
