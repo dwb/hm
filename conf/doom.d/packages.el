@@ -90,6 +90,7 @@
 
 
 (when (>= emacs-major-version 30)
+  (package! eglot :built-in t)
   (package! eldoc :built-in t)
   (package! track-changes :built-in t))
 
