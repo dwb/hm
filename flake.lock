@@ -40,31 +40,33 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1745186762,
-        "narHash": "sha256-vn1ixtFWtellgcZpdIoxCVu9agdK3647hi7lcc/58eQ=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "c16961fda203155a314b0c75c13961c29e9ea7b0",
-        "type": "github"
+        "lastModified": 1745234287,
+        "narHash": "sha256-iEVeMtC6YecawlRmC1ZdNO9wZmJWmHHF5w+RF5yAC3g=",
+        "ref": "refs/heads/dwb-fix-node-mac-15.4",
+        "rev": "e7e5062aeb0e77e4819624e66bfacac140dce1a9",
+        "revCount": 717175,
+        "shallow": true,
+        "type": "git",
+        "url": "file:///Users/dan/Developer/nixpkgs"
       },
       "original": {
-        "owner": "NixOS",
-        "ref": "release-24.11",
-        "repo": "nixpkgs",
-        "type": "github"
+        "shallow": true,
+        "type": "git",
+        "url": "file:///Users/dan/Developer/nixpkgs"
       }
     },
     "nixpkgsUnstable": {
       "locked": {
-        "lastModified": 1745224345,
-        "narHash": "sha256-dmls0evMfO5RPu1hVbtbOq+KJXryJSyB0NlYyoz8wpU=",
+        "lastModified": 1744868846,
+        "narHash": "sha256-5RJTdUHDmj12Qsv7XOhuospjAjATNiTMElplWnJE9Hs=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "844866b122b48c67a46d674fd0c3939f6277ab88",
+        "rev": "ebe4301cbd8f81c4f8d3244b3632338bbeb6d49c",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
