@@ -366,9 +366,9 @@
 (use-package! combobulate)
 
 (use-package! copilot
+  :disabled
   :config
   (setf copilot-idle-delay nil)
-  (add-hook! go-ts-mode (copilot-mode))
   :bind (:map copilot-completion-map
          ("<tab>" . 'copilot-accept-completion)
          ("TAB" . 'copilot-accept-completion)
