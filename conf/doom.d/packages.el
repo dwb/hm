@@ -96,37 +96,18 @@
 
 (package! eldoc-box :pin "ebc0e2c13791f5a22cf81be050b32f0ebf726855")
 
-(package! gptai
-  :recipe (:host github :repo "antonhibl/gptai"
-           :branch "main")
-  :pin "5cdea5c85b102e1e57904ea6bb826cccd506067f")
+;; (package! gptai
+;;   :recipe (:host github :repo "antonhibl/gptai"
+;;            :branch "main")
+;;   :pin "5cdea5c85b102e1e57904ea6bb826cccd506067f")
 
 (package! ellama)
+(package! aidermacs)
 
 (package! norns :pin "022b433334cd1db4f83e77f055cd89e9f857076d")
 
 (package! copilot
   :recipe (:host github :repo "copilot-emacs/copilot.el" :files ("*.el" "dist")))
-
-;; try and move to nix setup
-;; (package! vterm
-;;   :pin "f1c0c57484b2082586ed3c0d34ca9da995b0ef1f"
-;;   :recipe
-;;   (:host github
-;;          :repo "dwb/emacs-libvterm"
-;;          :branch "nix"
-;;          :files ("CMakeLists.txt"
-;;                  "flake.nix"
-;;                  "flake.lock"
-;;                  "elisp.c"
-;;                  "elisp.h"
-;;                  "emacs-module.h"
-;;                  "etc"
-;;                  "utf8.c"
-;;                  "utf8.h"
-;;                  "vterm.el"
-;;                  "vterm-module.c"
-;;                  "vterm-module.h")))
 
 (package! evil-textobj-tree-sitter)
 
