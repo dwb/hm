@@ -340,7 +340,11 @@
   (map!
    :leader
    :desc "Aider"
-   :n "l a" #'aidermacs-transient-menu))
+   :n "l a" #'aidermacs-transient-menu)
+  (set-popup-rule!
+    (rx string-start "*aidermacs")
+    :side 'right :width 101 :vslot 0 :slot 1 :height 0.5
+    :select t :quit nil :ttl nil :autosave 'ignore))
 
 (use-package ellama
   :commands (ellama-transient-main-menu)
@@ -732,7 +736,8 @@ end of the workspace list."
 
   (set-popup-rule!
     (rx string-start "*compilation*")
-    :side 'right :width 83 :vslot -4 :select t :quit nil :ttl 0))
+    :side 'right :width 101 :vslot 0 :slot 1 :height 0.5
+    :select t :quit nil :ttl 0))
 
 (after! evil
   (use-package! evil-textobj-tree-sitter :ensure t)
@@ -1694,7 +1699,7 @@ revisions (i.e., use a \"...\" range)."
 
   (set-popup-rule!
     (rx string-start "*" (? "doom:") "vterm")
-    :side 'right :width 101 :vslot -4 :select t :quit nil :ttl 0))
+    :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl 0))
 
 (defun my/compilation-buffer-p (bn &rest _)
   (let ((buffer (window-normalize-buffer bn)))
