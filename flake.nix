@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs = {
       # url = "github:NixOS/nixpkgs/release-24.11";
-      url = "/Users/dan/Developer/nixpkgs";
+      url = "github:dwb/nixpkgs/dwb-fix-node-mac-15.4";
     };
     nixpkgsUnstable = {
       url = "github:NixOS/nixpkgs/nixpkgs-unstable";
