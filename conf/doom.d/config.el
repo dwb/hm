@@ -331,8 +331,19 @@
                      :host "localhost:11434"
                      :models '("codellama:34b-instruct-q6_K"))))
 
+(map! :leader :prefix ("l" . "LLMs"))
+
+(use-package aidermacs
+  :init
+  (setopt aidermacs-backend 'vterm)
+  :config
+  (map!
+   :leader
+   :desc "Aider"
+   :n "l a" #'aidermacs-transient-menu))
+
 (use-package ellama
-  :bind ("C-c l" . ellama-transient-main-menu)
+  :commands (ellama-transient-main-menu)
   ;; send last message in chat buffer with C-c C-c
   :hook (org-ctrl-c-ctrl-c-final . ellama-chat-send-last-message)
   :init
@@ -360,6 +371,10 @@
   	   :default-chat-non-standard-params '(("num_ctx" . 8192))))
   :config
   ;; show ellama context in header line in all buffers
+  (map!
+   :leader
+   :desc "Ellama"
+   :n "l l" #'ellama-transient-main-menu)
   (ellama-context-header-line-global-mode +1))
 
 (use-package! norns)

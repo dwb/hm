@@ -48,6 +48,7 @@ in
     zstd
   ]) ++ (with pkgsUnstable; [
     # ghostty ## fucks sake marked broken on darwin
+    aider-chat
     delve
     go
     gopls
