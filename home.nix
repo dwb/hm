@@ -60,6 +60,12 @@ in
         mv $out/bin/bundle $out/bin/gobundle
       '';
     })
+
+    nushellPlugins.highlight
+    nushellPlugins.net
+    nushellPlugins.polars
+    nushellPlugins.units
+
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
   ]);
