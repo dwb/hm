@@ -85,8 +85,8 @@
 (package! combobulate
   :recipe (:host github
            :repo "mickeynp/combobulate"
-           :branch "main")
-  :pin "06db63fa4eda00d7ef2ccba21c507b9dc1e21ef0")
+           :branch "master")
+  :pin "59b64d66d66eb84da6a2cedd152b1692378af674")
 
 
 (when (>= emacs-major-version 30)

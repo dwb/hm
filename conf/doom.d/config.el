@@ -382,7 +382,23 @@
   (ellama-context-header-line-global-mode +1))
 
 (use-package! norns)
-(use-package! combobulate)
+(use-package! combobulate
+  :hook (go-ts-mode typescript-ts-base-mode)
+  :config
+  (map!
+   :n "<f7>" #'combobulate
+
+   :map combobulate-key-map
+
+   :n "<up>" #'combobulate-navigate-previous
+   :n "<down>" #'combobulate-navigate-next
+   :n "<left>" #'combobulate-navigate-up
+   :n "<right>" #'combobulate-navigate-down
+
+   :n "M-S-<down>" #'combobulate-drag-down
+   :n "M-S-<up>" #'combobulate-drag-up
+
+   "C-c o e" #'combobulate-envelop))
 
 (use-package! copilot
   :disabled
@@ -810,7 +826,17 @@ end of the workspace list."
 
 (after! evil-textobj-tree-sitter
   (define-key evil-outer-text-objects-map "f" `("function" . ,(evil-textobj-tree-sitter-get-textobj "function.outer")))
-  (define-key evil-inner-text-objects-map "f" `("function" . ,(evil-textobj-tree-sitter-get-textobj "function.inner"))))
+  (define-key evil-inner-text-objects-map "f" `("function" . ,(evil-textobj-tree-sitter-get-textobj "function.inner")))
+
+  (let ((id-query '((go-ts-mode . (([(selector_expression) @id
+                                     (identifier) @id
+                                     (type_identifier) @id
+                                     (nil) @id
+                                     (field_declaration name: (_) @id)
+                                     (field_declaration type: (_) @id)])))
+                    (typescript-ts-mode . (([(member_expression) (identifier)] @id))))))
+    (define-key evil-outer-text-objects-map "d" `("iDentifier" . ,(evil-textobj-tree-sitter-get-textobj "id" id-query)))
+    (define-key evil-inner-text-objects-map "d" `("iDentifier" . ,(evil-textobj-tree-sitter-get-textobj "id" id-query)))))
 
 (after! org
   (setq! org-agenda-start-on-weekday t)
@@ -1648,6 +1674,12 @@ revisions (i.e., use a \"...\" range)."
   (tab-rename "home"))
 
 (after! avy
+  (map!
+   :n "C-'" #'avy-goto-char-2
+   :n "C-\"" #'avy-goto-char-timer)
+
+  (setopt avy-timeout-seconds 0.2)
+
   (after! embark
     (defun avy-action-embark (pt)
       (unwind-protect

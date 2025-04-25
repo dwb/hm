@@ -74,7 +74,11 @@
          tab-bar-tab-pre-close-functions))
 
   (when project-per-tab-mode
-    (add-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
+    ;; doesn't work well enough yet -
+    ;; sometimes the hook is called with the current buffer not being the
+    ;; one that is killed!!
+    ;; might have to advise replace-buffer-in-windows
+    ;; (add-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
     (push '(project-per-tab--display-buffer-matcher
             project-per-tab--display-buffer)
           display-buffer-alist)
@@ -167,7 +171,7 @@ call to `format'. The format-string is expected to have a single
                                  (with-current-buffer (get-buffer (car b))
                                    (equal tabproj (project-current))))
                              (window-prev-buffers))))
-      (message "Closing %s tab: that was the last project buffer." tabname)
+      (message "Closing %s tab: %s was the last project buffer." tabname buf)
       (let ((project-per-tab--clearing-tab-project-buffers t))
         (tab-bar-close-tab)))))
 
