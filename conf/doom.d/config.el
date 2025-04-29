@@ -836,7 +836,14 @@ end of the workspace list."
                                      (field_declaration type: (_) @id)])))
                     (typescript-ts-mode . (([(member_expression) (identifier)] @id))))))
     (define-key evil-outer-text-objects-map "d" `("iDentifier" . ,(evil-textobj-tree-sitter-get-textobj "id" id-query)))
-    (define-key evil-inner-text-objects-map "d" `("iDentifier" . ,(evil-textobj-tree-sitter-get-textobj "id" id-query)))))
+    (define-key evil-inner-text-objects-map "d" `("iDentifier" . ,(evil-textobj-tree-sitter-get-textobj "id" id-query))))
+
+  (let ((query '((go-ts-mode . (([((keyed_element (_) @keyed))
+                                  (((keyed_element (_) ":" (_) @keyed)))])))
+                 (tsx-ts-mode . (([(pair key: (_) @keyed)
+                                   (pair value: (_) @keyed)]))))))
+    (define-key evil-outer-text-objects-map "k" `("keyed" . ,(evil-textobj-tree-sitter-get-textobj "keyed" query)))
+    (define-key evil-inner-text-objects-map "k" `("keyed" . ,(evil-textobj-tree-sitter-get-textobj "keyed" query)))))
 
 (after! org
   (setq! org-agenda-start-on-weekday t)
