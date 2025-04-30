@@ -12,6 +12,9 @@ $env.config.cursor_shape = {
     vi_normal: 'block' # block, underscore, line, blink_block, blink_underscore, blink_line, inherit to skip setting cursor shape (underscore is the default)
 }
 
+$env.config.datetime_format.normal = "%F %T%.f %Z"
+$env.config.datetime_format.table = "%F %T%.f %Z"
+
 alias gg = g
 alias g = git
 alias priv = nu --no-history
