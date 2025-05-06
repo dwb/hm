@@ -85,3 +85,37 @@ export def reexec [] {
 export def --wrapped sshs [host: string, cmd: string, ...args: string] {
   ssh $host $cmd ...$args | ^jc -- $"--($cmd)" | from json
 }
+
+# Returns the value of the first column found with a non-null value
+export def first-col-with-value [
+  ...cols: cell-path # Columns to search, in order, for first non-null value
+]: record -> any {
+  let r = $in
+  for $p in $cols {
+    let val = $r | get -i $p
+    if $val != null {
+      return $val
+    }
+  }
+}
+
+# Iterates through list, calling closure with (prev, current) arguments.
+#
+# $prev is null for first record. Closure pipeline input is current value.
+export def each-with-prev [fn: closure]: list -> list {
+  let lst = $in
+  $lst | zip ($lst | prepend [null]) | each { |rs|
+    $rs.0 | do $fn $rs.1 $rs.0
+  }
+}
+
+# Adds field indicating running total of given field
+export def running-total [
+  infield: cell-path,  # Field to calculate running total of
+  outfield: cell-path, # Field to add
+  initial = 0: any,    # Initial value of total
+]: list<record> -> list<record> {
+  each-with-prev { |prev, r|
+    insert $outfield { ($prev | get -i $infield | default $initial) + ($r | get $infield) }
+  }
+}
