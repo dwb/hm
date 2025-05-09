@@ -1,4 +1,4 @@
-def main [...rest: string] {
+export def --wrapped main [...rest: string] {
   cd ~/Dump/ArchiveBox
-  docker compose
+  docker compose run --rm --remove-orphans archivebox ...$rest
 }
