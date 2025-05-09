@@ -62,7 +62,6 @@ in
       '';
     })
 
-
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
   ]);
@@ -244,6 +243,17 @@ in
       rebase.autoSquash = true;
       rerere.enabled = true;
       url."ssh://git@github.com/".insteadOf = "https://github.com/";
+    };
+  };
+
+  programs.jujutsu = {
+    enable = true;
+    package = pkgsUnstable.jujutsu;
+    config = {
+      user = {
+        name = "Dani Brown";
+        email = "d@dani.cool";
+      };
     };
   };
 
