@@ -62,10 +62,6 @@ in
       '';
     })
 
-    nushellPlugins.highlight
-    nushellPlugins.net
-    nushellPlugins.polars
-    nushellPlugins.units
 
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
@@ -259,6 +255,12 @@ in
   programs.nushell = {
     enable = true;
     package = pkgsUnstable.nushell;
+    plugins = with pkgsUnstable.nushellPlugins; [
+      highlight
+      net
+      polars
+      units
+    ];
     configFile.text = lib.concatLines (
       ["source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"] ++
       (lib.pipe [
