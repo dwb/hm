@@ -2,6 +2,9 @@
 let
   inherit (pkgs) lib stdenv;
   guiEnabled = args.guiEnabled or stdenv.hostPlatform.isDarwin;
+
+  userName = "Dani Brown";
+  userEmail = "d@dani.cool";
 in
 {
   imports = [
@@ -143,8 +146,7 @@ in
 
     package = pkgsUnstable.git;
 
-    userName = "Dani Brown";
-    userEmail = "d@dani.cool";
+    inherit userName userEmail;
 
     ignores = [
       ".DS_Store"
@@ -251,8 +253,8 @@ in
     package = pkgsUnstable.jujutsu;
     settings = {
       user = {
-        name = "Dani Brown";
-        email = "d@dani.cool";
+        name = userName;
+        email = userEmail;
       };
     };
   };
