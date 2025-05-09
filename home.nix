@@ -249,7 +249,7 @@ in
   programs.jujutsu = {
     enable = true;
     package = pkgsUnstable.jujutsu;
-    config = {
+    settings = {
       user = {
         name = "Dani Brown";
         email = "d@dani.cool";
