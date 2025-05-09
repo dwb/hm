@@ -257,7 +257,6 @@ in
     package = pkgsUnstable.nushell;
     plugins = with pkgsUnstable.nushellPlugins; [
       highlight
-      net
       polars
       units
     ];
