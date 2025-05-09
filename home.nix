@@ -256,9 +256,12 @@ in
     enable = true;
     package = pkgsUnstable.nushell;
     plugins = with pkgsUnstable.nushellPlugins; [
+      formats
       highlight
       polars
-      units
+      ## broken in unstable:
+      # net
+      # units
     ];
     configFile.text = lib.concatLines (
       ["source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"] ++
