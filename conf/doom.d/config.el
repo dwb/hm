@@ -1711,6 +1711,9 @@ revisions (i.e., use a \"...\" range)."
    "o c" #'calc))
 
 (after! dape
+  ;; compiling is a "request", so can take a little while
+  (setopt dape-request-timeout 60)
+
   (defun my/go-test-debug-single ()
     (interactive)
     (require 'which-func)
