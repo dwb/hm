@@ -1710,6 +1710,35 @@ revisions (i.e., use a \"...\" range)."
    :desc "calculator"
    "o c" #'calc))
 
+(after! dape
+  (defun my/go-test-debug-single ()
+    (interactive)
+    (require 'which-func)
+    (let ((intest (string-suffix-p "_test.go" (or (buffer-file-name) "")))
+          (func (which-function)))
+      (when (not intest)
+        (user-error "Not in a go test file."))
+      (when (null func)
+        (user-error "Not in a go test function."))
+      (dape `(modes (go-mode go-ts-mode)
+              ensure dape-ensure-command
+              fn (dape-config-autoport dape-config-tramp)
+              command "dlv"
+              command-insert-stderr t
+              command-args ("dap" "--listen" "127.0.0.1::autoport")
+              command-cwd ,default-directory
+              port :autoport
+              :request "launch"
+              :mode "test"
+              :program "."
+              :cwd "."
+              :args `[,(concat "-test.run=^" func "$")]))))
+  (map!
+   :map go-mode-map
+   :desc "debug single test"
+   :leader
+   :n "m t d" #'my/go-test-debug-single))
+
 ;;; doom modules config
 
 
