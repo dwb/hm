@@ -1717,8 +1717,10 @@ revisions (i.e., use a \"...\" range)."
   (defun my/go-test-debug-single ()
     (interactive)
     (require 'which-func)
-    (let ((intest (string-suffix-p "_test.go" (or (buffer-file-name) "")))
-          (func (which-function)))
+    (let* ((fn (buffer-file-name))
+           (dir (file-name-directory fn))
+           (intest (string-suffix-p "_test.go" (or fn "")))
+           (func (which-function)))
       (when (not intest)
         (user-error "Not in a go test file."))
       (when (null func)
@@ -1729,7 +1731,7 @@ revisions (i.e., use a \"...\" range)."
               command "dlv"
               command-insert-stderr t
               command-args ("dap" "--listen" "127.0.0.1::autoport")
-              command-cwd ,default-directory
+              command-cwd ,dir
               port :autoport
               :request "launch"
               :mode "test"
