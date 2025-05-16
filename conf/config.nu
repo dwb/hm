@@ -23,13 +23,13 @@ alias open = ^open
 
 # doesn't work with alias because
 # https://github.com/nushell/nushell/issues/8471
-use contrib/custom-completions/git/git-completions.nu *
+source contrib/custom-completions/git/git-completions.nu
 
-use contrib/custom-completions/make/make-completions.nu *
-use contrib/custom-completions/man/man-completions.nu *
-use contrib/custom-completions/nix/nix-completions.nu *
-use contrib/custom-completions/pnpm/pnpm-completions.nu *
-use contrib/custom-completions/yarn/yarn-v4-completions.nu *
+source contrib/custom-completions/make/make-completions.nu
+source contrib/custom-completions/man/man-completions.nu
+source contrib/custom-completions/nix/nix-completions.nu
+source contrib/custom-completions/pnpm/pnpm-completions.nu
+source contrib/custom-completions/yarn/yarn-v4-completions.nu
 
 use my/archivebox.nu
 use my/glob-menu.nu
