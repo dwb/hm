@@ -4,7 +4,7 @@ export def "ollama list" [] {
     rename --block { str downcase | str trim } |
     update name { str trim | str replace --regex ':latest$' '' } |
     update size { into filesize } |
-    update modified { into datetime  }
+    update modified { date from-human }
 }
 
 # List models
