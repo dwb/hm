@@ -138,12 +138,6 @@
 
 (my/add-paths-from-my-env-to-exec-path)
 
-(require 'ansi-color)
-(defun my/colorize-compilation-buffer ()
-  (let ((inhibit-read-only t))
-    (ansi-color-apply-on-region (point-min) (point-max))))
-(add-hook 'compilation-filter-hook 'my/colorize-compilation-buffer)
-
 (setf frame-title-format
       '((:eval (if (functionp 'my/tab-bar-tab-name) `(,(my/tab-bar-tab-name) " – ") ""))
         "%b"))
@@ -537,6 +531,43 @@ Other values of PRESERVE are reserved for future use."
           (evil-force-normal-state)))
     (user-error! "No candidate windows")))
 
+(defun my/shorten-absolute-paths-in-buffer (&optional from-pos to-pos)
+  "Shorten displayed absolute file paths in the current buffer.
+Paths are displayed relative to `default-directory`.
+The actual buffer content (the absolute path) remains unchanged."
+  (interactive)
+  (require 'rx) ; Ensure rx is available
+  (let ((base-dir default-directory)
+        (from-pos (or from-pos (point-min)))
+        (path-regex
+         (if (eq system-type 'windows-nt)
+             ;; Windows path regex using rx
+             (rx word-boundary
+                 (char alpha) ":" "\\"
+                 (one-or-more (not (char space cntrl ?< ?> ?\" ?| ?? ?* ?:)))
+                 (zero-or-more
+                  (group "\\"
+                         (zero-or-more (not (char space cntrl ?< ?> ?\" ?| ?? ?* ?:)))))
+                 word-boundary)
+           ;; Unix-like path regex using rx
+           (rx "/" (one-or-more (not (char space cntrl ?: ?< ?> ?\" ?\( ?\) ?| ?\' ?? ?* ?\;)))
+               (zero-or-more (group "/" (zero-or-more
+                                         (not (char space cntrl ?: ?< ?> ?\" ?\( ?\) ?| ?\' ?? ?* ?\;)))))))))
+    (save-excursion
+      (goto-char from-pos)
+      (beginning-of-line)
+      (while (re-search-forward path-regex to-pos t)
+        (let* ((abs-path (match-string 0))
+               (start (match-beginning 0))
+               (end (match-end 0)))
+          (when (and abs-path
+                     (file-name-absolute-p abs-path)
+                     (file-exists-p abs-path))
+            (let ((rel-path (file-relative-name abs-path base-dir)))
+              (when (< (length rel-path) (length abs-path))
+                (with-silent-modifications
+                  (put-text-property start end 'display rel-path))))))))))
+
 (map!
  :g "C-<escape>" #'my/select-main-window
 
@@ -545,6 +576,18 @@ Other values of PRESERVE are reserved for future use."
 
  :map evil-window-map
  ("<f6>" #'my/select-main-window))
+
+(after! compile
+  (add-to-list 'compilation-environment "TERM=tmux-256color")
+  (setopt compilation-max-output-line-length nil)
+
+  (require 'ansi-color)
+
+  (defun my/compilation-setup ()
+    (setq-local compilation-scroll-output t)
+    (setq-local scroll-conservatively most-positive-fixnum)
+    (setq-local scroll-margin 0))
+  (add-hook 'compilation-mode-hook #'my/compilation-setup))
 
 (after! tab-bar
   (map!
@@ -1234,12 +1277,19 @@ line of the region as the two sides of the range.  With a prefix
 argument, instead of diffing the revisions, choose a revision to
 view changes along, starting at the common ancestor of both
 revisions (i.e., use a \"...\" range)."
-    (interactive (cons (magit-read-branch-or-commit "Diff against fork point from")
-                       (magit-diff-arguments)))
+    (interactive (cons
+                  (magit-read-branch-or-commit
+                   "Diff against fork point from"
+                   (magit-ref-abbrev (magit-get-upstream-ref))
+                   (magit-get-current-branch))
+                  (magit-diff-arguments)))
 
     (if-let ((fprev (my/magit-get-fork-point rev)))
         (magit-diff-setup-buffer fprev nil args files)
       (user-error "No fork point found")))
+
+  (transient-append-suffix 'magit-diff "w"
+    '("f" "Diff fork point" my/magit-diff-fork-point))
 
   ;; this might be slow
   ;; (add-hook 'after-save-hook 'magit-after-save-refresh-status t)
@@ -1249,16 +1299,17 @@ revisions (i.e., use a \"...\" range)."
       (unwind-protect (when (eql 0
                                  (magit-process-git buf
                                                     (list "log"
-                                                    "--walk-reflogs"
-                                                    "-n" "50"
-                                                    "--format=%s")))
+                                                          "--walk-reflogs"
+                                                          "-n" "50"
+                                                          "--format=%s")))
                         (with-current-buffer buf
                           (goto-char (point-max))
                           (move-beginning-of-line nil)
                           (let ((out) (done))
                             (while (not done)
-                              (let ((line (buffer-substring-no-properties (line-beginning-position)
-                                                                          (line-end-position))))
+                              (let ((line
+                                     (buffer-substring-no-properties (line-beginning-position)
+                                                                     (line-end-position))))
                                 (unless (or (string= line "") (string= line (car out)))
                                   (push line out)))
                               (when (bobp) (setf done t))
@@ -1384,7 +1435,35 @@ revisions (i.e., use a \"...\" range)."
   (advice-add 'lsp-clients-flow-activate-p :after-while #'my/lsp-clients-flow-activate-p))
 
 (after! go-mode
-  (add-hook 'before-save-hook 'gofmt-before-save))
+  (require 'rx)
+
+  (add-hook 'before-save-hook 'gofmt-before-save)
+
+  (defvar my/go-test-compilation-error-regexp-alist-alist
+    `((my-go-test . (,(rx (: (group "/" (+ (not space)) ".go") ":" (group (+ num)))) 1 2))))
+
+  (defvar my/go-test-compilation-error-regexp-alist '(my-go-test))
+
+  (defun my/go-compilation-start (&rest _args)
+    (setq-local compilation-error-regexp-alist my/go-test-compilation-error-regexp-alist)
+    (setq-local compilation-error-regexp-alist-alist my/go-test-compilation-error-regexp-alist-alist)
+    (setq-local compilation-filter-hook
+                (cons #'my/go-compilation-filter compilation-filter-hook)))
+
+  (defun my/go-compilation-filter (&rest _args)
+    (my/shorten-absolute-paths-in-buffer compilation-filter-start))
+
+  (defun my/go-test-spawn (fn &rest args)
+    (let* ((origstarthook compilation-start-hook)
+           (compilation-start-hook (cons #'my/go-compilation-start origstarthook)))
+      (apply fn args)))
+
+  (advice-add '+go--spawn :around #'my/go-test-spawn)
+
+  (defun my/go-run-test-args (args)
+    `(,(concat (car args) " -test.fullpath")))
+
+  (advice-add '+go--run-tests :filter-args #'my/go-run-test-args))
 
 (after! hl-line
   ;; only highlight current line in active window
@@ -1737,7 +1816,7 @@ revisions (i.e., use a \"...\" range)."
               :mode "test"
               :program "."
               :cwd "."
-              :args `[,(concat "-test.run=^" func "$")]))))
+              :args [,(concat "-test.run=^" func "$")]))))
   (map!
    :map go-mode-map
    :desc "debug single test"
