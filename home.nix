@@ -120,6 +120,10 @@ in
     '';
   };
 
+  home.file.".local/share/my-ollama-models" = {
+    source = ./conf/ollama-models;
+  };
+
   home.shellAliases = {
     g = "git";
     ll = "ls -l";

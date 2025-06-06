@@ -77,7 +77,12 @@ export extern "ollama push" [
 export def "llmsh" [...description: string] {
   let out = OLLAMA_NOHISTORY=1 ollama run texttoshell ($description | str join " ") | str trim
   if $out =~ '[[:cntrl:]]' {
+    $out | xxd
     error make { msg: "control characters detected in llm output" }
   }
   $out | tee { pbcopy }
+}
+
+export def ",rebuild-ollama-model llmsh" [] {
+  ollama create texttoshell -f ~/.local/share/my-ollama-models/Modelfile-texttoshell
 }
