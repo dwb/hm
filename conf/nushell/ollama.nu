@@ -73,3 +73,11 @@ export extern "ollama push" [
   model: string # repository:tag of model
   --insecure # Use an insecure registry
 ]
+
+export def "llmsh" [...description: string] {
+  let out = OLLAMA_NOHISTORY=1 ollama run texttoshell ($description | str join " ") | str trim
+  if $out =~ '[[:cntrl:]]' {
+    error make { msg: "control characters detected in llm output" }
+  }
+  $out | tee { pbcopy }
+}
