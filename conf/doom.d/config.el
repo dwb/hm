@@ -1253,8 +1253,8 @@ If ARG (universal argument), open selection in other-window."
         (cl-remove 'overlong-summary-line git-commit-style-convention-checks))
 
   (defun my/magit-get-fork-point (from-rev)
-      (car (split-string refs))))
-    (when-let ((refs (magit-git-string "merge-base" "--fork-point" from-rev)))
+     (when-let ((refs (magit-git-string "merge-base" "--fork-point" from-rev)))
+       (car (split-string refs))))
 
   (defun my/magit-diff-fork-point (rev &optional args files)
     "Show differences between commit and its fork point compared to given revision.
