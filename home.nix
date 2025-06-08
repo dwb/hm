@@ -29,6 +29,10 @@ in
 
   home.language.base = "en_GB.UTF-8";
 
+  home.sessionPath = [
+    "$HOME/.local/bin" # uv at least puts stuff in here
+  ];
+
   home.packages = (with pkgs; [
     aws-vault
     fd
@@ -332,7 +336,7 @@ in
 
   programs.zsh = {
     enable = true;
-    initExtra = lib.concatLines [
+    initContent = lib.concatLines [
       (builtins.readFile ./conf/zshrc.zsh)
       (builtins.readFile ./conf/zshrc-local.zsh)
     ];
