@@ -187,9 +187,10 @@ in
       cob = "checkout -";
       com = "checkout master";
       commend = "commit --amend --no-edit";
+      conflicts = "!git status --porcelain=2 | awk '$1 == \"u\" { print $11 }'";
       di = "diff";
       dic = "diff --cached";
-      dim = "!\"git diff $(git merge-base --fork-point master)\"..head";
+      dim = "!set -e; upstream=$(git rev-parse --symbolic-full-name '@{upstream}'); git diff $(git merge-base --fork-point $upstream)..HEAD";
       fixauthor = "commit --amend --reset-author --no-edit";
       fixup = "!\"git commit --fixup $(git log --color=always --format='%C(auto)%h%d %s %C(black)%C(bold)%cr' | fzf --ansi --no-sort --reverse | awk '{print $1}')\"";
       graph = "log --graph --pretty=format':%C(yellow)%h%Cblue%d%Creset %s %C(white) %an, %ar%Creset'";
