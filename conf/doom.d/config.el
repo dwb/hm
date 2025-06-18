@@ -1390,6 +1390,11 @@ revisions (i.e., use a \"...\" range)."
 
   (add-hook! 'before-save-hook (when (eglot-managed-p) (eglot-format-buffer)))
 
+  (defun my/eglot-disable-when (&rest _)
+    (eq major-mode 'json-mode))
+
+  (advice-add 'eglot--maybe-activate-editing-mode :before-until #'my/eglot-disable-when)
+
   (after! treesit
     (add-to-list 'eglot-server-programs '(go-ts-mode "gopls"))
     (put 'go-ts-mode 'eglot-language-id "go")

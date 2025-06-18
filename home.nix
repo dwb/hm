@@ -46,6 +46,7 @@ in
     nodejs_22 # mainly for emacs copilot but generally useful too ig
     plantuml
     python3
+    ripgrep
     rsync
     (ruby_3_4.withPackages (ps: with ps; [
       faraday
