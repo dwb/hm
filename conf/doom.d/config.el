@@ -203,7 +203,7 @@
 (require 'alfred)
 (require 'rotate)
 
-;; (require 'subproject)
+(require 'subproject)
 ;; enabled after projectile so that subprojects are looked at first
 
 ;; (require 'subprojects)

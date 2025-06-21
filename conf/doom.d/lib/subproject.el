@@ -33,6 +33,14 @@
 (defvar-local subproject-patterns nil
   "List of globs for matching subprojects.")
 
+(defun subproject-valid-dir-local-config-p (val)
+  "Return non-nil if VAL is a list of strings."
+  (and
+   (listp val)
+   (seq-every-p #'stringp val)))
+
+(put 'subproject-patterns 'safe-local-variable #'subprojects-valid-dir-local-config-p)
+
 (defvar subproject-inhibit-find nil
   "Disable finding subprojects.")
 
@@ -82,6 +90,11 @@ list representing the subproject should look like
                                               (substring relative-dir (match-beginning 0) (match-end 0)))))
                                         subproject-patterns)))
       (list 'subproject (file-name-as-directory matched-dir) `((parent . ,parent-project))))))
+
+(defun subproject-unload-function ()
+  (setf project-find-functions (delq 'subproject-find project-find-functions)))
+
+(add-to-list 'project-find-functions #'subproject-find)
 
 (provide 'subproject)
 
