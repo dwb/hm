@@ -13,3 +13,8 @@ up:
 	nix flake update
 	git diff-index --quiet HEAD -- || git commit -am 'nix flake update'
 	git diff-index --quiet HEAD -- || git commit -am 'nushell: default config update'
+
+.PHONY: link
+link:
+	mkdir -p ~/.config/zed
+	ln -sf "${PWD}/conf/zed/"* ~/.config/zed/

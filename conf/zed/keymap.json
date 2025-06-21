@@ -1,0 +1,31 @@
+// Zed keymap
+//
+// For information on binding keys, see the Zed
+// documentation: https://zed.dev/docs/key-bindings
+//
+// To see the default key bindings run `zed: open default keymap`
+// from the command palette.
+[
+  {
+    "context": "Editor && vim_mode == normal",
+    "bindings": {
+      "space ,": "tab_switcher::Toggle"
+    }
+  },
+  {
+    "context": "Editor && vim_mode == insert && !menu",
+    "bindings": {
+      // "j k": "vim::SwitchToNormalMode"
+    }
+  },
+  {
+    "context": "Terminal",
+    "bindings": {
+      "ctrl-w ctrl-w": ["terminal::SendKeystroke", "ctrl-w"],
+      "ctrl-w h": "workspace::ActivatePaneLeft",
+      "ctrl-w l": "workspace::ActivatePaneRight",
+      "ctrl-w k": "workspace::ActivatePaneUp",
+      "ctrl-w j": "workspace::ActivatePaneDown"
+    }
+  }
+]
