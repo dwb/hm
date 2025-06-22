@@ -15,6 +15,30 @@
   "ui_font_size": 16,
   "buffer_font_family": "Iosevka SS08",
   "buffer_font_size": 12,
+  "show_whitespaces": "selection",
+  "diagnostics": {
+    "button": true,
+    "include_warnings": true,
+    "lsp_pull_diagnostics": {
+      "enabled": true,
+      "debounce_ms": 50
+    },
+    "inline": {
+      "enabled": true,
+      "update_debounce_ms": 150,
+      "padding": 4,
+      "min_column": 0,
+      "max_severity": null
+    },
+    "cargo": null
+  },
+  "soft_wrap": "bounded",
+  "use_smartcase_search": true,
+  "terminal": {
+    "default_width": 500,
+    "dock": "right",
+    "line_height": "standard"
+  },
   "theme": {
     "mode": "system",
     "light": "One Light",
