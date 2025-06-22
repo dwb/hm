@@ -8,16 +8,12 @@
     activation.aliasHomeManagerApplications = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       app_folder="${config.home.homeDirectory}/Applications"
       mkdir -p "$app_folder"
-      gen_profile_applications="$genProfilePath/home-path/Applications"
-      if [[ -d $gen_profile_applications ]]; then
-        find "$gen_profile_applications" -type l -print | while read -r app; do
-            app_target="$app_folder/$(basename "$app")"
-            real_app="$(readlink "$app")"
-            [[ -f $app_target ]] && $DRY_RUN_CMD rm "$app_target"
-            echo "mkalias '$real_app' '$app_target'" >&2
-            $DRY_RUN_CMD ${pkgs.mkalias}/bin/mkalias "$real_app" "$app_target"
-        done
-      fi
+      for app in "$genProfilePath"/home-path/*.app "$genProfilePath"/home-path/Applications/*.app; do
+        app="$(realpath "$app")"
+        app_target="$app_folder/$(basename "$app")"
+        if [[ -f $app_target ]]; then run rm "$app_target"; fi
+        run ${pkgs.mkalias}/bin/mkalias -v "$app" "$app_target"
+      done
     '';
   };
 
