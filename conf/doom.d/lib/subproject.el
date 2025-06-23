@@ -94,8 +94,6 @@ list representing the subproject should look like
 (defun subproject-unload-function ()
   (setf project-find-functions (delq 'subproject-find project-find-functions)))
 
-(add-to-list 'project-find-functions #'subproject-find)
-
 (provide 'subproject)
 
 ;;; subproject.el ends here
