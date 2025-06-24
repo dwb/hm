@@ -8,6 +8,7 @@
     activation.aliasHomeManagerApplications = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       app_folder="${config.home.homeDirectory}/Applications"
       mkdir -p "$app_folder"
+      shopt -s nullglob
       for app in "$genProfilePath"/home-path/*.app "$genProfilePath"/home-path/Applications/*.app; do
         app="$(realpath "$app")"
         app_target="$app_folder/$(basename "$app")"
