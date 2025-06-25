@@ -1388,8 +1388,6 @@ revisions (i.e., use a \"...\" range)."
       (remove-hook 'flymake-diagnostic-functions 'eglot-flymake-backend t)))
   (add-hook 'eglot-managed-mode-hook #'my/eglot-setup-flymake)
 
-  (add-hook! 'before-save-hook (when (eglot-managed-p) (eglot-format-buffer)))
-
   (defun my/eglot-disable-when (&rest _)
     (eq major-mode 'json-mode))
 
@@ -1842,27 +1840,34 @@ revisions (i.e., use a \"...\" range)."
               :quit   t
               :modeline t
               :select t
-              :ttl    5)))
+              :ttl    5))
+
+  (after! vterm
+
+    (set-popup-rule!
+      (rx string-start "*" (? "doom:") "vterm")
+      :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl 0))
+
+  (defun my/compilation-buffer-p (bn &rest _)
+    (let ((buffer (window-normalize-buffer bn)))
+      (when buffer
+        (with-current-buffer buffer
+          (derived-mode-p 'compilation-mode)))))
+
+  (set-popup-rule!
+    #'my/compilation-buffer-p
+    :side 'right :width 81 :modeline t :select t :ttl 0)
+
+
+  (after! pgmacs
+
+    (defun my/pgmacs-mode-p (&rest _)
+      (derived-mode-p 'pgmacs-mode))
+
+    (set-popup-rule! #'my/pgmacs-mode-p :ignore t)))
 
 (when (modulep! :editor word-wrap)
   (add-hook! (prog-mode text-mode) #'+word-wrap-mode))
-
-(after! vterm
-
-  (set-popup-rule!
-    (rx string-start "*" (? "doom:") "vterm")
-    :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl 0))
-
-(defun my/compilation-buffer-p (bn &rest _)
-  (let ((buffer (window-normalize-buffer bn)))
-    (when buffer
-      (with-current-buffer buffer
-        (derived-mode-p 'compilation-mode)))))
-
-(set-popup-rule!
-  #'my/compilation-buffer-p
-  :side 'right :width 81 :modeline t :select t :ttl 0)
-
 
 ;; this looks like it's crashing emacs on startup. dunno why
 ;;(when (modulep! :editor word-wrap)
