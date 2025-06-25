@@ -1382,6 +1382,12 @@ revisions (i.e., use a \"...\" range)."
 
   (setf eglot-autoshutdown nil)
 
+  (defun my/elgot-format-buffer-unless-prettier ()
+    (when (and (eglot-managed-p) (not prettier-mode))
+      (eglot-format-buffer)))
+
+  (add-hook 'before-save-hook #'my/eglot-format-buffer-unless-prettier)
+
   (defun my/eglot-setup-flymake ()
     (if (eglot-managed-p)
         (add-hook 'flymake-diagnostic-functions 'eglot-flymake-backend nil t)
