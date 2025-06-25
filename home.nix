@@ -321,6 +321,50 @@ in
     newSession = true;
     mouse = true;
     clock24 = true;
+    extraConfig = ''
+      # act like GNU screen
+      # set -g prefix C-a
+      # unbind C-b
+      # bind-key a send-key C-a
+      # bind-key C-a last-pane
+      bind-key A last-window
+      bind-key C clear-history
+
+      # setw -g remain-on-exit off
+      # set-hook -g session-created 'set -g remain-on-exit off'
+
+      set -g mouse on
+
+      bind-key -T prefix s choose-tree -NsO time
+
+      # act like vim
+      setw -g mode-keys vi
+      bind-key h select-pane -L
+      bind-key j select-pane -D
+      bind-key k select-pane -U
+      bind-key l select-pane -R
+      bind-key -r C-h select-window -t :-
+      bind-key -r C-l select-window -t :+
+
+      bind-key g copy-mode \; send-key g
+
+      # Copy mode
+      setw -g mode-keys vi
+      unbind p
+      bind-key p paste-buffer
+      bind-key -T copy-mode-vi v send-keys -X begin-selection
+      bind-key -T copy-mode-vi y send-keys -X copy-selection
+      bind-key -T copy-mode-vi Escape send-keys -X cancel
+
+      bind-key R respawn-pane
+    '' + (lib.optionalString stdenv.hostPlatform.isDarwin
+      (let
+        rtun = "${pkgs.reattach-to-user-namespace}/bin/reattach-to-user-namespace";
+      in ''
+        bind-key -T copy-mode-vi y send-keys -X copy-pipe "${rtun} pbcopy"
+        bind-key P run-shell "${rtun} pbpaste | tmux load-buffer - && tmux paste-buffer"
+        bind-key y run "tmux save-buffer - | ${rtun} pbcopy"
+      ''));
   };
 
   programs.vim = {
