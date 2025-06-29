@@ -119,3 +119,7 @@ export def running-total [
     insert $outfield { ($prev | get -i $infield | default $initial) + ($r | get $infield) }
   }
 }
+
+export def ,download-video [url: string] {
+  nix run nixpkgs#yt-dlp -- --format 'bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/b[ext=mp4] / bv*+ba / b' $url
+}
