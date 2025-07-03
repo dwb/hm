@@ -1,32 +1,26 @@
 { lib, pkgs, guiEnabled, doomemacs, ... }:
-let
-  configDir = ".emacs.d";
+let configDir = ".emacs.d";
 in {
 
   home.sessionVariables = {
     # Otherwise doom will try to create directories in the nix store
     EMACSDIR = "~/${configDir}";
-  } // (lib.optionalAttrs guiEnabled {
-    EDITOR = "emacsclient";
-  });
+  } // (lib.optionalAttrs guiEnabled { EDITOR = "emacsclient"; });
 
-  home.sessionPath = [
-    "~/${configDir}/bin"
-  ];
+  home.sessionPath = [ "~/${configDir}/bin" ];
 
   home.file.".emacs.d/.local/cache/debug-adapters/js-debug" =
-    let
-      version = "1.100.1";
+    let version = "1.100.1";
     in {
       source = pkgs.fetchzip {
-        url = "https://github.com/microsoft/vscode-js-debug/releases/download/v${version}/js-debug-dap-v${version}.tar.gz";
+        url =
+          "https://github.com/microsoft/vscode-js-debug/releases/download/v${version}/js-debug-dap-v${version}.tar.gz";
         hash = "sha256-NM/ehAy6gUbr2DtyjbrGp7dJZMUI7iR8Ku2cVWQISn8=";
       };
     };
 
-  home.activation.linkDoomEmacsConfig = let
-    src = /. + ./conf/doom.d;
-  in lib.hm.dag.entryAfter ["writeBoundary"] ''
+  home.activation.linkDoomEmacsConfig = let src = /. + ./conf/doom.d;
+  in lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     checkout=""
     for dir in ~/Developer/hm ~/.config/home-manager; do
       if [[ -d $dir ]]; then
@@ -47,13 +41,12 @@ in {
 
   programs.emacs = {
     enable = true;
-    package = with pkgs; (emacsPackagesFor
-      (if guiEnabled
-       then emacs30-pgtk.override { withNativeCompilation = false; }
-       else emacs30-nox)).emacsWithPackages (epkgs: with epkgs; [
-         treesit-grammars.with-all-grammars
-         vterm
-       ]);
+    package = with pkgs;
+      (emacsPackagesFor (if guiEnabled then
+        emacs30-pgtk.override { withNativeCompilation = false; }
+      else
+        emacs30-nox)).emacsWithPackages
+      (epkgs: with epkgs; [ treesit-grammars.with-all-grammars vterm ]);
   };
 
 }
