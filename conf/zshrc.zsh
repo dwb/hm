@@ -27,6 +27,7 @@ if (( $+commands[nu] )) && \
    [[ -o login ]] && \
    [[ -o interactive ]] && \
    [[ -z $VSCODE_RESOLVING_ENVIRONMENT ]] && \
+   [[ -z $INTELLIJ_ENVIRONMENT_READER ]] && \
    [[ ! -f ~/.inhibit-nushell-autoexec ]]; then
 
   () {
