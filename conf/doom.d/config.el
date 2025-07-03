@@ -1888,7 +1888,3 @@ revisions (i.e., use a \"...\" range)."
 (after! server
   (when (not (server-running-p server-name))
     (server-start)))
-
-
-(with-eval-after-load 'desktop
-  (desktop-read))
