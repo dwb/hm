@@ -14,6 +14,16 @@ in {
     "~/${configDir}/bin"
   ];
 
+  home.file.".emacs.d/.local/cache/debug-adapters/js-debug" =
+    let
+      version = "1.100.1";
+    in {
+      source = pkgs.fetchzip {
+        url = "https://github.com/microsoft/vscode-js-debug/releases/download/v${version}/js-debug-dap-v${version}.tar.gz";
+        hash = "sha256-NM/ehAy6gUbr2DtyjbrGp7dJZMUI7iR8Ku2cVWQISn8=";
+      };
+    };
+
   home.activation.linkDoomEmacsConfig = let
     src = /. + ./conf/doom.d;
   in lib.hm.dag.entryAfter ["writeBoundary"] ''
