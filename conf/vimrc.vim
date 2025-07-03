@@ -158,7 +158,7 @@ endif
 
 
 set t_Co=256
-set bg=dark
+set bg=light
 set cursorline
 
 color morning
