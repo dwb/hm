@@ -20,6 +20,9 @@ in
     ./linkapps.nix
   ];
 
+  # XXX tmp for home-manager fix https://github.com/nix-community/home-manager/pull/7339
+  home.enableNixpkgsReleaseCheck = false;
+
   home.stateVersion = "23.11"; # XXX: remember, don't change!
 
   home.username = username;

@@ -1,4 +1,4 @@
-{ lib, pkgs, guiEnabled, doomemacs, ... }:
+{ lib, pkgs, pkgsUnstable, guiEnabled, doomemacs, ... }:
 let configDir = ".emacs.d";
 in {
 
@@ -41,9 +41,9 @@ in {
 
   programs.emacs = {
     enable = true;
-    package = with pkgs;
+    package = with pkgsUnstable;
       (emacsPackagesFor (if guiEnabled then
-        emacs30-pgtk.override { withNativeCompilation = false; }
+        emacs30-pgtk.override { withNativeCompilation = true; }
       else
         emacs30-nox)).emacsWithPackages
       (epkgs: with epkgs; [ treesit-grammars.with-all-grammars vterm ]);

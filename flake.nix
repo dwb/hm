@@ -9,7 +9,9 @@
       url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     };
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.05";
+      # url = "github:nix-community/home-manager/release-25.05";
+      # temporarily following master for https://github.com/nix-community/home-manager/pull/7339https://github.com/nix-community/home-manager/pull/7339
+      url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
