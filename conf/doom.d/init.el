@@ -199,3 +199,37 @@
        :config
        ;;literate
        (default +bindings +smartparens))
+
+(defvar doom-env-deny
+  '(;; Unix/shell state that shouldn't be persisted
+    "^HOME$" "^\\(OLD\\)?PWD$" "^SHLVL$" "^PS1$" "^R?PROMPT$" "^TERM\\(CAP\\)?$"
+    "^USER$" "^GIT_CONFIG" "^INSIDE_EMACS$"
+    ;; X server, Wayland, or services' env  that shouldn't be persisted
+    "^\\(WAYLAND_\\)?DISPLAY$" "^DBUS_SESSION_BUS_ADDRESS$" "^XAUTHORITY$"
+    ;; Windows+WSL envvars that shouldn't be persisted
+    "^WSL_INTEROP$"
+    ;; XDG variables that are best not persisted.
+    "^XDG_CURRENT_DESKTOP$" "^XDG_RUNTIME_DIR$"
+    "^XDG_\\(VTNR$\\|SEAT$\\|BACKEND$\\|SESSION_\\)"
+    ;; Socket envvars, like I3SOCK, GREETD_SOCK, SEATD_SOCK, SWAYSOCK, etc.
+    "SOCK$"
+    ;; ssh and gpg variables that could quickly become stale if persisted.
+    "^SSH_\\(AUTH_SOCK\\|AGENT_PID\\)$" "^\\(SSH\\|GPG\\)_TTY$"
+    "^GPG_AGENT_INFO$"
+    ;; Internal Doom envvars
+    "^DEBUG$" "^INSECURE$" "^\\(EMACS\\|DOOM\\(LOCAL\\)?\\)DIR$"
+    "^DOOM\\(PATH\\|PROFILE\\)$" "^__"
+
+    ;; My customisation:
+    "SESSION_ID$"
+    "^ITERM_"
+    "^TERM_PROGRAM$"
+    "^NU_"
+
+    ;; fuck it
+    ".*"
+    )
+  "Environment variables to omit from envvar files.
+
+Each string is a regexp, matched against variable names to omit from
+`doom-env-file'.")

@@ -1093,6 +1093,49 @@ If ARG (universal argument), open selection in other-window."
   (add-to-list 'vterm-eval-cmds '("find-file" find-file-other-window))
   (add-hook! vterm-mode #'my/window-undedicate)
 
+  ;; Session ID
+
+  (defvar-local my/term-session-id nil)
+  (put 'my/term-session-id 'permanent-local t)
+
+  (defvar my/override-term-session-id nil
+    "Dynamic variable for desktop restoration")
+
+  (defun my/set-new-term-session-id ()
+    (setf my/term-session-id
+          (or (bound-and-true-p my/override-term-session-id)
+              (bound-and-true-p my/term-session-id)
+              (thread-last (shell-command-to-string "uuidgen")
+                           (replace-regexp-in-string "\n+\\'" "")))))
+
+  (defun my/export-term-session-id (aroundfn &rest args)
+    (my/set-new-term-session-id)
+    (unless my/term-session-id
+      (error "expected my/term-session-id to be set by this point honestly"))
+    (let ((process-environment (cons
+                                (format "TERM_SESSION_ID=emacs-vterm-%s" my/term-session-id)
+                                process-environment)))
+      (apply aroundfn args)))
+
+  (advice-add 'vterm-mode :around #'my/export-term-session-id)
+
+  (after! desktop
+    (defun my/set-vterm-desktop-save-function ()
+      (setq-local desktop-save-buffer #'my/vterm-save-desktop-buffer))
+
+    (defun my/vterm-save-desktop-buffer (_desktop-dirname)
+      `((default-directory . ,default-directory)
+        (my/term-session-id . ,(bound-and-true-p my/term-session-id))))
+
+    (defun my/vterm-restore-desktop-buffer (_file-name buffer-name misc)
+      (let ((default-directory (alist-get 'default-directory misc))
+            (my/override-term-session-id (alist-get 'my/term-session-id misc)))
+        (vterm buffer-name)))
+
+    (add-hook 'vterm-mode-hook #'my/set-vterm-desktop-save-function)
+    (add-to-list 'desktop-buffer-mode-handlers
+                 '(vterm-mode . my/vterm-restore-desktop-buffer)))
+
   (defun my/project-vterm ()
     "Open a vterm in the current project."
     (interactive)
