@@ -43,10 +43,11 @@ in
     graphviz
     home-manager
     htop
+    iosevka
     jc # makes JSON out of standard commands, used in my nushell utils
     mosh
     nixd
-    nixfmt
+    nixfmt-rfc-style
     nodejs_22 # mainly for emacs copilot but generally useful too ig
     plantuml
     python3
@@ -77,6 +78,8 @@ in
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
   ]);
+
+  fonts.fontconfig.enable = true;
 
   home.file.nushell-my-scripts = {
     source = ./conf/nushell;
@@ -290,7 +293,7 @@ in
       # units
     ];
     configFile.text = lib.concatLines (
-      ["source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"] ++
+      # ["source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"] ++
       (lib.pipe [
         ./conf/config.nu
         ./conf/local_config.nu
@@ -397,5 +400,11 @@ in
   programs.pandoc.enable = true;
   programs.ripgrep.enable = true;
   programs.yt-dlp.enable = true;
+
+  programs.wezterm = {
+    enable = true;
+    package = pkgsUnstable.wezterm;
+    extraConfig = builtins.readFile ./conf/wezterm.lua;
+  };
 
 }

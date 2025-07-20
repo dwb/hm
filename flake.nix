@@ -127,7 +127,7 @@
         });
 
       formatter =
-        forAllSystems (system: (importPkgs nixpkgsUnstable system).nixfmt);
+        forAllSystems (system: (importPkgs nixpkgsUnstable system).nixfmt-rfc-style);
     };
 
 }
