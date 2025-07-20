@@ -77,6 +77,14 @@
       };
 
     in {
+
+      apps = forAllSystems (system: {
+        default = {
+          type = "app";
+          program = lib.getExe (importPkgs nixpkgs system).home-manager;
+        };
+      });
+
       # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
       packages = forAllSystems (system: {
         homeConfigurations = lib.genAttrs usernames
