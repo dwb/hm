@@ -145,3 +145,13 @@
 ;; in elpa
 ;; https://github.com/svaante/dape
 (package! dape)
+
+(package! forge)
+
+(package! auth-source-1password
+  :pin "7bb8ad3507c58cc642b2ebbd7e57a91efab80e14"
+  :recipe
+  (:host github
+   :repo "dlobraico/auth-source-1password"))
+
+(package! caddyfile-mode)

@@ -409,7 +409,25 @@
          :map copilot-mode-map
          ("C-x o" . 'copilot-complete)))
 
-(use-package nushell-ts-mode)
+(use-package! forge
+  :config
+  ;; fuck sake so 1password secret IDs can't contain carets
+  ;; so overriding this to not use one
+  (defun my/ghub--ident (username package)
+    (format "%s---%s" username package))
+  (advice-add 'ghub--ident :override #'my/ghub--ident)
+
+  (defun my/forge-mode-p (&rest _)
+    (derived-mode-p 'forge-pullreq-mode))
+
+  (set-popup-rule! #'my/forge-mode-p :ignore t))
+
+(use-package! nushell-ts-mode)
+
+(use-package! auth-source-1password
+  :config
+  (setf auth-source-1password-vault "Employee")
+  (auth-source-1password-enable))
 
 (use-package unison-ts-mode)
 (use-package unison-daemon)
@@ -1442,6 +1460,9 @@ revisions (i.e., use a \"...\" range)."
 
   (advice-add 'eglot--maybe-activate-editing-mode :before-until #'my/eglot-disable-when)
 
+  ;; please please just do this please
+  (map! :map eglot-mode-map :nv "gD" #'+lookup/references)
+
   (after! treesit
     (add-to-list 'eglot-server-programs '(go-ts-mode "gopls"))
     (put 'go-ts-mode 'eglot-language-id "go")
@@ -1483,8 +1504,6 @@ revisions (i.e., use a \"...\" range)."
 
 (after! go-mode
   (require 'rx)
-
-  (add-hook 'before-save-hook 'gofmt-before-save)
 
   (defvar my/go-test-compilation-error-regexp-alist-alist
     `((my-go-test . (,(rx (: (group "/" (+ (not space)) ".go") ":" (group (+ num)))) 1 2))))
