@@ -40,6 +40,7 @@ in
     aws-vault
     fd
     git-absorb
+    git-extras
     graphviz
     home-manager
     htop
@@ -193,7 +194,7 @@ in
       cip = "commit -pv";
       co = "checkout";
       cob = "checkout -";
-      com = "checkout master";
+      com = "!git switch \"$(basename \"$(git rev-parse --abbrev-ref origin/HEAD)\")\"";
       commend = "commit --amend --no-edit";
       conflicts = "!git status --porcelain=2 | awk '$1 == \"u\" { print $11 }'";
       di = "diff";
@@ -209,6 +210,7 @@ in
       pb = "publish-branch";
       ph = "push";
       prr = "!git publish-branch --ignore-exists && hub browse -- \"compare/$(git rev-parse --abbrev-ref head)?expand=1\"";
+      prune-squashed-branches = "!f() { set -e; git switch \"$1\"; git pull; git remote prune origin; git delete-squashed-branches --proceed; }; f \"$(basename \"$(git rev-parse --abbrev-ref origin/HEAD)\")\"";
       pu = "pull";
       pur = "pull --rebase";
       purph = "!git pull --rebase && git push";
@@ -245,7 +247,7 @@ in
         colorMoved = "default";
       };
       push = {
-        default = "upstream";
+        default = "current";
         autoSetupRemote = true;
       };
       status = {
