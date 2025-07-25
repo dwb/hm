@@ -98,6 +98,7 @@ source contrib/custom-completions/pnpm/pnpm-completions.nu
 source contrib/custom-completions/yarn/yarn-v4-completions.nu
 
 use my/archivebox.nu
+use my/file-menu.nu
 use my/glob-menu.nu
 use my/ollama.nu *
 use my/my-nix.nu *
