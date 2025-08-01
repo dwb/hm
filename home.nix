@@ -290,9 +290,9 @@ in
     package = pkgsUnstable.nushell;
     plugins = with pkgsUnstable.nushellPlugins; [
       formats
-      highlight
       polars
       ## broken in unstable:
+      # highlight
       # net
       # units
     ];
