@@ -6,7 +6,7 @@ export def e [fn: path] {
 
 export def gcd-subpath-completer [context: string] {
   let root = (do -c { git rev-parse --show-toplevel })
-  let dir = ($context | split words | get -i 1)
+  let dir = ($context | split words | get -o 1)
   glob --no-file ($root | path join $"($dir)*") |
     each { path relative-to $root }
 }
@@ -92,7 +92,7 @@ export def first-col-with-value [
 ]: record -> any {
   let r = $in
   for $p in $cols {
-    let val = $r | get -i $p
+    let val = $r | get -o $p
     if $val != null {
       return $val
     }
@@ -116,7 +116,7 @@ export def running-total [
   initial = 0: any,    # Initial value of total
 ]: list<record> -> list<record> {
   each-with-prev { |prev, r|
-    insert $outfield { ($prev | get -i $infield | default $initial) + ($r | get $infield) }
+    insert $outfield { ($prev | get -o $infield | default $initial) + ($r | get $infield) }
   }
 }
 
