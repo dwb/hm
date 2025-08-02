@@ -44,7 +44,14 @@ in
     graphviz
     home-manager
     htop
-    iosevka
+    iosevka.override {
+     privateBuildPlan = builtins.readFile ./iosevka-private-build-plans.toml;
+     set = "Dwb";
+    }
+    iosevka.override {
+     privateBuildPlan = builtins.readFile ./iosevka-term-private-build-plans.toml;
+     set = "DwbTerm";
+    }
     jc # makes JSON out of standard commands, used in my nushell utils
     mosh
     nixd
