@@ -1914,7 +1914,7 @@ revisions (i.e., use a \"...\" range)."
 
     (set-popup-rule!
       (rx string-start "*" (? "doom:") "vterm")
-      :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl 0))
+      :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
   (defun my/compilation-buffer-p (bn &rest _)
     (let ((buffer (window-normalize-buffer bn)))
