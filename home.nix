@@ -289,6 +289,8 @@ in
     enable = true;
     package = pkgsUnstable.nushell;
     plugins = with pkgsUnstable.nushellPlugins; [
+      (pkgsUnstable.callPackage (import ./pkgs/nushell-plugins-nupsql.nix) {})
+
       formats
       polars
       ## broken in unstable:
