@@ -12,8 +12,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   src = fetchFromGitLab {
     owner = "HertelP";
     repo = "nu_plugin_nupsql";
-    rev = "70849a68d04094de98ffa3bfd4ba134a50d9bdae";
-    hash = "sha256-zbqen1CmQCmNEh5jFqnMvtN8U17Lo8gdTg26H1/DxJ0=";
+    rev = "e1ef346ac66b763fe9ba7cda7c640e1eaa719d83";
+    hash = "";
   };
 
   cargoHash = "sha256-dalAdZ9gszBni81agGFuTsHpn2/eku/26dvlGZdU7ek=";
