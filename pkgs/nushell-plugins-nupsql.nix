@@ -16,7 +16,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     hash = "sha256-I4ym9v/AYu1EOhEh4N91vT+Ut8c4qLAAidWOlI/lEdY=";
   };
 
-  cargoHash = "sha256-dalAdZ9gszBni81agGFuTsHpn2/eku/26dvlGZdU7ek=";
+  cargoHash = "";
 
   meta = {
     description = "PostgreSQL for Nushell";
