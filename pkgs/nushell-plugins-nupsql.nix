@@ -13,7 +13,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     owner = "HertelP";
     repo = "nu_plugin_nupsql";
     rev = "e1ef346ac66b763fe9ba7cda7c640e1eaa719d83";
-    hash = "";
+    hash = "sha256-I4ym9v/AYu1EOhEh4N91vT+Ut8c4qLAAidWOlI/lEdY=";
   };
 
   cargoHash = "sha256-dalAdZ9gszBni81agGFuTsHpn2/eku/26dvlGZdU7ek=";
