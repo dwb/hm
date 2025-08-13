@@ -123,3 +123,7 @@ export def running-total [
 export def ,download-video [url: string] {
   nix run nixpkgs#yt-dlp -- --format 'bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/b[ext=mp4] / bv*+ba / b' $url
 }
+
+export def uvnix [...args: string] {
+  UV_PYTHON_DOWNLOADS=never nix run --quiet nixpkgs#uv -- ...$args
+}
