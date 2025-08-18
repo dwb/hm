@@ -62,7 +62,7 @@
 (setf switch-to-buffer-in-dedicated-window 'pop)
 
 (setq compilation-scroll-output 'first-error)
-(setq compilation-auto-jump-to-first-error t)
+(setq compilation-auto-jump-to-first-error nil)
 
 (setq next-error-message-highlight t)
 (setq completions-detailed t)
@@ -79,11 +79,18 @@
 
 (setf confirm-kill-processes nil)
 
+(setopt confirm-kill-emacs nil)
+
+(setopt tab-bar-show nil)
+
+(setopt help-window-keep-selected t)
+
 (defun my/save-all-file-buffers ()
   (save-some-buffers t))
 
 (add-hook 'focus-out-hook #'my/save-all-file-buffers)
 
+(setopt desktop-load-locked-desktop 'check-pid)
 (setf desktop-path (list (concat doom-local-dir "state/desktop")))
 (with-eval-after-load 'desktop
   (desktop-save-mode 1))
@@ -640,7 +647,10 @@ The actual buffer content (the absolute path) remains unchanged."
 (use-package! literate-calc-mode)
 
 ;; eagar-load vterm to load my mappings below
-(use-package! vterm :ensure t)
+(use-package! vterm
+  :ensure t
+  :config
+  (setopt vterm-shell "/bin/zsh --login"))
 
 (defun my/window-resize-to (window size &optional horizontal ignore pixelwise)
   (setq window (window-normalize-window window))
@@ -1443,8 +1453,8 @@ revisions (i.e., use a \"...\" range)."
 
   (setf eglot-autoshutdown nil)
 
-  (defun my/elgot-format-buffer-unless-prettier ()
-    (when (and (eglot-managed-p) (not prettier-mode))
+  (defun my/eglot-format-buffer-unless-prettier ()
+    (when (and (eglot-managed-p) (bound-and-true-p prettier-mode))
       (eglot-format-buffer)))
 
   (add-hook 'before-save-hook #'my/eglot-format-buffer-unless-prettier)
