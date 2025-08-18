@@ -233,3 +233,10 @@
 
 Each string is a regexp, matched against variable names to omit from
 `doom-env-file'.")
+
+(defvar doom-env-allow '("^PATH$" "^HOMEBREW_" "^LANG$" "^NIX_" "^NVM_" "^SSH_AUTH_SOCK$"
+                         "^TERMINFO_DIRS$" "^TMPDIR$" "^XDG_")
+  "Environment variables to include in envvar files.
+
+This overrules `doom-env-deny'. Each string is a regexp, matched against
+variable names to omit from `doom-env-file'.")
