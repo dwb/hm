@@ -155,3 +155,5 @@
    :repo "dlobraico/auth-source-1password"))
 
 (package! caddyfile-mode)
+
+(package! eat)

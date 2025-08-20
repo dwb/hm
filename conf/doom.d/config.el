@@ -1280,6 +1280,81 @@ If ARG (universal argument), open selection in other-window."
      :desc "Switch buffer"
      :i "C-c ," #'my/consult-term-buffer)))
 
+(use-package! eat
+  :config
+  (setopt eat-shell "/bin/zsh -l")
+  (setopt eat-semi-char-non-bound-keys
+          (cl-pushnew [C-w] eat-semi-char-non-bound-keys :test #'equal))
+  (setopt eat-kill-buffer-on-exit t)
+
+  (setq-hook! 'eat-mode-hook
+    ;; Don't prompt about dying processes when killing vterm
+    confirm-kill-processes nil
+    ;; Prevent premature horizontal scrolling
+    hscroll-margin 0)
+
+  (defun my/eat-send-c-w ()
+    (interactive)
+    (eat-term-send-string eat-terminal "\C-w"))
+
+  (defun my/eat-send-escape ()
+    (interactive)
+    (eat-term-send-string eat-terminal "\e"))
+
+  (defun my/project-eat ()
+    "Open an eat terminal in the current project."
+    (interactive)
+    (my/project-eat-named ""))
+
+  (defun my/eat-buffer-name (project &optional name)
+    (let* ((suffix (if (and name (length> name 0)) (format " %s" name) ""))
+           (pn (doom-project-name (project-root project))))
+      (format "*eat %s%s*" pn suffix)))
+
+  (defun my/project-eat-named (arg)
+    "Open a eat in the current project with a particular name."
+    (interactive "MTerminal name: ")
+    (let ((eat-buffer-name (my/eat-buffer-name (project-current) arg)))
+      (eat)))
+
+  (defun my/rename-eat-buffer (arg)
+    "Rename a eat buffer to a nice pattern"
+    (interactive "MNew name: ")
+    (when (not (eq major-mode 'eat-mode)) (error "not a eat buffer"))
+    (let ((name arg))
+      (rename-buffer (my/eat-buffer-name (project-current) name))))
+
+  (map!
+   (:leader
+    :desc "Open project eat terminal"
+    "o t" #'my/project-eat)
+
+   :map eat-mode-map
+
+   :desc "Send C-w"
+   :i "C-c C-w" #'my/eat-send-c-w
+   :desc "window"
+   :i "C-c w" 'evil-window-map
+   :desc "window"
+   :i "C-w" 'evil-window-map
+
+   :i "<escape>" #'my/eat-send-escape
+
+   :desc "Normal state"
+   "C-c <escape>" #'evil-force-normal-state
+
+   :desc "New eat "
+   "C-c n" #'my/project-vterm-named
+
+   :desc "Rename buffer"
+   "C-c r" #'my/rename-eat-buffer
+
+   :desc "Switch buffer"
+   :ni "C-c ," #'switch-to-buffer
+
+   :desc "Find URL"
+   :ni "C-c l" #'link-hint-open-link))
+
 (after! doom-modeline
   (setq doom-modeline-persp-name t)
 
@@ -1924,6 +1999,14 @@ revisions (i.e., use a \"...\" range)."
 
     (set-popup-rule!
       (rx string-start "*" (? "doom:") "vterm")
+      :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
+
+  (after! eat
+    (defun my/eat-buffer-p (bn &rest _)
+      (when-let ((buffer (window-normalize-buffer bn)))
+        (with-current-buffer buffer
+          (derived-mode-p 'eat-mode))))
+    (set-popup-rule! #'my/eat-buffer-p
       :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
   (defun my/compilation-buffer-p (bn &rest _)
