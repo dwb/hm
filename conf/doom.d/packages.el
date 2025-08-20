@@ -157,3 +157,12 @@
 (package! caddyfile-mode)
 
 (package! eat)
+
+(package! claude-code
+  :pin "b4c14ea23bcec456a6b9fed3aedeee3f2a2c6aae"
+  :recipe (:type git :host github :repo "stevemolitor/claude-code.el" :branch "main" :depth 1
+                   :files ("*.el" (:exclude "images/*"))))
+;; claude-code IDE integration:
+(package! monet
+  :pin "aad7462e476313c913e01f72ec00756edae68801"
+  :recipe (:type git :host github :repo "stevemolitor/monet"))

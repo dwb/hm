@@ -1974,6 +1974,25 @@ revisions (i.e., use a \"...\" range)."
    :leader
    :n "m t d" #'my/go-test-debug-single))
 
+(use-package! claude-code
+  :commands claude-code-mode
+  :bind-keymap
+  ("C-c c" . claude-code-command-map) ;; or your preferred key
+  ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
+  :bind
+  (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode))
+  :config
+  (setopt claude-code-terminal-backend 'vterm)
+
+  (after! subproject
+    (advice-add 'claude-code--directory :around #'subproject-with-inhibiting-find))
+
+  ;; optional IDE integration with Monet
+  (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
+  (monet-mode 1)
+  (set-popup-rule! (rx string-start "*claude")
+    :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
+
 ;;; doom modules config
 
 
@@ -2019,6 +2038,7 @@ revisions (i.e., use a \"...\" range)."
     #'my/compilation-buffer-p
     :side 'right :width 81 :modeline t :select t :ttl 0)
 
+  (set-popup-rule! (rx string-start "*Diff") :height 0.5)
 
   (after! pgmacs
 
