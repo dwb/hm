@@ -1353,7 +1353,10 @@ If ARG (universal argument), open selection in other-window."
    :ni "C-c ," #'switch-to-buffer
 
    :desc "Find URL"
-   :ni "C-c l" #'link-hint-open-link))
+   :ni "C-c l" #'link-hint-open-link
+
+   :desc "Paste (yank)"
+   :ni "s-v" #'eat-yank))
 
 (after! doom-modeline
   (setq doom-modeline-persp-name t)
@@ -1982,7 +1985,7 @@ revisions (i.e., use a \"...\" range)."
   :bind
   (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode))
   :config
-  (setopt claude-code-terminal-backend 'vterm)
+  (setopt claude-code-terminal-backend 'eat)
 
   (after! subproject
     (advice-add 'claude-code--directory :around #'subproject-with-inhibiting-find))
