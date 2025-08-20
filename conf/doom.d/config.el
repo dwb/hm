@@ -1293,6 +1293,24 @@ If ARG (universal argument), open selection in other-window."
     ;; Prevent premature horizontal scrolling
     hscroll-margin 0)
 
+  (after! desktop
+    (defun my/set-eat-desktop-save-function ()
+      (setq-local desktop-save-buffer #'my/eat-save-desktop-buffer))
+
+    (defun my/eat-save-desktop-buffer (_desktop-dirname)
+      `((default-directory . ,default-directory)
+        (my/term-session-id . ,(bound-and-true-p my/term-session-id))))
+
+    (defun my/eat-restore-desktop-buffer (_file-name buffer-name misc)
+      (let ((default-directory (alist-get 'default-directory misc))
+            (eat-buffer-name buffer-name)
+            (my/override-term-session-id (alist-get 'my/term-session-id misc)))
+        (eat)))
+
+    (add-hook 'eat-mode-hook #'my/set-eat-desktop-save-function)
+    (add-to-list 'desktop-buffer-mode-handlers
+                 '(eat-mode . my/eat-restore-desktop-buffer)))
+
   (defun my/eat-send-c-w ()
     (interactive)
     (eat-term-send-string eat-terminal "\C-w"))
