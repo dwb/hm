@@ -1577,7 +1577,7 @@ revisions (i.e., use a \"...\" range)."
     (add-hook! go-ts-mode #'eglot-ensure)
     (add-hook! go-ts-mode (add-hook 'before-save-hook 'eglot-format-buffer -80 t))
 
-    (when-let ((bin (seq-find #'executable-find '("vtsls" "typescript-language-server"))))
+    (when-let ((bin (seq-find #'executable-find '("typescript-language-server"))))
       (add-to-list 'eglot-server-programs `(typescript-ts-mode ,bin "--stdio"))
       (add-to-list 'eglot-server-programs `(tsx-ts-mode ,bin "--stdio")))
     (put 'typescript-ts-mode 'eglot-language-id "typescript")
