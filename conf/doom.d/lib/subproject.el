@@ -44,6 +44,10 @@
 (defvar subproject-inhibit-find nil
   "Disable finding subprojects.")
 
+(defun subproject-with-inhibiting-find (fn &rest args)
+  (let ((subproject-inhibit-find t))
+    (apply fn args)))
+
 (defun subproject-project-p (project)
   (and (listp project) (eq (car project) 'subproject)))
 
