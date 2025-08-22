@@ -228,6 +228,30 @@
 (require 'clique)
 (require 'clique-doom)
 
+;; Session ID
+
+(defvar-local my/term-session-id nil)
+(put 'my/term-session-id 'permanent-local t)
+
+(defvar my/override-term-session-id nil
+  "Dynamic variable for desktop restoration")
+
+(defun my/set-new-term-session-id ()
+  (setf my/term-session-id
+        (or (bound-and-true-p my/override-term-session-id)
+            (bound-and-true-p my/term-session-id)
+            (thread-last (shell-command-to-string "uuidgen")
+                         (replace-regexp-in-string "\n+\\'" "")))))
+
+(defun my/export-term-session-id (aroundfn &rest args)
+  (my/set-new-term-session-id)
+  (unless my/term-session-id
+    (error "expected my/term-session-id to be set by this point honestly"))
+  (let ((process-environment (cons
+                              (format "TERM_SESSION_ID=emacs-term-%s" my/term-session-id)
+                              process-environment)))
+    (apply aroundfn args)))
+
 (use-package! visual-fill-column
   :config
   (global-visual-fill-column-mode 1))
@@ -1120,30 +1144,6 @@ If ARG (universal argument), open selection in other-window."
   (add-to-list 'vterm-eval-cmds '("find-file" find-file-other-window))
   (add-hook! vterm-mode #'my/window-undedicate)
 
-  ;; Session ID
-
-  (defvar-local my/term-session-id nil)
-  (put 'my/term-session-id 'permanent-local t)
-
-  (defvar my/override-term-session-id nil
-    "Dynamic variable for desktop restoration")
-
-  (defun my/set-new-term-session-id ()
-    (setf my/term-session-id
-          (or (bound-and-true-p my/override-term-session-id)
-              (bound-and-true-p my/term-session-id)
-              (thread-last (shell-command-to-string "uuidgen")
-                           (replace-regexp-in-string "\n+\\'" "")))))
-
-  (defun my/export-term-session-id (aroundfn &rest args)
-    (my/set-new-term-session-id)
-    (unless my/term-session-id
-      (error "expected my/term-session-id to be set by this point honestly"))
-    (let ((process-environment (cons
-                                (format "TERM_SESSION_ID=emacs-vterm-%s" my/term-session-id)
-                                process-environment)))
-      (apply aroundfn args)))
-
   (advice-add 'vterm-mode :around #'my/export-term-session-id)
 
   (after! desktop
@@ -1291,6 +1291,8 @@ If ARG (universal argument), open selection in other-window."
     confirm-kill-processes nil
     ;; Prevent premature horizontal scrolling
     hscroll-margin 0)
+
+  (advice-add 'eat-mode :around #'my/export-term-session-id)
 
   (after! desktop
     (defun my/set-eat-desktop-save-function ()
