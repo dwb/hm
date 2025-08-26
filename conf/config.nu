@@ -64,6 +64,8 @@ $env.config.color_config = {
     shape_vardecl: purple
 }
 
+$env.config.explore.selected_cell = { fg: white, bg: dark_gray, attr: b }
+
 $env.config.show_banner = false
 $env.config.edit_mode = 'vi'
 $env.config.history = {
