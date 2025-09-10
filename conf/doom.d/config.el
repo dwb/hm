@@ -185,6 +185,9 @@
 (map!
  :g "s-o" #'find-file
 
+ :n "g t" #'+lookup/type-definition
+ :n "g T" #'+lookup/type-definition
+
  :leader
 
  :desc "Rename visited file"
@@ -421,9 +424,9 @@
    "C-c o e" #'combobulate-envelop))
 
 (use-package! copilot
-  :disabled
+  ;; :disabled
   :config
-  (setf copilot-idle-delay nil)
+  (setf copilot-idle-delay 0)
   :bind (:map copilot-completion-map
          ("<tab>" . 'copilot-accept-completion)
          ("TAB" . 'copilot-accept-completion)
@@ -1535,9 +1538,6 @@ revisions (i.e., use a \"...\" range)."
   (add-to-list 'eglot-server-programs '(nushell-ts-mode . ("nu" "--lsp")))
   (add-to-list 'eglot-server-programs '(unison-ts-mode "127.0.0.1" 5757))
 
-  ;; eglot clobbers these, but we want to keep, for example, eslint-flycheck
-  (add-to-list 'eglot-stay-out-of 'flymake-diagnostic-functions)
-
   (setq-default eglot-workspace-configuration
                 '((:gopls .
                    ((staticcheck . t)
@@ -2002,6 +2002,31 @@ revisions (i.e., use a \"...\" range)."
    :leader
    :n "m t d" #'my/go-test-debug-single))
 
+(after! pgmacs
+  (after! evil-collection
+    (defun my/evil-collection-pgmacs-setup ()
+      "Set up `evil' bindings for `pgmacs'"
+      (evil-set-initial-state 'pgmacs-mode 'normal)
+
+      (keymap-unset pgmacs-row-list-map "j")
+      (keymap-unset pgmacs-row-list-map "k")
+      (evil-collection-define-key 'normal 'pgmacs-row-list-map
+        "?" #'evil-ex-search-backward
+        "h" #'evil-backward-char
+        "j" #'evil-next-line
+        "k" #'evil-previous-line
+        "l" #'evil-forward-char
+        "H" #'pgmacstbl-previous-column
+        "L" #'pgmacstbl-next-column
+        (kbd "S-TAB") #'pgmacstbl-previous-column
+        (kbd "TAB") #'pgmacstbl-next-column
+        "i" #'pgmacs--insert-row-empty))
+
+    (my/evil-collection-pgmacs-setup)))
+
+(use-package! monet
+  :commands (monet-mode))
+
 (use-package! claude-code
   :commands claude-code-mode
   :bind-keymap
@@ -2043,7 +2068,6 @@ revisions (i.e., use a \"...\" range)."
               :ttl    5))
 
   (after! vterm
-
     (set-popup-rule!
       (rx string-start "*" (? "doom:") "vterm")
       :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
