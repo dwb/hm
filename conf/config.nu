@@ -8,9 +8,9 @@ $env.config.color_config = {
     # Closures can be used to choose colors for specific values.
     # The value (in this case, a bool) is piped into the closure.
     # eg) {|| if $in { 'dark_cyan' } else { 'dark_gray' } }
-    bool: dark_cyan
+    bool: blue
     int: dark_gray
-    filesize: cyan_bold
+    filesize: blue
     duration: dark_gray
     date: purple
     range: dark_gray
@@ -28,37 +28,37 @@ $env.config.color_config = {
     shape_and: purple_bold
     shape_binary: purple_bold
     shape_block: blue_bold
-    shape_bool: light_cyan
+    shape_bool: blue
     shape_closure: green_bold
     shape_custom: green
-    shape_datetime: cyan_bold
-    shape_directory: cyan
-    shape_external: cyan
+    shape_datetime: blue
+    shape_directory: blue
+    shape_external: blue
     shape_externalarg: green_bold
     shape_external_resolved: light_purple_bold
-    shape_filepath: cyan
+    shape_filepath: blue
     shape_flag: blue_bold
     shape_float: purple_bold
     # shapes are used to change the cli syntax highlighting
     shape_garbage: { fg: white bg: red attr: b}
-    shape_globpattern: cyan_bold
+    shape_globpattern: blue
     shape_int: purple_bold
-    shape_internalcall: cyan_bold
-    shape_keyword: cyan_bold
-    shape_list: cyan_bold
+    shape_internalcall: blue
+    shape_keyword: blue
+    shape_list: blue
     shape_literal: blue
     shape_match_pattern: green
     shape_matching_brackets: { attr: u }
-    shape_nothing: light_cyan
+    shape_nothing: blue
     shape_operator: yellow
     shape_or: purple_bold
     shape_pipe: purple_bold
     shape_range: yellow_bold
-    shape_record: cyan_bold
+    shape_record: blue
     shape_redirection: purple_bold
     shape_signature: green_bold
     shape_string: green
-    shape_string_interpolation: cyan_bold
+    shape_string_interpolation: blue
     shape_table: blue_bold
     shape_variable: purple
     shape_vardecl: purple
@@ -74,6 +74,10 @@ $env.config.history = {
     file_format: "sqlite" # "sqlite" or "plaintext"
     isolation: true # only available with sqlite file_format. true enables history isolation, false disables it. true will allow the history to be isolated to the current session using up/down arrows. false will allow the history to be shared across all sessions.
 }
+
+$env.config.table.index_mode = 'auto'
+$env.config.table.mode = 'compact'
+
 $env.config.cursor_shape = {
     emacs: 'blink_line' # block, underscore, line, blink_block, blink_underscore, blink_line, inherit to skip setting cursor shape (line is the default)
     vi_insert: 'line' # block, underscore, line, blink_block, blink_underscore, blink_line, inherit to skip setting cursor shape (block is the default)
