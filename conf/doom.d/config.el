@@ -284,11 +284,6 @@
   (after! eglot
     (add-hook 'eglot-managed-mode-hook #'eldoc-box-hover-at-point-mode t)))
 
-;; XXX: this is erroring and appears very unloved
-;; (use-package! eslint-flymake
-;;   :config
-;;   (setf eslint-flymake-command '("yarn" "exec" "eslint")))
-
 (use-package! gotest)
 
 (use-package! lilypond-mode
@@ -1556,6 +1551,8 @@ revisions (i.e., use a \"...\" range)."
 
   (add-hook 'before-save-hook #'my/eglot-format-buffer-unless-prettier)
 
+  ;; eglot clobbers these, but we want to keep, for example, eslint-flycheck
+  (add-to-list 'eglot-stay-out-of 'flymake-diagnostic-functions)
   (defun my/eglot-setup-flymake ()
     (if (eglot-managed-p)
         (add-hook 'flymake-diagnostic-functions 'eglot-flymake-backend nil t)
@@ -1924,6 +1921,15 @@ revisions (i.e., use a \"...\" range)."
    :prefix ("d". "diagnostics")
    :desc "buffer diagnositics" "b" #'flymake-show-buffer-diagnostics
    :desc "project diagnositics" "p" #'flymake-show-project-diagnostics))
+
+(use-package eslint-json-flymake
+  :after flymake
+  :config
+  (setopt eslint-json-flymake-command '("yarn" "eslint"))
+
+  (add-hook! (typescript-mode typescript-ts-mode typescript-tsx-mode
+                              javascript-mode js-ts-mode)
+             #'eslint-json-flymake-setup))
 
 (after! flymake-popon
   (global-flymake-popon-mode))
