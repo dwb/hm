@@ -1,5 +1,8 @@
-{ lib, pkgs, pkgsUnstable, guiEnabled, doomemacs, ... }:
-let configDir = ".emacs.d";
+{ lib, nixpkgsUnstable, pkgs, pkgsUnstable, guiEnabled, doomemacs, ... }:
+let
+  configDir = ".emacs.d";
+  # emacsPkgs = pkgsUnstable.callPackage (import "${nixpkgsUnstable}/pkgs/applications/editors/emacs");
+  # emacsGuiPkg =
 in {
 
   home.sessionVariables = {
@@ -43,7 +46,11 @@ in {
     enable = true;
     package = with pkgsUnstable;
       (emacsPackagesFor (if guiEnabled then
-        emacs30-pgtk.override { withNativeCompilation = true; }
+        (emacs30-pgtk.override {
+          withNativeCompilation = true;
+        }).overrideAttrs (old: {
+          patches = old.patches ++ [ ./emacs-window-name.patch ];
+        })
       else
         emacs30-nox)).emacsWithPackages
       (epkgs: with epkgs; [ treesit-grammars.with-all-grammars vterm ]);

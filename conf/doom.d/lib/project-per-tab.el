@@ -68,10 +68,8 @@
          'project-per-tab--display-buffer-matcher
          display-buffer-alist))
   (remove-hook 'kill-buffer-hook #'project-per-tab--kill-buffer-hook)
-  (setf tab-bar-tab-pre-close-functions
-        (delq
-         'project-per-tab--kill-all-buffers
-         tab-bar-tab-pre-close-functions))
+  (remove-hook 'tab-bar-tab-pre-close-functions #'project-per-tab--kill-all-buffers)
+  (remove-hook 'window-buffer-change-functions #'project-per-tab--ensure-only-project-buffers-in-window)
 
   (when project-per-tab-mode
     ;; doesn't work well enough yet -
@@ -82,6 +80,7 @@
     (push '(project-per-tab--display-buffer-matcher
             project-per-tab--display-buffer)
           display-buffer-alist)
+    (add-hook 'window-buffer-change-functions #'project-per-tab--ensure-only-project-buffers-in-window)
     (add-to-list 'tab-bar-tab-pre-close-functions
                  #'project-per-tab--kill-all-buffers)))
 
@@ -144,16 +143,34 @@ call to `format'. The format-string is expected to have a single
 (defun project-per-tab--display-buffer-matcher (buffer _arg)
   (project-per-tab--project-of-buffer buffer))
 
+(defun project-per-tab--ensure-only-project-buffers-in-window (window)
+  (when-let* (((windowp window))
+              (tab (project-per-tab--current-tab))
+              (project (project-per-tab-project-of-tab tab))
+              (pbufs (make-hash-table :test 'eq)))
+    (dolist (b (project-buffers project)) (puthash b t pbufs))
+    (set-window-prev-buffers
+     window
+     (seq-filter #'(lambda (bb)
+                     (let ((buf (car bb)))
+                       (or (gethash (car bb) pbufs)
+                           (and
+                            (null (buffer-file-name buf))
+                            (null (with-current-buffer buf (project-current)))))))
+                 (window-prev-buffers window)))))
+
 (defun project-per-tab--display-buffer (buffer alist)
-  (when-let ((project (with-current-buffer buffer (project-current)))
-             (name (funcall project-per-tab-tab-name-function project)))
-    (prog1
-        (display-buffer-in-tab buffer
-                               (append
-                                `((tab-name . ,name)
-                                  (tab-group . ,project-per-tab-tab-group))
-                                alist))
-      (project-per-tab-set-project-of-tab project))))
+  (when-let* ((project (with-current-buffer buffer (project-current)))
+              (name (funcall project-per-tab-tab-name-function project))
+              (win (display-buffer-in-tab buffer
+                                          (append
+                                           `((tab-name . ,name)
+                                             (tab-group . ,project-per-tab-tab-group))
+                                           alist))))
+    (when win
+      (prog1 win
+        (project-per-tab-set-project-of-tab project)
+        (project-per-tab--ensure-only-project-buffers-in-window win)))))
 
 (defun project-per-tab--kill-buffer-hook ()
   "Close the tab if the only remaining displayed buffer is unrelated to the project"

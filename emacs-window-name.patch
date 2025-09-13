@@ -1,0 +1,46 @@
+diff --git i/src/nsterm.h w/src/nsterm.h
+index 1c86d6ea980..68d743dc630 100644
+--- i/src/nsterm.h
++++ w/src/nsterm.h
+@@ -416,7 +416,7 @@ enum ns_return_frame_mode
+   };
+ 
+ /* EmacsWindow  */
+-@interface EmacsWindow : NSWindow
++@interface EmacsWindow : NSWindow <NSAccessibility>
+ {
+   NSPoint grabOffset;
+   NSEvent *last_drag_event;
+diff --git i/src/nsterm.m w/src/nsterm.m
+index 8b4374c7ff3..a6735bca2c7 100644
+--- i/src/nsterm.m
++++ w/src/nsterm.m
+@@ -10076,6 +10076,28 @@ - (NSDragOperation) beginDrag: (NSDragOperation) op
+   return selected_op;
+ }
+ 
++/* Accessibility support for System Events and AppleScript */
++- (NSString *)accessibilityRole
++{
++  return NSAccessibilityWindowRole;
++}
++
++- (NSString *)accessibilityTitle
++{
++  return self.title;
++}
++
++- (BOOL)isAccessibilityElement
++{
++  return YES;
++}
++
++- (NSArray *)accessibilityChildren
++{
++  NSArray *children = [super accessibilityChildren];
++  return children ? children : @[];
++}
++
+ @end /* EmacsWindow */
+ 
+ 
