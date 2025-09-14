@@ -83,32 +83,22 @@ This is used for special buffers like *Help*, *Messages*, etc.")
 
 (defun frame-project-dedicate--buffer-allowed-p (project buffer)
   "Return t if BUFFER should be allowed in a frame dedicated to PROJECT."
-  (message "frame-project-dedicate--buffer-allowed-p")
   (let ((project-root (project-root project)))
-    (with-current-buffer buffer
-      (or
-       ;; Buffer has honorary project that matches
-       (and frame-project-dedicate--honorary-project
-            (string= frame-project-dedicate--honorary-project project-root))
-       ;; Buffer belongs to the project (using project.el functionality)
-       (when-let* ((buffer-file (buffer-file-name buffer)))
-         (if-let* ((buffer-project (project-current nil)))
-             ;; Buffer has a project, check if it matches
-             (string= (project-root buffer-project) project-root)
-           ;; Buffer has no project but might be in the project directory
-           (string-prefix-p project-root (file-truename buffer-file))))
-       ;; Special buffers without files that should always be allowed
-       (frame-project-dedicate--special-buffer-p buffer)))))
+    (or
+     ;; Buffer has honorary project that matches
+     ;; TODO - prob use buffer-local-value
+     ;; (and frame-project-dedicate--honorary-project
+     ;;      (string= frame-project-dedicate--honorary-project project-root))
+     ;; Buffer belongs to the project (using project.el functionality)
+     (when-let* ((buffer-project (frame-project-dedicate-project-of-buffer buffer)))
+       (string= project-root (project-root buffer-project)))
+     ;; Special buffers without files that should always be allowed
+     (frame-project-dedicate--special-buffer-p buffer))))
 
 (defun frame-project-dedicate--special-buffer-p (buffer)
   "Return t if BUFFER is a special buffer that should be allowed in any frame."
-  (with-current-buffer buffer
-    (or
-     ;; No associated file and starts with * (like *scratch*, *Messages*)
-     (and (null (buffer-file-name))
-          (string-prefix-p "*" (buffer-name)))
-     ;; Specific buffer types we always want to allow
-     (derived-mode-p 'help-mode 'completion-list-mode 'messages-buffer-mode))))
+  (let* ((major-mode (buffer-local-value 'major-mode buffer)))
+    (derived-mode-p 'special-mode)))
 
 ;;; Helper Functions for Commands
 
@@ -131,23 +121,30 @@ This is used for special buffers like *Help*, *Messages*, etc.")
              (selected-frame (cdr (assoc selected-name frame-alist))))
         selected-frame))))
 
-(defun frame-project-dedicate--select-project-and-switch-or-create ()
+(defun frame-project-dedicate--select-project-and-switch-or-create (&optional project initial-buffer)
   "Select a project and switch to its frame (creating if needed)."
-  (let* ((dir (funcall project-prompter))
-         (project (project-current t dir)))
+  (let* ((project (or project
+                      (project-current t (funcall project-prompter)))))
     (project-remember-project project)
     ;; Check for existing frame first
     (if-let* ((existing-frame (frame-project-dedicate--find-project-frame project)))
-        (progn
+        (prog1 existing-frame
           (select-frame existing-frame)
           (message "Switched to existing frame for project: %s" 
                    (file-name-nondirectory (directory-file-name (project-root project)))))
       ;; Create new dedicated frame
       (let ((frame (make-frame)))
-        (frame-project-dedicate--set-frame-project frame project)
-        (select-frame frame)
-        ;; Open the project root in dired as a starting point
-        (dired (project-root project))))))
+        (prog1 frame
+          (frame-project-dedicate--set-frame-project frame project)
+          (select-frame frame)
+          ;; Open the project root in dired as a starting point
+          (if initial-buffer
+              (switch-to-buffer initial-buffer)
+            (dired (project-root project))))))))
+
+(defun frame-project-dedicate-project-of-buffer (buffer)
+  (let* ((subproject-inhibit-find t))
+    (project-current nil (buffer-local-value 'default-directory buffer))))
 
 (defun frame-project-dedicate-ensure-installed-in-frame (frame)
   (message "frame-project-dedicate-ensure-installed-in-frame %S with frame params %S" frame (frame-parameters frame))
@@ -252,5 +249,50 @@ This allows special buffers to appear in project-dedicated frames."
     (message "Buffer '%s' now has honorary project: %s" 
              (buffer-name) 
              (file-name-nondirectory (directory-file-name project-root)))))
+
+(defun frame-project-dedicate-display-buffer-use-dedicated-frame (buffer alist)
+  "Display BUFFER in an existing frame that should be dedicated to it.
+
+ALIST is an association list of action symbols and values.  See
+Info node `(elisp) Buffer Display Action Alists' for details of
+such alists.
+
+If ALIST has a non-nil `inhibit-switch-frame' entry, avoid
+raising the frame.  If ALIST has a non-nil `inhibit-same-window'
+entry, avoid using the currently selected window (only useful
+with a frame-predicate that allows using the selected frame).
+
+This is an action function for buffer display, see Info
+node `(elisp) Buffer Display Action Functions'.  It should be
+called only by `display-buffer' or a function directly or
+indirectly called by the latter."
+  (when-let* ((project (frame-project-dedicate-project-of-buffer buffer))
+              (project-root (project-root project))
+              (predicate
+               (lambda (frame)
+                 (and (not (eq frame (selected-frame)))
+                      (get-lru-window frame))))
+              (frame (or (car (filtered-frame-list predicate))
+                         (frame-project-dedicate--select-project-and-switch-or-create project)))
+              (window (get-lru-window
+                       frame nil (cdr (assq 'inhibit-same-window alist)))))
+    (prog1 (window--display-buffer buffer window 'reuse alist)
+      (unless (cdr (assq 'inhibit-switch-frame alist))
+        (window--maybe-raise-frame frame)))))
+
+(define-minor-mode frame-project-dedicate-mode nil :global t
+  (if frame-project-dedicate-mode
+      (progn
+        (let* ((orig display-buffer-base-action)
+               (fns (car orig))
+               (attrs (cdr orig))
+               (newfn #'frame-project-dedicate-display-buffer-use-dedicated-frame))
+          (setf display-buffer-base-action
+                (cons (cons newfn fns) attrs))))
+    (let* ((orig display-buffer-base-action)
+           (newfns (delq 'frame-project-dedicate-display-buffer-use-dedicated-frame
+                         (car orig))))
+      (setf display-buffer-base-action
+            (cons newfns (cdr orig))))))
 
 (provide 'frame-project-dedicate)

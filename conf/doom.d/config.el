@@ -190,6 +190,9 @@
 
  :leader
 
+ :desc "Switch buffer"
+ "," #'switch-to-buffer
+
  :desc "Rename visited file"
  "f R" #'rename-visited-file)
 
@@ -226,7 +229,8 @@
 
 (require 'switch-to-buffer-history)
 
-(require 'project-per-tab)
+;; (require 'project-per-tab)
+(require 'frame-project-dedicate)
 
 (require 'clique)
 (require 'clique-doom)
@@ -635,15 +639,6 @@ The actual buffer content (the absolute path) remains unchanged."
     (setq-local scroll-conservatively most-positive-fixnum)
     (setq-local scroll-margin 0))
   (add-hook 'compilation-mode-hook #'my/compilation-setup))
-
-(after! tab-bar
-  (map!
-   :desc "Switch tab"
-   "s-;" #'tab-switch
-
-   :leader
-   :desc "Switch tab"
-   ";" #'tab-switch))
 
 ;; Here are some additional functions/macros that could help you configure Doom:
 ;;
@@ -1360,8 +1355,8 @@ If ARG (universal argument), open selection in other-window."
    :desc "Normal state"
    "C-c <escape>" #'evil-force-normal-state
 
-   :desc "New eat "
-   "C-c n" #'my/project-vterm-named
+   :desc "New eat terminal"
+   "C-c n" #'my/project-eat-named
 
    :desc "Rename buffer"
    "C-c r" #'my/rename-eat-buffer
@@ -2108,7 +2103,24 @@ revisions (i.e., use a \"...\" range)."
 
 ;; after popup setup
 (when (boundp 'project-per-tab-mode)
-  (project-per-tab-mode))
+  (project-per-tab-mode)
+  (after! tab-bar
+    (map!
+     :desc "Switch tab"
+     "s-;" #'tab-switch
+
+     :leader
+     :desc "Switch tab"
+     ";" #'tab-switch)))
+
+(after! frame-project-dedicate
+  (map!
+   :desc "Switch project frame"
+   "s-;" #'frame-project-dedicate-switch
+
+   :leader
+   :desc "Switch project frame"
+   ";" #'frame-project-dedicate-switch))
 
 (load (concat doom-user-dir "config-local.el") t)
 
