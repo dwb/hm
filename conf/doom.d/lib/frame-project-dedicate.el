@@ -256,6 +256,18 @@ when `server-window' is nil, calling `switch-to-buffer' directly."
       (when-let* ((frame (car (or (frame-list-z-order) (frame-list)))))
         (select-frame-set-input-focus frame)))))
 
+(defun frame-project-dedicate--display-buffer-advice (oldfun buffer-or-name &optional action frame)
+  (if-let* (((or (null frame) (not (framep frame))))
+            (buffer (if (bufferp buffer-or-name)
+                        buffer-or-name
+                      (get-buffer buffer-or-name)))
+            (project (frame-project-dedicate-project-of-buffer buffer))
+            (frame (frame-project-dedicate--find-project-frame project)))
+      (progn
+        (select-frame-set-input-focus frame)
+        (funcall oldfun buffer action frame))
+    (funcall oldfun buffer-or-name action frame)))
+
 (defun frame-project-dedicate-display-buffer-use-dedicated-frame (buffer alist)
   "Display BUFFER in an existing frame that should be dedicated to it.
 
@@ -309,14 +321,16 @@ indirectly called by the latter."
           (setf display-buffer-base-action
                 (cons (cons newfn fns) attrs)))
         (advice-add 'server-switch-buffer :before
-                    #'frame-project-dedicate--server-switch-buffer-advice))
+                    #'frame-project-dedicate--server-switch-buffer-advice)
+        (advice-add 'display-buffer :around #'frame-project-dedicate--display-buffer-advice))
     (let* ((orig display-buffer-base-action)
            (newfns (delq 'frame-project-dedicate-display-buffer-use-dedicated-frame
                          (car orig))))
       (setf display-buffer-base-action
             (cons newfns (cdr orig))))
     (advice-remove 'server-switch-buffer
-                   #'frame-project-dedicate--server-switch-buffer-advice)))
+                   #'frame-project-dedicate--server-switch-buffer-advice)
+    (advice-remove 'display-buffer #'frame-project-dedicate--display-buffer-advice)))
 
 (defun frame-project-dedicate-unload-function ()
   (prog1 nil

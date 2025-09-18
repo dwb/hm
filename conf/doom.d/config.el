@@ -189,7 +189,10 @@ buffer list remain reachable."
       (or (null end)
           (< end (point-max))
           (prog1 nil
-            (recenter (- (+ 1 (count-screen-lines (point) (point-max))))))))))
+            (recenter (- (+ 1 (count-screen-lines (point) (point-max)))))
+            ;; This isn't quite right but at least it means that the point
+            ;; doesn't appear to be where it isn't:
+            (goto-char (point-max)))))))
 
 (after! imenu
   ;; default is 60, way too small

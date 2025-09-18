@@ -253,6 +253,12 @@ in
     source = ./conf/ollama-models;
   };
 
+  xdg.configFile."fd/ignore" = {
+    text = ''
+      .jj/
+    '';
+  };
+
   home.shellAliases = {
     g = "git";
     ll = "ls -l";
@@ -441,6 +447,7 @@ in
             "add-parent"
             "trunk()"
           ];
+
           rm-parent = [
             "util"
             "exec"
@@ -450,20 +457,16 @@ in
           ];
           rp = [ "rm-parent" ];
 
-          claude = [
-            "util"
-            "exec"
-            "--"
-            "bash"
-            "-c"
-            ''
-              set -e
-              if [[ -z "$1" ]]; then echo "$0: call with a change ID"; exit 1; fi
-              change="$1"; shift
-              exec claude "/jj $change" "$@"
-            ''
-            "jj claude"
-          ];
+          # abandon empty
+          ae = [ "abandon" "(trunk()..@- & empty()) ~ private_commits() ~ 
+description(\"\")" ];
+
+          claude = [ "util" "exec" "--" "bash" "-c" ''
+            set -e
+            if [[ -z "$1" ]]; then echo "$0: call with a change ID"; exit 1; fi
+            change="$1"; shift
+            exec claude "/jj $change" "$@"
+          '' "jj claude"];
 
           di = [ "diff" ];
           dn = [
@@ -583,24 +586,18 @@ in
           # ];
 
           # rebase on trunk (all new, simpler)
-          rot = [
-            "rebase"
-            "-o"
-            "trunk()"
-          ];
+          rot = [ "rebase" "-o" "trunk()" ];
+
+          # split after trunk
+          sat = [ "split" "--insert-after" "trunk()" "--insert-before" "@"];
+          
           # split before private (commits)
           sbp = [
             "split"
             "--insert-after"
             "heads((trunk()..@) ~ private_commits())"
           ];
-          # split between trunk and head
-          sth = [
-            "split"
-            "-A"
-            "trunk()"
-            "-B@"
-          ];
+
           # split to parent
           stp = [
             "util"
