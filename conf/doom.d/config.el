@@ -477,7 +477,9 @@
   :bind
   (:map jj-mode-map
         ("k" . #'jj-goto-prev-changeset)
-        ("j" . #'jj-goto-next-changeset))
+        ("j" . #'jj-goto-next-changeset)
+        ("d" . #'jj-diff)
+        ("D" . #'jj-describe))
   :config
   (map!
    (:leader
