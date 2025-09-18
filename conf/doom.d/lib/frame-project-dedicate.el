@@ -324,6 +324,11 @@ indirectly called by the latter."
               (project (frame-project-dedicate--get-frame-project frame)))
     (not (frame-project-dedicate--buffer-in-project-p buffer project))))
 
+(defun frame-project-dedicate--frame-deleted (frame)
+  (when-let* ((project-root (frame-project-dedicate--get-frame-project-root frame))
+              (project (project-current nil project-root)))
+    (project-kill-buffers t project)))
+
 (define-minor-mode frame-project-dedicate-mode nil :global t
   (if frame-project-dedicate-mode
       (progn
@@ -333,7 +338,11 @@ indirectly called by the latter."
                (newfn #'frame-project-dedicate-display-buffer-use-dedicated-frame))
           (setf display-buffer-base-action
                 (cons (cons newfn fns) attrs)))
-        (advice-add 'display-buffer :around #'frame-project-dedicate--display-buffer-advice))
+        (advice-add 'display-buffer :around #'frame-project-dedicate--display-buffer-advice)
+        (add-to-list 'after-delete-frame-functions #'frame-project-dedicate--frame-deleted))
+
+    (setq after-delete-frame-functions
+          (delq 'frame-project-dedicate--frame-deleted after-delete-frame-functions))
     (let* ((orig display-buffer-base-action)
            (newfns (delq 'frame-project-dedicate-display-buffer-use-dedicated-frame
                          (car orig))))
