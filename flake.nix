@@ -56,7 +56,7 @@
         { pkgs, ... }:
         inputs
         // {
-          pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
+          pkgsUnstable = importPkgs nixpkgsUnstable pkgs.stdenv.hostPlatform.system;
         }
       );
 
