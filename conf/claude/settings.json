@@ -32,7 +32,33 @@
       "Bash(jj operation diff:*)",
       "Bash(jj op log:*)",
       "Bash(jj operation log:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(gh search:*)",
+      "Bash(gh ruleset:*)",
+      "Bash(gh status:*)",
+      "Bash(gh repo list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh repo gitignore:*)",
+      "Bash(gh repo license:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr status:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue status:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run watch:*)",
+      "Bash(gh workflow list:*)",
+      "Bash(gh workflow view:*)",
+      "Bash(gh release list:*)",
+      "Bash(gh release view:*)",
+      "Bash(gh cache list:*)",
+      "Bash(gh label list:*)",
+      "Bash(gh gist list:*)",
+      "Bash(gh gist view:*)"
     ],
     "deny": [
       "Bash(git:*)"
@@ -45,7 +71,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj status >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
+            "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj util snapshot >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
           }
         ]
       }
@@ -56,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj status >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
+            "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj util snapshot >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
           }
         ]
       },
@@ -81,5 +107,7 @@
   "alwaysThinkingEnabled": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754299769863
-  }
+  },
+  "theme": "light",
+  "editorMode": "vim"
 }

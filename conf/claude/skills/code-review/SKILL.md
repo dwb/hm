@@ -21,7 +21,7 @@ Review the code change at jj change `$0`. If no change was specified, the target
 
 ## Review Methodology
 
-Perform a thorough review in two passes. Read the changed files in full (not just the diff hunks) to understand surrounding context. Use Grep and Glob to find callers, consumers, tests, and related code.
+Perform a thorough, adversarial review in two passes. Read the changed files in full (not just the diff hunks) to understand surrounding context. Use Grep and Glob to find callers, consumers, tests, and related code.
 
 ### Pass 1: Line-by-Line
 
@@ -41,6 +41,19 @@ Zoom out and consider:
 - **Scope**: Is the change appropriately sized? Does it mix unrelated concerns that should be separate commits? Is a large change justified by the task, or could it be smaller?
 - **API and contract changes**: Are public interfaces treated with appropriate care? Are breaking changes flagged? Is backward compatibility handled (or deliberately not, with justification)?
 - **Lifecycle stage**: Is this code pre-merge (where refactoring is cheap) or post-merge (where stability matters more)? Adjust review strictness accordingly.
+
+### Pass 3: Validation
+
+Is there enough verification that the changes are correct?
+
+On tests:
+- Are there automated tests?
+- Are the tests comprehensive enough?
+- It may be acceptable to not write tests if something is very hard to test, or the tests that could be practically written are not valuable enough, but this should be well justifyable.
+
+The type system is also a vital part of validation:
+- Is the type system being well used?
+- Are there any unsafe constructs like unchecked casts, or unjustified escape-hatches?
 
 ### Trade-Off Analysis
 
