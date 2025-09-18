@@ -588,8 +588,8 @@ in
       # units
     ];
     configFile.text = lib.concatLines (
-      ["source ${nu-scripts}/modules/formats/from-env.nu"] ++
-      (lib.pipe
+      [ "source ${nu-scripts}/modules/formats/from-env.nu" ]
+      ++ (lib.pipe
         [
           ./conf/config.nu
           ./conf/local_config.nu
@@ -694,15 +694,21 @@ in
 
   programs.zsh = {
     enable = true;
-    initContent = lib.concatLines [
-      (builtins.readFile ./conf/zshrc.zsh)
-      (builtins.readFile ./conf/zshrc-local.zsh)
-    ];
-    envExtra = lib.concatLines [
-      (builtins.readFile ./conf/zshenv-local.zsh)
+    envExtra = lib.mkMerge [
+      (lib.mkOrder 400 ''
+        if [[ -n $ZSH_PROFILE_STARTUP ]]; then zmodload zsh/zprof; fi
+      '')
+      (lib.mkOrder 1000 (builtins.readFile ./conf/zshenv-local.zsh))
+      (lib.mkOrder 1000 
       ''
         if [[ -n $override_EDITOR ]]; then EDITOR="$override_EDITOR"; fi
-      ''
+      '')
+    ];
+
+    initContent = lib.mkMerge [
+      (lib.mkOrder 500 (builtins.readFile ./conf/zshrc-early.zsh))
+      (lib.mkOrder 1000 (builtins.readFile ./conf/zshrc.zsh))
+      (lib.mkOrder 1450 "if [[ -n $ZSH_PROFILE_STARTUP ]]; then zprof; fi")
     ];
   };
 
