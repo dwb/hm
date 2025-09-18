@@ -524,7 +524,12 @@ in
       (builtins.readFile ./conf/zshrc.zsh)
       (builtins.readFile ./conf/zshrc-local.zsh)
     ];
-    envExtra = builtins.readFile ./conf/zshenv-local.zsh;
+    envExtra = lib.concatLines [
+      (builtins.readFile ./conf/zshenv-local.zsh)
+      ''
+      if [[ -n $override_EDITOR ]]; then EDITOR="$override_EDITOR"; fi
+      ''
+    ];
   };
 
   programs.fzf.enable = true;
