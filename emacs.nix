@@ -65,7 +65,9 @@ let
       s
       track-changes
       treesit-grammars.with-all-grammars
-      vc-jj
+      # The ELPA release (0.5) predates the vc-jj--process-lines signature
+      # that the vc-jj advice in conf/doom.d/config.el relies on.
+      elpaDevelPackages.vc-jj
       zig-mode
 
       # vterm
