@@ -44,7 +44,7 @@ def vcd-all-entry-paths [state: record]: nothing -> list<string> {
   ($dirs | values) | append ($children | values)
 }
 
-# Find the scope (closest ancestor entry) for a path. Errors if not within any entry.
+# Find the scope (closest ancestor entry) for a path that is a proper descendant.
 def vcd-find-scope [target: string]: nothing -> string {
   let all_paths = (vcd-all-entry-paths (vcd-load-state))
   let ancestors = ($all_paths | where { |p| $target | str starts-with $"($p)/" })
@@ -75,22 +75,54 @@ def vcd-active-scoped-parent-children [entries: list, pwd: string]: nothing -> r
   vcd-parent-children $active_paths
 }
 
+# Evaluate scoped-globs active for PWD into name->path record.
+# Each rule's pattern is a glob matching scope directories. The path field is
+# relative within each matched scope. The children flag controls whether to
+# enumerate children of that path or treat it as a direct entry.
+def vcd-active-scoped-glob-entries [entries: list, pwd: string] {
+  $entries | reduce --fold {} { |rule, acc|
+    let scopes = (glob --depth 1 --no-file ($rule.pattern | into glob))
+    let active = ($scopes | where { |s| vcd-in-scope $pwd $s })
+    if ($active | is-empty) {
+      $acc
+    } else {
+      let scope = ($active | sort-by { $in | str length } | last)
+      let target_path = if $rule.path == "" { $scope } else { $scope | path join $rule.path }
+      if $rule.children {
+        if ($target_path | path exists) {
+          ls $target_path | where type == dir | get name | reduce --fold $acc { |child, acc|
+            let n = ($child | path basename)
+            if $n in $acc { $acc } else { $acc | insert $n $child }
+          }
+        } else { $acc }
+      } else {
+        if ($target_path | path exists) {
+          let n = ($target_path | path basename)
+          if $n in $acc { $acc } else { $acc | insert $n $target_path }
+        } else { $acc }
+      }
+    }
+  }
+}
+
 # Resolve a name to a path.
-# Priority: scoped-dirs > scoped-parent-children > dirs > parent-children.
+# Priority: scoped-dirs > scoped-auto (parent-children, globs) > dirs > parent-children.
 def vcd-resolve [name: string] {
   let state = (vcd-load-state)
   let dirs = ($state | get -o dirs | default {})
   let parents = ($state | get -o parent-dirs | default [])
   let scoped_dirs_list = ($state | get -o scoped-dirs | default [])
   let scoped_parents_list = ($state | get -o scoped-parent-dirs | default [])
+  let scoped_globs_list = ($state | get -o scoped-globs | default [])
   let pwd = $env.PWD
 
   let parent_children = (vcd-parent-children $parents)
   let active_scoped = (vcd-active-scoped-dirs $scoped_dirs_list $pwd)
   let active_scoped_children = (vcd-active-scoped-parent-children $scoped_parents_list $pwd)
+  let active_scoped_globs = (vcd-active-scoped-glob-entries $scoped_globs_list $pwd)
 
   if $name in $active_scoped {
-    if $name in $active_scoped_children or $name in $dirs or $name in $parent_children {
+    if $name in $active_scoped_children or $name in $active_scoped_globs or $name in $dirs or $name in $parent_children {
       print -e $"vcd: warning: scoped bookmark '($name)' shadows another entry"
     }
     return ($active_scoped | get $name)
@@ -101,6 +133,13 @@ def vcd-resolve [name: string] {
       print -e $"vcd: warning: scoped parent child '($name)' shadows a global entry"
     }
     return ($active_scoped_children | get $name)
+  }
+
+  if $name in $active_scoped_globs {
+    if $name in $dirs or $name in $parent_children {
+      print -e $"vcd: warning: scoped glob match '($name)' shadows a global entry"
+    }
+    return ($active_scoped_globs | get $name)
   }
 
   if $name in $dirs {
@@ -123,16 +162,19 @@ def vcd-completer [context: string] {
   let parents = ($state | get -o parent-dirs | default [])
   let scoped_dirs_list = ($state | get -o scoped-dirs | default [])
   let scoped_parents_list = ($state | get -o scoped-parent-dirs | default [])
+  let scoped_globs_list = ($state | get -o scoped-globs | default [])
   let pwd = $env.PWD
 
   let parent_children = (vcd-parent-children $parents)
   let active_scoped = (vcd-active-scoped-dirs $scoped_dirs_list $pwd)
   let active_scoped_children = (vcd-active-scoped-parent-children $scoped_parents_list $pwd)
+  let active_scoped_globs = (vcd-active-scoped-glob-entries $scoped_globs_list $pwd)
 
   # Build unified list with priority for dedup (lower number = higher priority)
   let all = (
     ($active_scoped | transpose name path | each { |e| { name: $e.name, path: $e.path, priority: 1 } })
     | append ($active_scoped_children | transpose name path | each { |e| { name: $e.name, path: $e.path, priority: 2 } })
+    | append ($active_scoped_globs | transpose name path | each { |e| { name: $e.name, path: $e.path, priority: 2 } })
     | append ($dirs | transpose name path | each { |e| { name: $e.name, path: $e.path, priority: 3 } })
     | append ($parent_children | transpose name path | each { |e| { name: $e.name, path: $e.path, priority: 4 } })
   )
@@ -152,21 +194,36 @@ export def --env main [
   --name (-n): string           # Alternate bookmark name (with --add)
   --children (-c)               # Register as parent dir whose children become candidates
   --scoped (-s)                 # Entry is only active when PWD is within its parent entry
+  --glob (-g): string           # Glob pattern matching scope directories (requires --scoped)
 ] {
-  if ($children or $scoped) and not $add {
-    error make { msg: "--children and --scoped require --add" }
+  if ($children or $scoped or $glob != null) and not $add {
+    error make { msg: "--children, --scoped, and --glob require --add" }
+  }
+  if $glob != null and not $scoped {
+    error make { msg: "--glob requires --scoped" }
   }
 
   if $add {
-    let dir = ($target | default $env.PWD | path expand)
-    if not ($dir | path exists) {
-      error make { msg: $"directory does not exist: ($dir)" }
-    }
     let state = (vcd-load-state)
     let dirs = ($state | get -o dirs | default {})
     let parents = ($state | get -o parent-dirs | default [])
 
-    if $scoped {
+    if $glob != null {
+      let full_glob = ($glob | path expand)
+      let rel_path = ($target | default "")
+      let scoped_globs = ($state | get -o scoped-globs | default [])
+      let existing = ($scoped_globs | where { |e| $e.pattern == $full_glob and $e.path == $rel_path and $e.children == $children })
+      if not ($existing | is-empty) {
+        error make { msg: "this glob rule already exists" }
+      }
+      vcd-save-state ($state | upsert scoped-globs ($scoped_globs | append {
+        pattern: $full_glob, path: $rel_path, children: $children
+      }))
+    } else if $scoped {
+      let dir = ($target | default $env.PWD | path expand)
+      if not ($dir | path exists) {
+        error make { msg: $"directory does not exist: ($dir)" }
+      }
       let scope = (vcd-find-scope $dir)
 
       if $children {
@@ -196,6 +253,10 @@ export def --env main [
         vcd-save-state ($state | upsert scoped-dirs ($scoped_dirs | append { name: $entry_name, path: $dir, scope: $scope }))
       }
     } else if $children {
+      let dir = ($target | default $env.PWD | path expand)
+      if not ($dir | path exists) {
+        error make { msg: $"directory does not exist: ($dir)" }
+      }
       if $dir in $parents {
         error make { msg: $"'($dir)' is already a parent directory" }
       }
@@ -207,6 +268,10 @@ export def --env main [
       } | ignore
       vcd-save-state ($state | upsert parent-dirs ($parents | append $dir))
     } else {
+      let dir = ($target | default $env.PWD | path expand)
+      if not ($dir | path exists) {
+        error make { msg: $"directory does not exist: ($dir)" }
+      }
       let entry_name = ($name | default ($dir | path basename))
       if $entry_name in $dirs {
         error make {
@@ -220,7 +285,7 @@ export def --env main [
       vcd-save-state ($state | upsert dirs ($dirs | insert $entry_name $dir))
     }
   } else if $target == null {
-    error make { msg: "usage: vcd NAME | vcd --add [DIR] [--name NAME] [--children] [--scoped]" }
+    error make { msg: "usage: vcd NAME | vcd --add [DIR] [--name NAME] [--children] [--scoped] [--glob PATTERN]" }
   } else {
     cd (vcd-resolve $target)
   }
