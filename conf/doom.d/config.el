@@ -51,7 +51,8 @@
                   org-drawer
                   org-property-value
                   org-verbatim
-                  org-code))
+                  org-code
+                  org-table))
     (set-face-attribute face nil :inherit 'fixed-pitch))
 
   ;; This was causing variable-pitch flickering just like the line number flickering :(
