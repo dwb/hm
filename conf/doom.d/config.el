@@ -489,7 +489,8 @@ With C-u C-u and jj backend, prompt for one revision and show its changes."
     (interactive (list (read-directory-name "Directory: " default-directory)))
     (let* ((dir (expand-file-name dir))
            (backend (vc-responsible-backend dir))
-           (fileset (list backend (list dir))))
+           (fileset (list backend (list dir)))
+           (default-directory (vc-root-dir)))
       (cond
        ((and (equal current-prefix-arg '(16))
              (eq backend 'JJ))
