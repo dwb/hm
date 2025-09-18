@@ -55,7 +55,7 @@
               "hooks": [
                   {
                       "type": "command",
-                      "command": "if [ -n \"$PLAN_REMINDER_PERCENT\" ] && [ $((RANDOM % 100)) -lt \"$PLAN_REMINDER_PERCENT\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"REMINDER: If this session has a plan, design doc, or notes file, update it with recent research and findings to preserve context across compaction.\"}}\\n'; fi"
+                      "command": "if [ -n \"$PLAN_REMINDER_PERCENT\" ] && [ $((RANDOM % 100)) -lt \"$PLAN_REMINDER_PERCENT\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"*** IMPORTANT REMINDER (Main agent only) *** If this session has a plan, design doc, or notes file, UPDATE IT NOW with recent research and findings to preserve context across compaction. Do this before continuing with other work.\"}}\\n'; fi"
                   }
               ]
           }
