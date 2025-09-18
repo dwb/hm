@@ -371,6 +371,7 @@
 (map! :leader :prefix ("l" . "LLMs"))
 
 (use-package aidermacs
+  :disabled
   :init
   (setopt aidermacs-backend 'vterm)
   :config
@@ -479,6 +480,31 @@
 (use-package unison-ts-mode)
 (use-package unison-daemon)
 
+(after! vc
+  (defun my/vc-dir-diff (dir)
+    "Show VC diff restricted to DIR.
+Always prompts for directory.
+With C-u, prompt for two revisions.
+With C-u C-u and jj backend, prompt for one revision and show its changes."
+    (interactive (list (read-directory-name "Directory: " default-directory)))
+    (let* ((dir (expand-file-name dir))
+           (backend (vc-responsible-backend dir))
+           (fileset (list backend (list dir))))
+      (cond
+       ((and (equal current-prefix-arg '(16))
+             (eq backend 'JJ))
+        ;; Pass same revision twice to trigger vc-jj's -r flag
+        (let ((rev (my/vc-jj-read-revision "Diff revision: ")))
+          (vc-diff-internal nil fileset rev rev)))
+       ((equal current-prefix-arg '(4))
+        (let ((rev1 (my/vc-jj-read-revision "Older revision: "))
+              (rev2 (my/vc-jj-read-revision "Newer revision: ")))
+          (vc-diff-internal nil fileset rev1 rev2)))
+       (t
+        (vc-diff-internal nil fileset nil nil)))))
+
+  (map! :map vc-prefix-map "e" #'my/vc-dir-diff))
+
 (use-package! vc-jj
   :config
   ;; FIXME: Upstream bug in vc-jj-diff for merge commits.
@@ -497,15 +523,13 @@
   ;; like e.g. multiple parents" but it actually mishandles them by
   ;; discarding all but the first parent.
   ;;
-  ;; This advice fixes the no-args case by using `-r @` instead.
+  ;; vc-jj-diff already handles (string= rev1 rev2) by using -r rev1.
+  ;; This advice fixes the nil/nil case for merge commits.
   (defun my/vc-jj-diff-fix-merge-commits (orig-fn files &optional rev1 rev2 buffer async)
     "Advice to fix vc-jj-diff for merge commits.
-When REV1 and REV2 are both nil, use `-r @` instead of `-f <parent> -t @'
-so that merge commits diff correctly against all parents."
+When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
+`-r @` instead of `-f <parent> -t @` (which only diffs one parent)."
     (if (and (null rev1) (null rev2))
-        ;; Both nil: we want "current change's diff", so pass identical
-        ;; revisions to trigger the (string= rev1 rev2) branch which uses
-        ;; `-r rev1` instead of `-f rev1 -t rev2`
         (funcall orig-fn files "@" "@" buffer async)
       (funcall orig-fn files rev1 rev2 buffer async)))
 
@@ -514,7 +538,7 @@ so that merge commits diff correctly against all parents."
   (defun my/vc-jj-revision-completion-table/with-limit (files)
     "Return a completion table for existing revisions of FILES."
     (let* ((log
-            (apply #'vc-jj--process-lines "log" "--no-graph"
+            (apply #'vc-jj--process-lines "log" "-r" "mine() & @-:: ~ ::trunk()" "--no-graph"
                    "-T" "self.change_id() ++ \"\\0\" ++ self.description().first_line() ++ \"\\n\"" "--" files))
            (revision-descriptions (make-hash-table :test 'equal))
            (revision-ids '()))
@@ -536,7 +560,39 @@ so that merge commits diff correctly against all parents."
                             (annotation-function . ,annotate)))
             (complete-with-action action revision-ids string pred))))))
 
-  (advice-add 'vc-jj-revision-completion-table :override #'my/vc-jj-revision-completion-table/with-limit))
+  (advice-add 'vc-jj-revision-completion-table :override #'my/vc-jj-revision-completion-table/with-limit)
+
+  (defun my/vc-jj-read-revision (&optional prompt)
+    "Read a jj revision with completion."
+    (completing-read (or prompt "Revision: ")
+                     (my/vc-jj-revision-completion-table/with-limit nil)))
+
+  (defun my/vc-jj-double-universal-arg-p ()
+    "Return non-nil if current-prefix-arg is C-u C-u (16)."
+    (equal current-prefix-arg '(16)))
+
+  (defun my/vc-jj-diff-revision-advice (orig-fn &rest args)
+    "Advice for vc-diff: C-u C-u prompts for revision, diffs contextual fileset."
+    (if (and (my/vc-jj-double-universal-arg-p)
+             (eq (vc-responsible-backend default-directory) 'JJ))
+        (let* ((rev (my/vc-jj-read-revision "Diff revision: "))
+               (fileset (vc-deduce-fileset t))
+               (current-prefix-arg nil))
+          (vc-diff-internal nil fileset rev rev))
+      (apply orig-fn args)))
+
+  (defun my/vc-jj-root-diff-revision-advice (orig-fn &rest args)
+    "Advice for vc-root-diff: C-u C-u prompts for revision, diffs repo root."
+    (if (and (my/vc-jj-double-universal-arg-p)
+             (eq (vc-responsible-backend default-directory) 'JJ))
+        (let* ((rev (my/vc-jj-read-revision "Diff revision: "))
+               (rootdir (vc-call-backend 'JJ 'root default-directory))
+               (current-prefix-arg nil))
+          (vc-diff-internal nil (list 'JJ (list rootdir)) rev rev))
+      (apply orig-fn args)))
+
+  (advice-add 'vc-diff :around #'my/vc-jj-diff-revision-advice)
+  (advice-add 'vc-root-diff :around #'my/vc-jj-root-diff-revision-advice))
 
 (use-package! jj-mode
   :bind
@@ -1249,6 +1305,20 @@ If ARG (universal argument), open selection in other-window."
   (add-hook! vterm-mode #'my/window-undedicate)
 
   (advice-add 'vterm-mode :around #'my/export-term-session-id)
+
+  (progn
+    ;; try to fix the prompt tracking in non-shell buffers
+    (defun my/vterm-local-var-setup () 
+      (defvar-local my/vterm-in-command-buffer t))
+
+    (add-hook! vterm-mode #'my/vterm-local-var-setup)
+
+    (defun my/vterm-cursor-in-command-buffer-p/can-ignore (fn &rest args)
+      (when my/vterm-in-command-buffer (apply fn args)))
+
+    (advice-add 'vterm-cursor-in-command-buffer-p 
+                :around #'my/vterm-cursor-in-command-buffer-p/can-ignore))
+
 
   (after! desktop
     (defun my/set-vterm-desktop-save-function ()
@@ -2164,9 +2234,11 @@ revisions (i.e., use a \"...\" range)."
     (my/evil-collection-pgmacs-setup)))
 
 (use-package! monet
+  :disabled
   :commands (monet-mode))
 
 (use-package! claude-code
+  :disabled
   :commands claude-code-mode
   :bind-keymap
   ("C-c c" . claude-code-command-map) ;; or your preferred key
