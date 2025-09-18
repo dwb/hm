@@ -308,6 +308,8 @@ in
       };
       aliases = {
         di = ["diff"];
+        # diff from trunk
+        dt = ["diff" "-r" "trunk()..@"]
         # log to trunk
         lt = ["log" "--reversed" "-r" "parents(trunk()) | trunk()..@"];
         # (heads of) my branches (even ahead of bookmarks)
@@ -402,15 +404,15 @@ in
 
   programs.tmux = {
     enable = true;
-    shortcut = "a";
-    keyMode = "vi";
-    newSession = true;
-    mouse = true;
+
     clock24 = true;
+    escapeTime = 10; # ms, after which it's a person pressing Esc
+    keyMode = "vi";
+    mouse = true;
+    newSession = true;
+    shortcut = "a";
+
     extraConfig = ''
-      # act like GNU screen
-      # set -g prefix C-a
-      # unbind C-b
       # bind-key a send-key C-a
       # bind-key C-a last-pane
       bind-key A last-window
