@@ -11,7 +11,7 @@
     home-manager = {
       # url = "github:nix-community/home-manager/release-25.05";
       # following fork for https://github.com/nix-community/home-manager/pull/7339
-      url = "github:nix-community/home-manager/release-25.05-dwb";
+      url = "github:dwb/home-manager/release-25.05-dwb";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
