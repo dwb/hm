@@ -97,7 +97,8 @@ def active-scoped-glob-entries [entries: list, pwd: string] {
         } else { $acc }
       } else {
         if ($target_path | path exists) {
-          let n = ($target_path | path basename)
+          let rule_name = ($rule | get -o name | default "")
+          let n = if $rule_name != "" { $rule_name } else { $target_path | path basename }
           if $n in $acc { $acc } else { $acc | insert $n $target_path }
         } else { $acc }
       }
@@ -195,9 +196,10 @@ def completer [context: string] {
     | append ($parent_children | transpose name path | each { |e| { name: $e.name, path: $e.path, priority: 4 } })
   )
 
-  $all
+  let completions = ($all
   | sort-by priority
   | uniq-by name
+  | where { |e| $e.path != $pwd }
   | each { |e|
     let desc = if $e.priority <= 2 {
       relative-path-from $e.path $pwd
@@ -205,7 +207,8 @@ def completer [context: string] {
       $e.path | str replace $env.HOME "~"
     }
     { value: $e.name, description: $desc }
-  }
+  })
+  { completions: $completions, options: { sort: false } }
 }
 
 # Quick cd to a bookmarked directory
@@ -233,12 +236,13 @@ export def --env main [
       let full_glob = ($glob | path expand)
       let rel_path = ($target | default "")
       let scoped_globs = ($state | get -o scoped-globs | default [])
-      let existing = ($scoped_globs | where { |e| $e.pattern == $full_glob and $e.path == $rel_path and $e.children == $children })
+      let entry_name = ($name | default "")
+      let existing = ($scoped_globs | where { |e| $e.pattern == $full_glob and $e.path == $rel_path and $e.children == $children and ($e | get -o name | default "") == $entry_name })
       if not ($existing | is-empty) {
         error make { msg: "this glob rule already exists" }
       }
       save-state ($state | upsert scoped-globs ($scoped_globs | append {
-        pattern: $full_glob, path: $rel_path, children: $children
+        pattern: $full_glob, path: $rel_path, children: $children, name: $entry_name
       }))
     } else if $scoped {
       let dir = ($target | default $env.PWD | path expand)

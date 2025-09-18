@@ -106,7 +106,7 @@ use my/my-nix.nu *
 use my/new.nu *
 use my/nix.nu *
 use my/utils.nu *
-use my/vcd.nu
+use my/vd.nu
 
 use new
 
