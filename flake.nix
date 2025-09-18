@@ -3,15 +3,14 @@
 
   inputs = {
     nixpkgs = {
-      url = "github:NixOS/nixpkgs/release-25.05";
+      url = "github:NixOS/nixpkgs/release-25.11";
     };
     nixpkgsUnstable = {
       url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     };
     home-manager = {
-      # url = "github:nix-community/home-manager/release-25.05";
-      # following fork for https://github.com/nix-community/home-manager/pull/7339
-      url = "github:dwb/home-manager/release-25.05-dwb";
+      url = "github:nix-community/home-manager/release-25.11";
+      # url = "github:dwb/home-manager/release-25.05-dwb";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -138,8 +137,7 @@
           };
         });
 
-      formatter =
-        forAllSystems (system: (importPkgs nixpkgsUnstable system).nixfmt-rfc-style);
+      formatter = forAllSystems (system: (importPkgs nixpkgs system).nixfmt);
     };
 
 }
