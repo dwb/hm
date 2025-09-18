@@ -103,7 +103,6 @@
 ;;   :pin "5cdea5c85b102e1e57904ea6bb826cccd506067f")
 
 (package! ellama)
-(package! aidermacs)
 
 (package! norns :pin "022b433334cd1db4f83e77f055cd89e9f857076d")
 
@@ -157,14 +156,8 @@
 (package! eat
   :recipe (:files ("*.el" "*.texi" "terminfo")))
 
-(package! claude-code
-  :pin "becece683bcf60f7b150a87a30ef14885dcf8ce3"
-  :recipe (:type git :host github :repo "stevemolitor/claude-code.el" :branch "main" :depth 1
-                   :files ("*.el" (:exclude "images/*"))))
-;; claude-code IDE integration:
-(package! monet
-  :pin "72a18d372fef4b0971267bf13f127dcce681859a"
-  :recipe (:type git :host github :repo "stevemolitor/monet"))
+(package! claude-code-ide
+  :recipe (:host github :repo "dwb/claude-code-ide.el" :branch "dwb"))
 
 ;; from elpa
 (package! vc-jj)

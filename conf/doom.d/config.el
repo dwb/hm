@@ -588,6 +588,7 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
              (eq (vc-responsible-backend default-directory) 'JJ))
         (let* ((rev (my/vc-jj-read-revision "Diff revision: "))
                (rootdir (vc-call-backend 'JJ 'root default-directory))
+               (default-directory rootdir)
                (current-prefix-arg nil))
           (vc-diff-internal nil (list 'JJ (list rootdir)) rev rev))
       (apply orig-fn args)))
@@ -2135,7 +2136,7 @@ revisions (i.e., use a \"...\" range)."
   :after flymake
   :config
   (setenv "ESLINT_D_PPID" (format "%s" (emacs-pid)))
-  (setopt eslint-json-flymake-command '("eslint_d"))
+  (setopt eslint-json-flymake-command '("eslint_d" "--fix"))
 
   (add-hook! (typescript-mode typescript-ts-mode typescript-tsx-mode
                               javascript-mode js-ts-mode)
@@ -2258,20 +2259,66 @@ revisions (i.e., use a \"...\" range)."
   (set-popup-rule! (rx string-start "*claude")
     :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
-(after! vc
-  (defun my/vc-dir-diff (dir)
-    "Show VC diff restricted to DIR.
-With prefix arg, prompt for DIR. Otherwise use `default-directory'.
-Shows the diff for files in that directory (recursively)."
-    (interactive (list (if current-prefix-arg
-                           (read-directory-name "Directory: " default-directory)
-                         default-directory)))
-    (let* ((dir (expand-file-name dir))
-           (backend (vc-responsible-backend dir))
-           (fileset (list backend (list dir))))
-      (vc-diff-internal nil fileset nil nil)))
+(use-package! claude-code-ide
+  :bind ("C-c C-'" . claude-code-ide-menu) ; Set your favorite keybinding
+  :config
 
-  (map! :map vc-prefix-map "e" #'my/vc-dir-diff))
+  ;; TODO: somehow stop this from happening on claude-code-ide--start-session 
+  ;; (local-set-key (kbd "C-<escape>") #'claude-code-ide-send-escape)
+
+  (after! subproject
+    (advice-add 'claude-code-ide--get-working-directory
+                :around #'subproject-with-inhibiting-find))
+
+  (defun my/claude-code-ide--configure-vterm-buffer/set-non-shell ()
+    (setq-local my/vterm-in-command-buffer nil))
+  (advice-add 'claude-code-ide--configure-vterm-buffer
+              :after #'my/claude-code-ide--configure-vterm-buffer/set-non-shell)
+
+  (defun my/claude-code-ide-notify-message (session-id plist)
+    "Display a message when Claude has a pending edit."
+    (message "Claude edit in %s%s"
+             session-id
+             (if (plist-get plist :background)
+                 " (background)" "")))
+
+  (add-to-list 'claude-code-ide-notification-functions #'my/claude-code-ide-notify-message)
+
+  (defun my/claude-notification-group-id (notification-id)
+    "Build a terminal-notifier group ID from NOTIFICATION-ID."
+    (format "emacs-claude-code-ide-%d-%d" (emacs-pid) notification-id))
+
+  (defun my/claude-notify (session-id plist)
+    "Show a macOS notification for a Claude edit via terminal-notifier."
+    (when (plist-get plist :background)
+      (let ((session-info (claude-code-ide-session-info session-id))
+            (group (my/claude-notification-group-id (plist-get plist :id)))
+            (emacsclient (executable-find "emacsclient")))
+        (start-process "claude-notify" nil "terminal-notifier"
+                       "-title" "Claude Code"
+                       "-message" (format "%s in %s%s"
+                                          (capitalize (symbol-name (plist-get plist :type)))
+                                          (if-let*
+                                              ((name (plist-get session-info :name)))
+                                              (format "%s of" name)
+                                            "")
+                                          (plist-get session-info :project-name))
+                       "-group" group
+                       "-execute" (format "%s -e '(claude-code-ide-focus-notification %d)'"
+                                          emacsclient (plist-get plist :id))))))
+
+  (defun my/claude-notify-clear (_session-id plist)
+    "Remove a macOS notification for a completed Claude edit."
+    (when (plist-get plist :background)
+      (let ((group (my/claude-notification-group-id (plist-get plist :id))))
+        (start-process "claude-notify-clear" nil "terminal-notifier"
+                       "-remove" group))))
+
+  (add-to-list 'claude-code-ide-notification-functions #'my/claude-notify)
+  (add-to-list 'claude-code-ide-notification-clear-functions #'my/claude-notify-clear)
+
+  ;; (claude-code-ide-emacs-tools-setup) ; needs web-server, cba yet, let's see
+  )
 
 ;;; doom modules config
 
@@ -2296,7 +2343,7 @@ Shows the diff for files in that directory (recursively)."
 
   (after! vterm
     (set-popup-rule!
-      (rx string-start "*" (? "doom:") "vterm")
+      '(or . ((derived-mode . vterm-mode) "^\\*vterm"))
       :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
   (after! eat
@@ -2337,6 +2384,54 @@ Shows the diff for files in that directory (recursively)."
      :leader
      :desc "Switch tab"
      ";" #'tab-switch)))
+
+;;;
+;;; DIAGNOSTICS
+;;;
+
+(defun my/line-numbers-watcher (_sym val op where)
+  "Log when `display-line-numbers' is set in a non-code buffer."
+  (when (and (eq op 'set) val where
+             (buffer-live-p where)
+             (with-current-buffer where
+               (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode))))
+    (with-current-buffer where
+      (let ((bt (backtrace-to-string)))
+        (display-warning
+         'my/line-numbers
+         (format "display-line-numbers set to %s in %s (%s)\n%s"
+                 val (buffer-name) major-mode bt)
+         :warning)))))
+
+(defun my/line-numbers-mode-advice (&optional arg)
+  "Log when `display-line-numbers-mode' is enabled in a non-code buffer."
+  (when (and (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode))
+             (or (not arg) (> arg 0)))
+    (display-warning
+     'my/line-numbers
+     (format "display-line-numbers-mode called in %s (%s)\n%s"
+             (buffer-name) major-mode (backtrace-to-string))
+     :warning)))
+
+(define-minor-mode my/watch-line-numbers-mode
+  "Watch for unexpected `display-line-numbers-mode' activation."
+  :global t
+  :lighter " WatchLN"
+  (if my/watch-line-numbers-mode
+      (progn
+        (add-variable-watcher 'display-line-numbers #'my/line-numbers-watcher)
+        (advice-add 'display-line-numbers-mode :before #'my/line-numbers-mode-advice))
+    (remove-variable-watcher 'display-line-numbers #'my/line-numbers-watcher)
+    (advice-remove 'display-line-numbers-mode #'my/line-numbers-mode-advice)))
+
+(defun my/force-line-numbers-off ()
+  (interactive)
+  (add-hook 'doom-switch-buffer-hook
+            (defun my/suppress-line-numbers-in-special-buffers-h ()
+              (unless (derived-mode-p 'prog-mode 'text-mode 'conf-mode)
+                (display-line-numbers-mode -1)))))
+
+;; END DIAGNOSTICS
 
 (load (concat doom-user-dir "config-local.el") t)
 
