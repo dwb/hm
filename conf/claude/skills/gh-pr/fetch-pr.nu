@@ -2,7 +2,8 @@
 
 # Fetch GitHub PR data (title, description, comments) for review.
 # Comments are numbered sequentially and author names are omitted to avoid bias.
-# Limitation: per_page=100 without pagination; sufficient for virtually all PRs.
+# Inline comments come from GraphQL review threads with resolved threads filtered out.
+# Limitation: first/per_page=100 without pagination; sufficient for virtually all PRs.
 
 def parse-github-remote [url: string]: nothing -> record<owner: string, repo: string> {
   $url
@@ -47,6 +48,27 @@ def gh-api [endpoint: string]: nothing -> any {
   ^gh api $endpoint -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" | from json
 }
 
+def fetch-unresolved-inline-comments [owner: string, repo: string, pr_num: int]: nothing -> list<any> {
+  let query = "query($owner: String!, $repo: String!, $number: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $number) { reviewThreads(first: 100) { nodes { isResolved comments(first: 100) { nodes { body path line originalLine startLine originalStartLine replyTo { databaseId } } } } } } } }"
+  let result = (^gh api graphql -f $"query=($query)" -f $"owner=($owner)" -f $"repo=($repo)" -F $"number=($pr_num)" | from json)
+  $result.data.repository.pullRequest.reviewThreads.nodes
+  | where isResolved == false
+  | each { |thread|
+      $thread.comments.nodes | each { |c|
+        {
+          body: $c.body,
+          path: $c.path,
+          line: $c.line,
+          original_line: $c.originalLine,
+          start_line: $c.startLine,
+          original_start_line: $c.originalStartLine,
+          in_reply_to_id: ($c.replyTo | get -o databaseId),
+        }
+      }
+    }
+  | flatten
+}
+
 def format-location [comment: record]: nothing -> string {
   let line = ($comment | get -o line | default ($comment | get -o original_line))
   let start = ($comment | get -o start_line | default ($comment | get -o original_start_line))
@@ -64,7 +86,7 @@ def main [pr_num: int] {
   let base = $"/repos/($remote.owner)/($remote.repo)"
 
   let pr = (gh-api $"($base)/pulls/($pr_num)")
-  let inline_comments = (gh-api $"($base)/pulls/($pr_num)/comments?per_page=100")
+  let inline_comments = (fetch-unresolved-inline-comments $remote.owner $remote.repo $pr_num)
   let discussion_comments = (gh-api $"($base)/issues/($pr_num)/comments?per_page=100")
   let reviews = (gh-api $"($base)/pulls/($pr_num)/reviews?per_page=100"
     | where { ($in | get -o body | default "") != "" })

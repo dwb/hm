@@ -63,27 +63,109 @@ To filter a revision's diff to specific files, use `jj diff -r <rev> --git -- <p
 When `@` is a merge commit, `@-` returns ALL parents. For example, `branch_tip::@-` may give unexpected results. Be explicit: use `::branch_tip & ~::trunk()` to enumerate branch commits reliably.
 
 ### evolog templates use a different type
-`jj evolog` uses `CommitEvolutionEntry`, not `Commit`. Access commit properties via `self.commit()`:
+`jj evolog` uses `CommitEvolutionEntry`, not `Commit`. ALL commit-level fields (`commit_id`, `change_id`, `description`, `author`, `committer`, etc.) must go through `self.commit()`:
 
 ```bash
-# WRONG:
+# WRONG (none of these keywords exist at the entry level):
 jj evolog -T 'change_id.short() ...'
+jj evolog -T 'description ...'
+jj evolog -T 'author.name() ...'
 
 # CORRECT:
 jj evolog -T 'self.commit().commit_id().short() ++ " " ++ self.commit().committer().timestamp().format("%H:%M") ++ "\n"'
 ```
 
-Available methods: `self.commit()`, `self.operation()`, `self.predecessors()`, `self.inter_diff([files])`.
+Available methods on the entry: `self.commit()`, `self.operation()`, `self.predecessors()`, `self.inter_diff([files])`.
+
+`self.predecessors()` returns a `List<Commit>`, not a single commit. A squash collapses multiple commits into one entry, so any template that assumes a single predecessor (`self.predecessors().commit_id()`) will error. Use `.join(",")` or iterate.
 
 ## Using `evolog` to Find Historical State
 
-`evolog` shows the evolution of a single change — all historical versions as it was amended, rebased, etc.
+`evolog` shows the evolution of a **single change** — all historical versions of it as it was amended, rebased, squashed, etc. It does NOT show repo-wide history.
 
-**Use when asked about:** "what changed since last session", "history of edits to this commit", "find when a modification was made".
+**Pick the right tool:**
+- Whole-repo commit graph → `jj log`
+- Whole-repo operation history (commands run against the repo) → `jj op log`
+- One change's rewrite lineage (this commit's previous versions) → `jj evolog`
 
-**Typical workflow for "show changes since X":**
-1. `jj evolog` — find the commit ID representing the "before" state (look for time gaps or timestamps)
-2. `jj diff --from <old-commit-id> --to @ --git` — see all changes since then
+**Use when asked about:** "what changed since last session", "history of edits to this commit", "find when a modification was made", "get back the version I had ten minutes ago".
+
+### `-r` semantics
+
+`jj evolog -r <revset>` follows the evolution of revisions matching the revset. This is NOT the same as `jj log -r <revset>`:
+
+- `jj log -r main` — commits reachable from `main` (history)
+- `jj evolog -r main` — `main`'s own rewrite history (rare, since `main` usually isn't rewritten)
+- `jj evolog` (default `-r @`) — the working-copy change's rewrite history (common)
+
+Pass a change ID or symbolic ref (`@`, `@-`, bookmark), not a commit ID of an already-rewritten version.
+
+### Hidden commits are still usable
+
+Historical commits listed by evolog are "hidden" (abandoned): they don't appear in `jj log` with the default revset. But their commit IDs remain valid arguments to `jj diff`, `jj show`, `jj file show`, `jj restore --from`, etc. This is what makes evolog the right tool for recovering prior working-copy state.
+
+### Patches between versions
+
+`jj evolog -p` shows the diff between each version of the change and its predecessor. It uses `inter_diff`, which rebases the predecessor onto the current parents before diffing, so a rebase or parent change doesn't pollute the patch — you see only what was actually edited.
+
+### Typical workflow for "show changes since X"
+
+1. `jj evolog` — find the commit ID for the "before" state (look for time gaps or timestamps).
+2. `jj diff --from <old-commit-id> --to @ --git` — see all changes since then.
+
+## Temporary File Reverts (Don't Copy to /tmp)
+
+When you want to test against an older version of a file and then put it back, do **not** copy files to `/tmp` and back. jj already snapshots the working copy on every command, so the current state is always recoverable.
+
+### Key Facts
+- Every jj command (and the user's snapshot hook on each edit) records a new commit ID for `@` in the evolog. No state is lost just because you edited a file.
+- `jj restore --from <rev> <paths>` overwrites the named paths in `@` with their content from `<rev>`. Other files are untouched.
+- `jj file show -r <rev> <path>` prints the file's content at that revision to stdout — useful for diffing or piping, but `jj restore` is the idiomatic way to put it on disk.
+- `jj util snapshot` forces a snapshot now. Rarely needed (almost every command snapshots first), but useful if files were changed outside any jj invocation and you want a recorded checkpoint before doing something else.
+
+### Workflow: Revert a File, Test, Restore
+
+```bash
+# 1. Record the current commit ID of @ so we can come back to it.
+CURRENT=$(jj log -r @ --no-graph -T 'commit_id')
+
+# 2. Find an older version. evolog lists historical commit IDs of @.
+jj evolog -T 'self.commit().commit_id().short() ++ " " ++ self.commit().committer().timestamp() ++ "\n"'
+# Or look further back in normal history:
+jj log -r 'ancestors(@, 10)' -- path/to/file
+
+# 3. Restore the file from an older revision into the working copy.
+jj restore --from <older-commit-id> path/to/file
+
+# 4. Run your test, observe behaviour...
+
+# 5. Put the file back to the state from step 1.
+jj restore --from "$CURRENT" path/to/file
+```
+
+`<older-commit-id>` may be any revset: a bookmark, `@-`, a trunk ref, an evolog commit ID, etc.
+
+### Workflow: Inspect a File at an Old Revision Without Touching `@`
+
+```bash
+jj file show -r <rev> path/to/file        # print to stdout
+jj diff --from <rev> --to @ --git -- path/to/file   # see what's changed
+```
+
+### Whole-Repo Rollback: `jj op restore`
+
+For undoing a chain of operations (not just file content), use the operation log:
+
+```bash
+jj op log               # find the operation to roll back to
+jj op restore <op-id>   # restore repo state to that operation
+```
+
+This is a mutating operation — only run on explicit user request. For file-level experiments, prefer `jj restore --from` which doesn't rewrite operation history.
+
+### Read-Only Inspection at an Earlier Operation
+
+`jj --at-op=<op-id> <command>` runs a command against the repo as it was at that operation, without mutating anything. Useful for reconstructing diffs or logs from a prior state.
 
 ## Megamerge Operations
 
