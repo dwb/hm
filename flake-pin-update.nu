@@ -8,6 +8,7 @@ def main [
     --dry-run                         # Print the nix command without running it
     --lock-file: string = "flake.lock"
     --except: string = ""
+    ...only
 ] {
     let target = if ($date | is-not-empty) {
         $date
@@ -22,7 +23,7 @@ def main [
 
     let github_inputs = $lock.nodes
         | items { |name, node| {name: $name, node: $node} }
-        | where { |it| $it.name not-in $exceptlist and $it.name != "root" and ($it.node | get -o locked | get -o type) == "github" }
+        | where { |it| (($only | length) == 0 or $it.name in $only) and $it.name not-in $exceptlist and $it.name != "root" and ($it.node | get -o locked | get -o type) == "github" }
 
     let overrides = $github_inputs | each { |it|
         let owner = $it.node.locked.owner
