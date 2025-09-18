@@ -66,7 +66,6 @@ in
     wget
     zstd
   ]) ++ (with pkgsUnstable; [
-    # ghostty ## fucks sake marked broken on darwin
     aider-chat
     delta # diff formatter
     delve
@@ -81,9 +80,11 @@ in
       '';
     })
 
-  ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
+  ]) ++ lib.optionals stdenv.hostPlatform.isDarwin ((with pkgs; [
     reattach-to-user-namespace
-  ]);
+  ]) ++ (with pkgsUnstable; [
+    ghostty-bin
+  ]));
 
   fonts.fontconfig.enable = true;
 
@@ -111,11 +112,13 @@ in
 
   home.file.".config/ghostty/config" = {
     text = ''
-      font-family = "Iosevka Term SS08"
+      font-family = "Iosevka DWB Term"
       font-size = 12
-      window-theme = light
-      theme = light:zenwritten_light,dark:zenwritten_dark
+      window-theme = system
+      theme = light:Zenwritten Light,dark:Zenwritten Dark
       auto-update = off
+
+      keybind = ctrl+[=text:\x1b
     '';
   };
 
