@@ -310,7 +310,7 @@ in
         # diff from trunk
         dt = ["diff" "-r" "trunk()..@"];
         # log to trunk
-        lt = ["log" "--reversed" "-r" "fork_point(@- | trunk())::@ ~ ::trunk()-"];
+        lt = ["log" "--reversed" "-r" "fork_point(trunk() | ancestors(@, 2))::@"];
 
         log-status = ["util" "exec" "--" "sh" "-c" ''
           set -e
@@ -339,7 +339,7 @@ in
           fi
 
           pre-commit run --from="$FROM" --to="$TO" "$@"
-        ''];
+        '' "jj-pre-commit"];
         # rebase on trunk
         retrunk = ["rebase" "-d" "trunk()"];
         # split before private (commits)
