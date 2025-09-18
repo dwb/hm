@@ -307,6 +307,9 @@ in
         private-commits = privateCommits;
       };
       aliases = {
+        add-parent = ["util" "exec" "--" "${pkgs.python3}/bin/python"
+                      ./jj-commands/add-parent.py];
+
         di = ["diff"];
         # diff from trunk
         dt = ["diff" "-r" "trunk()..@"];
