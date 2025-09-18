@@ -1,0 +1,58 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "emacs",
+  "title": "Emacs",
+  "description": "Drive a running Emacs from Raycast via emacsclient. Extensible from elisp.",
+  "icon": "icon.png",
+  "author": "dwb",
+  "license": "MIT",
+  "platforms": ["macOS"],
+  "preferences": [
+    {
+      "name": "emacsclientPath",
+      "type": "textfield",
+      "title": "emacsclient Path",
+      "description": "Path to the emacsclient binary. Leave blank to use ~/.nix-profile/bin/emacsclient.",
+      "required": false,
+      "default": "~/.nix-profile/bin/emacsclient"
+    }
+  ],
+  "commands": [
+    {
+      "name": "emacs-commands",
+      "title": "Emacs Commands",
+      "description": "Run a command registered in Emacs.",
+      "mode": "view"
+    },
+    {
+      "name": "switch-buffer",
+      "title": "Switch Buffer",
+      "description": "Switch to an Emacs buffer.",
+      "mode": "view"
+    },
+    {
+      "name": "select-frame",
+      "title": "Select Frame",
+      "description": "Raise and focus an Emacs frame.",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.94.0",
+    "@raycast/utils": "^1.19.1"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.0.4",
+    "@types/node": "22.13.10",
+    "@types/react": "19.0.12",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint"
+  }
+}

@@ -463,6 +463,8 @@ OS-level focus; we only need to update Emacs's internal state."
 ;; (require 'project-per-tab)
 (require 'frame-project-dedicate)
 
+(require 'raycast-emacs)
+
 (require 'clique)
 (require 'clique-doom)
 
