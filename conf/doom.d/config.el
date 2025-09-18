@@ -149,6 +149,38 @@
 
 (add-hook 'focus-out-hook #'my/save-all-file-buffers)
 
+
+(when (eq initial-window-system 'ns)
+  ;; NS (macOS Cocoa) port does not reliably deliver focus-out events, so
+  ;; `frame-focus-state' can report multiple frames as focused simultaneously
+  ;; and `selected-frame' can get stuck on a stale frame. Work around this by
+  ;; tracking which frames are newly focused and selecting the most recent one.
+  (defvar my/focus-previous-focused-frames nil
+    "Set of frames that had `frame-focus-state' t on the last check.")
+
+  (defvar my/focus-fix-in-progress nil
+    "Non-nil while `my/ns-focus-fix' is running, to prevent reentrancy.")
+
+  (defun my/ns-focus-fix ()
+    "Select the frame that most recently gained focus.
+Diffs `frame-focus-state' against the previous snapshot to find
+newly-focused frames, then calls `select-frame' on the one that
+just appeared.  Uses `select-frame' rather than
+`select-frame-set-input-focus' because the frame already has
+OS-level focus; we only need to update Emacs's internal state."
+    (when (and (eq initial-window-system 'ns)
+               (not my/focus-fix-in-progress))
+      (let* ((my/focus-fix-in-progress t)
+             (currently-focused (seq-filter #'frame-focus-state (visible-frame-list)))
+             (newly-focused (seq-difference currently-focused
+                                            my/focus-previous-focused-frames
+                                            #'eq)))
+        (setq my/focus-previous-focused-frames currently-focused)
+        (when (length= newly-focused 1)
+          (select-frame (car newly-focused))))))
+
+  (add-function :after after-focus-change-function #'my/ns-focus-fix))
+
 (setopt desktop-load-locked-desktop 'check-pid)
 (setopt desktop-path (list (concat doom-local-dir "state/desktop")))
 ;; TODO: not good enough, doesn't prioritise visible buffers
