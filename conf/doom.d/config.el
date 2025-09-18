@@ -475,7 +475,37 @@
 (use-package unison-ts-mode)
 (use-package unison-daemon)
 
-(use-package! vc-jj)
+(use-package! vc-jj
+  :config
+  ;; FIXME: Upstream bug in vc-jj-diff for merge commits.
+  ;; https://codeberg.org/emacs-jj-vc/vc-jj.el
+  ;;
+  ;; When rev1 and rev2 are both nil (e.g. vc-root-diff with no args),
+  ;; vc-jj-diff sets rev1 to first_parent(@) and rev2 to @, then runs:
+  ;;
+  ;;   jj diff -f <first-parent-change-id> -t @
+  ;;
+  ;; For merge commits, this only diffs against ONE parent, not all of them.
+  ;; Plain `jj diff` (or `jj diff -r @`) shows the combined diff against
+  ;; all parents, which is the expected behavior.
+  ;;
+  ;; The comment in vc-jj.el says using first_parent "handles edge cases
+  ;; like e.g. multiple parents" but it actually mishandles them by
+  ;; discarding all but the first parent.
+  ;;
+  ;; This advice fixes the no-args case by using `-r @` instead.
+  (defun my/vc-jj-diff-fix-merge-commits (orig-fn files &optional rev1 rev2 buffer async)
+    "Advice to fix vc-jj-diff for merge commits.
+When REV1 and REV2 are both nil, use `-r @` instead of `-f <parent> -t @'
+so that merge commits diff correctly against all parents."
+    (if (and (null rev1) (null rev2))
+        ;; Both nil: we want "current change's diff", so pass identical
+        ;; revisions to trigger the (string= rev1 rev2) branch which uses
+        ;; `-r rev1` instead of `-f rev1 -t rev2`
+        (funcall orig-fn files "@" "@" buffer async)
+      (funcall orig-fn files rev1 rev2 buffer async)))
+
+  (advice-add 'vc-jj-diff :around #'my/vc-jj-diff-fix-merge-commits))
 
 (use-package! jj-mode
   :bind
