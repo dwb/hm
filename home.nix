@@ -6,10 +6,12 @@
   doomemacs,
   nu-scripts,
   username,
+  jj-hunk,
   ...
 }@args:
 let
   inherit (pkgs) lib stdenv;
+  inherit (stdenv.hostPlatform) system;
   guiEnabled = args.guiEnabled or stdenv.hostPlatform.isDarwin;
 
   carapace = pkgsUnstable.carapace.overrideAttrs (old: {
@@ -109,7 +111,10 @@ in
   xdg.enable = true; # don't use macos dirs for stuff
 
   home.packages =
-    (with pkgs; [
+    [
+      jj-hunk.packages.${system}.default
+    ]
+    ++ (with pkgs; [
       aws-vault
       fd
       gh

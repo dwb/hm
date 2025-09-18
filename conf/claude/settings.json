@@ -32,6 +32,7 @@
       "Bash(jj operation diff:*)",
       "Bash(jj op log:*)",
       "Bash(jj operation log:*)",
+      "Bash(jj-hunk list:*)",
       "Bash(grep:*)",
       "Bash(gh search:*)",
       "Bash(gh ruleset:*)",

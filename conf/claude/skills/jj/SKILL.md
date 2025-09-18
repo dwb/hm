@@ -199,10 +199,83 @@ Do NOT reach for `jj op restore` — `jj edit` is sufficient when the work is in
 jj help -k templates | grep '^#'
 ```
 
-## Non-Interactive Split Tool
+## Hunk-Level Operations with `jj-hunk`
 
-See [split-tool.md](split-tool.md) for the manifest-driven `jj-split-tool.sh`
-that enables hunk-level splits without a TUI, via `jj split --tool`.
+`jj-hunk` performs hunk-level `split`, `commit`, and `squash` non-interactively,
+driven by a JSON/YAML spec instead of a TUI. It is the way to get hunk-level
+precision without `-i`. The binary is on PATH (flake input
+`github:laulauland/jj-hunk`).
+
+### `jj-hunk list` — Inspect Hunks (read-only)
+
+`jj-hunk list` is read-only and always safe. Use it to analyze changes before
+proposing commits.
+
+```bash
+jj-hunk list                       # all hunks in @ (JSON)
+jj-hunk list --format text         # human-readable
+jj-hunk list --files               # files with hunk counts only
+jj-hunk list --rev @-              # hunks in a specific revision (vs its parent)
+jj-hunk list --include 'src/**' --exclude '**/*.test.*'   # filter paths
+jj-hunk list --spec-template       # emit an id-based starting spec to edit
+```
+
+Each hunk has a 0-based `index` and a stable `hunk-<sha256>` `id`. Indices shift
+as the diff changes; ids are stable. Prefer ids (or `--spec-template`) when the
+selection must survive edits.
+
+### Spec Format
+
+A spec maps file paths to a selection. Inline JSON/YAML string, `-` for stdin,
+or `--spec-file <path>`.
+
+```json
+{
+  "files": {
+    "path/keep-all":  {"action": "keep"},
+    "path/by-index":  {"hunks": [0, 2]},
+    "path/by-id":     {"ids": ["hunk-<sha256>"]},
+    "path/discard":   {"action": "reset"}
+  },
+  "default": "reset"
+}
+```
+
+- `{"hunks": [...]}` — select by 0-based index or `hunk-<sha256>` id string
+- `{"ids": [...]}` — select by id (merged with `hunks` if both present)
+- `{"action": "keep" | "reset"}` — keep or discard the whole file
+- `"default"` — action for files not listed (`"keep"` or `"reset"`)
+
+### `split` / `commit` / `squash`
+
+```bash
+# Split @ into two commits: selected hunks → first commit, rest stays in @
+jj-hunk split '{"files": {"src/foo.rs": {"hunks": [0, 1]}}, "default": "reset"}' "first commit"
+jj-hunk split -r @- '{"files": {"src/foo.rs": {"action": "keep"}}, "default": "reset"}' "msg"
+
+# Commit selected hunks; remaining changes stay in the working copy
+jj-hunk commit '{"files": {"src/fix.rs": {"action": "keep"}}, "default": "reset"}' "bug fix"
+
+# Squash selected hunks into the parent
+jj-hunk squash '{"files": {"src/cleanup.rs": {"action": "keep"}}, "default": "reset"}'
+jj-hunk squash -r @- '{"files": {"src/cleanup.rs": {"action": "keep"}}, "default": "reset"}'
+```
+
+`split` and `squash` accept `-r <rev>` to target any revision (default `@`);
+`commit` always operates on the working copy. Read a larger spec with
+`--spec-file <path>` or stdin (`-`).
+
+`split`/`commit`/`squash` rewrite commits — treat them as mutating (see Mutating
+Commands below).
+
+### Limitations
+
+- `jj-hunk split` produces the standard two sibling commits at the revision's
+  location. It does NOT expose jj's `-A`/`-B` insertion points. For megamerge
+  extraction that needs explicit insert-after/insert-before, use plain
+  `jj split` with file paths (see Megamerge Operations above).
+- `jj-hunk select <left> <right>` is internal — jj invokes it via `--tool`. Do
+  not call it directly.
 
 ## Mutating Commands (User Request Required)
 
@@ -210,6 +283,7 @@ The following commands modify repository state. Do not use them on your own init
 
 - `jj new`, `jj commit`, `jj describe`
 - `jj edit`, `jj squash`, `jj split`
+- `jj-hunk split/commit/squash` (hunk-level rewrites — `jj-hunk list` is read-only and always safe)
 - `jj rebase`, `jj abandon`
 - `jj bookmark create/move/delete/track`
 - `jj git push/fetch`
@@ -228,6 +302,8 @@ Before ANY mutating operation, run `jj st`. You need to know:
 
 Making commits without checking status first leads to squashing into the wrong parent, committing unintended files, losing track of which branch you're on, or misunderstanding the graph structure.
 
+For hunk-level detail beyond `jj st`/`jj diff` — useful when planning how to split changes — `jj-hunk list` is read-only (see Hunk-Level Operations above).
+
 ### The `@` as Working Copy
 
 `@` is a working-copy change — it holds uncommitted edits. It is NOT a proper commit: it typically has no description, and it's the thing you edit files into.
@@ -240,7 +316,7 @@ The goal of making commits is to **move changes out of `@`** and into described,
 | `jj split -m "msg" [paths]` | Move SELECTED changes from `@` into a new sibling commit | Points to the sibling with the *remaining* changes |
 | `jj squash [-r <rev>]` | Move changes from `@` INTO an existing ancestor commit | Collapses; `@` is replaced by the target commit |
 
-**Interactive flags (`-i`) require a TUI.** The agent cannot use them. When hunk-level precision is needed, use `--tool` with the manifest-driven split helper (see below). Otherwise, select changes by passing explicit file paths.
+**Interactive flags (`-i`) require a TUI.** The agent cannot use them. When hunk-level precision is needed, use `jj-hunk` (see Hunk-Level Operations above). Otherwise, select changes by passing explicit file paths.
 
 ### `jj commit` — Commit Everything
 
@@ -260,7 +336,7 @@ jj split -m "message for first commit" path/to/file1 path/to/file2
 
 Produces two sibling commits from `@`: one with the selected files' changes, one with everything else. `@` advances to the sibling with the *remaining* (not-yet-committed) changes.
 
-Use when: `@` contains multiple logical changes that should be separate commits. Select which changes move into the first commit by naming paths or directories. The split tool (`jj split --tool`) with the manifest-driven helper (see below) enables hunk-level splits without a TUI.
+Use when: `@` contains multiple logical changes that should be separate commits. Select which changes move into the first commit by naming paths or directories. For hunk-level splits without a TUI, use `jj-hunk` (see Hunk-Level Operations above).
 
 **After a split, `@` still holds the remaining changes.** Run `jj st` and continue committing or splitting until `@` is empty of intentional changes.
 

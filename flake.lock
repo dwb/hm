@@ -38,6 +38,27 @@
         "type": "github"
       }
     },
+    "jj-hunk": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgsUnstable"
+        ]
+      },
+      "locked": {
+        "lastModified": 1779016322,
+        "narHash": "sha256-lFuYTg6TW/Lsz4wwaaWFi37F2aGKpLwQgq40VTdDUKE=",
+        "owner": "laulauland",
+        "repo": "jj-hunk",
+        "rev": "3643ee8f7fa02f0ea4befd060e0e1057df72b987",
+        "type": "github"
+      },
+      "original": {
+        "owner": "laulauland",
+        "ref": "v0.4.1",
+        "repo": "jj-hunk",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1781437943,
@@ -90,6 +111,7 @@
       "inputs": {
         "doomemacs": "doomemacs",
         "home-manager": "home-manager",
+        "jj-hunk": "jj-hunk",
         "nixpkgs": "nixpkgs",
         "nixpkgsUnstable": "nixpkgsUnstable",
         "nu-scripts": "nu-scripts"

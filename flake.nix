@@ -21,6 +21,11 @@
       url = "github:nushell/nu_scripts";
       flake = false;
     };
+
+    jj-hunk = {
+      url = "github:laulauland/jj-hunk/v0.4.1";
+      inputs.nixpkgs.follows = "nixpkgsUnstable";
+    };
   };
 
   outputs =
