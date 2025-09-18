@@ -76,6 +76,7 @@ in
     git-absorb
     git-extras
     graphviz
+    gum # shell UI bits https://github.com/charmbracelet/gum
     home-manager
     htop
     (prebuiltPkg "iosevkaDWB")
@@ -320,6 +321,7 @@ in
     enable = true;
     package = pkgsUnstable.jujutsu;
     settings = let
+      gum = "${pkgs.gum}/bin/gum";
       privateCommits = "description(glob:'wip:*') | description(glob:'private:*')";
     in {
       user = {
@@ -401,13 +403,24 @@ in
         retrunk = ["rebase" "-d" "trunk()"];
         # split before private (commits)
         sbp = ["split" "--insert-after" "heads((trunk()..@) ~ private_commits())"];
+        # split between trunk and head
+        sth = ["split" "-A" "trunk()" "-B@"];
+        # split to parent
+        stp = ["util" "exec" "--" "${pkgsUnstable.nushell}/bin/nu"
+               ./jj-commands/split-to-parent.nu
+               "jj-split-to-parent"];
+        # squash to parent
+        qtp = ["util" "exec" "--" "${pkgsUnstable.nushell}/bin/nu"
+               ./jj-commands/squash-to-parent.nu
+               "jj-squash-to-parent"];
         tug = ["bookmark" "move" "--from" "closest_bookmark(@)" "--to" "closest_public_nonempty(@)"];
       };
       revset-aliases = {
-        "closest_bookmark(to)" = "heads(::to & bookmarks())";
+        "closest_bookmark(to)" = "heads(first_ancestors(to) & bookmarks())";
         "closest_nonempty(to)" = "heads(::to ~ empty())";
         "closest_public_nonempty(to)" = "closest_nonempty(to) ~ private_commits()";
-        "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
+        # "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
+        "immutable_heads()" = "builtin_immutable_heads() | (trunk().. & ~mine())";
         "private_commits()" = privateCommits;
       };
     };
