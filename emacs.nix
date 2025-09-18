@@ -179,7 +179,11 @@ in
         run rm -f "$dst"
       fi
 
-      run ${pkgs.rsync}/bin/rsync -rlt --delete --chmod=u+w $VERBOSE_ARG \
+      # --checksum: store files all have mtime 1, and a rebuilt Info.plist
+      # usually has the same size as the old one (store hashes are fixed
+      # length), so rsync's default size-and-mtime check would skip it and
+      # leave LSEnvironment pointing at old, possibly collected, store paths.
+      run ${pkgs.rsync}/bin/rsync -rlt --checksum --delete --chmod=u+w $VERBOSE_ARG \
         ${emacsPackage}/Applications/Emacs.app/ "$dst/"
 
       # Ad-hoc identity: there is no code signing identity in the keychain, and
