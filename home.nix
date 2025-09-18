@@ -240,8 +240,6 @@ in
 
     package = pkgsUnstable.git;
 
-    inherit userName userEmail;
-
     ignores = [
       ".DS_Store"
       "*~"
@@ -250,69 +248,66 @@ in
       ".direnv/"
     ];
 
-    aliases = {
-      a = "annex";
-      aa = "add --all";
-      ai = "add -i";
-      ap = "add -p";
-      ar = "add --update :/";
-      ara = "add --all :/";
-      as = "!\"f() { git ls-files -m | grep $1 | xargs git add; }; f\"";
-      au = "add --update";
-      br = "branch";
-      branch-delete-merged = "!git branch --merged | grep -v '\\*' | xargs -n 1 git branch -d";
-      brn = "rev-parse --abbrev-ref HEAD";
-      changelog = "log --reverse '--format=* %s (%an)'";
-      ci = "commit -v";
-      cia = "commit -av";
-      ciam = "commit -am";
-      ciar = "!git ar && git ci";
-      cim = "commit -m";
-      cip = "commit -pv";
-      co = "checkout";
-      cob = "checkout -";
-      com = "!git switch \"$(basename \"$(git rev-parse --abbrev-ref origin/HEAD)\")\"";
-      commend = "commit --amend --no-edit";
-      conflicts = "!git status --porcelain=2 | awk '$1 == \"u\" { print $11 }'";
-      di = "diff";
-      dic = "diff --cached";
-      dim = "!set -e; upstream=$(git rev-parse --symbolic-full-name '@{upstream}'); git diff $(git merge-base --fork-point $upstream)..HEAD";
-      fixauthor = "commit --amend --reset-author --no-edit";
-      fixup = "!\"git commit --fixup $(git log --color=always --format='%C(auto)%h%d %s %C(black)%C(bold)%cr' | fzf --ansi --no-sort --reverse | awk '{print $1}')\"";
-      graph = "log --graph --pretty=format':%C(yellow)%h%Cblue%d%Creset %s %C(white) %an, %ar%Creset'";
-      grog = "log --graph --abbrev-commit --decorate --all --format=format:\\\"%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(dim white) - %an%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n %C(white)%s%C(reset)\\\"";
-      ignore = "update-index --assume-unchanged";
-      ignored = "!git ls-files -v | awk '/^h /{print $2}'";
-      l = "log --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
-      pb = "publish-branch";
-      ph = "push";
-      prr = "!git publish-branch --ignore-exists && hub browse -- \"compare/$(git rev-parse --abbrev-ref head)?expand=1\"";
-      prune-squashed-branches = "!f() { set -e; git switch \"$1\"; git pull; git remote prune origin; git delete-squashed-branches --proceed; }; f \"$(basename \"$(git rev-parse --abbrev-ref origin/HEAD)\")\"";
-      pu = "pull";
-      pur = "pull --rebase";
-      purph = "!git pull --rebase && git push";
-      re = "rebase";
-      root = "rev-parse --show-toplevel";
-      sf = "status";
-      sm = "submodule";
-      squash = "rebase --autosquash";
-      ss = "status -sb";
-      st = "status -sb";
-      sw = "switch";
-      unignore = "update-index --no-assume-unchanged";
-      unwip = "reset HEAD^";
-      wip = "!git add --all :/ && git commit -n -m DANWIP";
-    };
-
-    difftastic = {
-      enable = true;
-      package = pkgsUnstable.difftastic;
-      display = "inline";
-    };
-
     lfs.enable = true;
 
     settings = {
+      user = {
+        name = userName;
+        email = userEmail;
+      };
+      alias = {
+        a = "annex";
+        aa = "add --all";
+        ai = "add -i";
+        ap = "add -p";
+        ar = "add --update :/";
+        ara = "add --all :/";
+        as = "!\"f() { git ls-files -m | grep $1 | xargs git add; }; f\"";
+        au = "add --update";
+        br = "branch";
+        branch-delete-merged = "!git branch --merged | grep -v '\\*' | xargs -n 1 git branch -d";
+        brn = "rev-parse --abbrev-ref HEAD";
+        changelog = "log --reverse '--format=* %s (%an)'";
+        ci = "commit -v";
+        cia = "commit -av";
+        ciam = "commit -am";
+        ciar = "!git ar && git ci";
+        cim = "commit -m";
+        cip = "commit -pv";
+        co = "checkout";
+        cob = "checkout -";
+        com = "!git switch \"$(basename \"$(git rev-parse --abbrev-ref origin/HEAD)\")\"";
+        commend = "commit --amend --no-edit";
+        conflicts = "!git status --porcelain=2 | awk '$1 == \"u\" { print $11 }'";
+        di = "diff";
+        dic = "diff --cached";
+        dim = "!set -e; upstream=$(git rev-parse --symbolic-full-name '@{upstream}'); git diff $(git merge-base --fork-point $upstream)..HEAD";
+        fixauthor = "commit --amend --reset-author --no-edit";
+        fixup = "!\"git commit --fixup $(git log --color=always --format='%C(auto)%h%d %s %C(black)%C(bold)%cr' | fzf --ansi --no-sort --reverse | awk '{print $1}')\"";
+        graph = "log --graph --pretty=format':%C(yellow)%h%Cblue%d%Creset %s %C(white) %an, %ar%Creset'";
+        grog = "log --graph --abbrev-commit --decorate --all --format=format:\\\"%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(dim white) - %an%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n %C(white)%s%C(reset)\\\"";
+        ignore = "update-index --assume-unchanged";
+        ignored = "!git ls-files -v | awk '/^h /{print $2}'";
+        l = "log --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
+        pb = "publish-branch";
+        ph = "push";
+        prr = "!git publish-branch --ignore-exists && hub browse -- \"compare/$(git rev-parse --abbrev-ref head)?expand=1\"";
+        prune-squashed-branches = "!f() { set -e; git switch \"$1\"; git pull; git remote prune origin; git delete-squashed-branches --proceed; }; f \"$(basename \"$(git rev-parse --abbrev-ref origin/HEAD)\")\"";
+        pu = "pull";
+        pur = "pull --rebase";
+        purph = "!git pull --rebase && git push";
+        re = "rebase";
+        root = "rev-parse --show-toplevel";
+        sf = "status";
+        sm = "submodule";
+        squash = "rebase --autosquash";
+        ss = "status -sb";
+        st = "status -sb";
+        sw = "switch";
+        unignore = "update-index --no-assume-unchanged";
+        unwip = "reset HEAD^";
+        wip = "!git add --all :/ && git commit -n -m DANWIP";
+      };
       core = {
         sparseCheckout = true;
         quotepath = false;
@@ -353,6 +348,13 @@ in
       # this is too problematic
       # url."ssh://git@github.com/".insteadOf = "https://github.com/";
     };
+  };
+
+  programs.difftastic = {
+    enable = true;
+    package = pkgsUnstable.difftastic;
+    git.enable = true;
+    options.display = "inline";
   };
 
   programs.jujutsu = {
