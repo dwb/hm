@@ -252,7 +252,10 @@ This allows special buffers to appear in project-dedicated frames."
             (project (frame-project-dedicate-project-of-buffer buffer))
             (frame (frame-project-dedicate--find-project-frame project)))
       (progn
-        (select-frame-set-input-focus frame)
+        (if (boundp 'desktop-buffer-ok-count)
+            ;; desktop-mode is restoring
+            (select-frame frame)
+          (select-frame-set-input-focus frame))
         (funcall oldfun buffer action frame))
     (funcall oldfun buffer-or-name action frame)))
 

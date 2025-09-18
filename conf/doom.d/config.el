@@ -2926,6 +2926,18 @@ revisions (i.e., use a \"...\" range)."
        display-buffer-in-side-window)
       (side . bottom)))))
 
+(require 'inheritenv)
+(defmacro my/enable-git (&rest body)
+  `(with-environment-variables (("gitforceinjj" "1"))
+     (inheritenv ,@body)))
+
+(defmacro my/enable-git-in (fn)
+  `(define-advice ,fn (:around (oldfun) my/enable-git)
+     (my/enable-git (funcall oldfun))))
+
+(with-eval-after-load 'browse-at-remote
+  (my/enable-git-in browse-at-remote-get-url))
+
 ;;; doom modules config
 
 ;; popup currently disabled, i think it's not helpful on balance
