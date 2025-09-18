@@ -1,4 +1,4 @@
-{ lib, nixpkgsUnstable, pkgs, pkgsUnstable, guiEnabled, doomemacs, ... }:
+{ lib, pkgs, pkgsUnstable, guiEnabled, doomemacs, ... }:
 let
   configDir = ".emacs.d";
   # emacsPkgs = pkgsUnstable.callPackage (import "${nixpkgsUnstable}/pkgs/applications/editors/emacs");
@@ -51,9 +51,11 @@ in {
         }).overrideAttrs (old: {
           patches = old.patches ++ [ ./emacs-window-name.patch ];
         })
-      else
-        emacs30-nox)).emacsWithPackages
-      (epkgs: with epkgs; [ treesit-grammars.with-all-grammars vterm ]);
+      else emacs30-nox)).emacsWithPackages
+        (epkgs: with epkgs; [
+          treesit-grammars.with-all-grammars
+          vterm
+        ]);
   };
 
 }
