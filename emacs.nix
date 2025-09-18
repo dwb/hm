@@ -13,7 +13,24 @@ let
   # emacsPkgs = pkgsUnstableSlow.callPackage (import "${nixpkgsUnstable}/pkgs/applications/editors/emacs");
   # emacsGuiPkg =
 
-  baseEmacs =
+  # Emacs caps its own open-file limit at FD_SETSIZE, 1024 by default on macOS.
+  # kqueue file notifications use one descriptor per watched directory, so
+  # eglot runs out of watches in large projects. A larger FD_SETSIZE enlarges
+  # every fd_set in Emacs, and Emacs's configure already defines
+  # _DARWIN_C_SOURCE, which selects the select() that accepts more than 1024
+  # descriptors. glibc does not let programs change FD_SETSIZE.
+  withLargerFdSetSize =
+    drv:
+    if pkgs.stdenv.hostPlatform.isDarwin then
+      drv.overrideAttrs (old: {
+        env = (old.env or { }) // {
+          NIX_CFLAGS_COMPILE = "${old.env.NIX_CFLAGS_COMPILE or ""} -DFD_SETSIZE=10000";
+        };
+      })
+    else
+      drv;
+
+  baseEmacs = withLargerFdSetSize (
     if guiEnabled then
       (pkgsUnstableSlow.emacs31-pgtk.override {
         withNativeCompilation = true;
@@ -27,7 +44,8 @@ let
           ];
         })
     else
-      pkgsUnstableSlow.emacs31-nox;
+      pkgsUnstableSlow.emacs31-nox
+  );
 
   # `programs.emacs` is not used: the module wraps `package` with
   # `emacsWithPackages` unconditionally, and a second wrap would produce a

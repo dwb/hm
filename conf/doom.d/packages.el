@@ -127,3 +127,6 @@
 ;;                    ("terminfo/67" "terminfo/67/*")
 ;;                    ("terminfo/78" "terminfo/78/*"))))
 
+
+;; probably delete soon!
+(package! lsp-mode :pin "bfc712f6e6272b08080c2c897686666b62375b34")

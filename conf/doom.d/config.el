@@ -121,11 +121,11 @@
 
    :mode org-agenda-mode
 
-   :g "s-r" #'org-agenda-redo
+   :g "s-r" #'org-agenda-redo)
 
-   (defun my/set-org-line-spacing ()
-     (setopt-local line-spacing 0.1))
-   (add-hook 'org-mode-hook #'my/set-org-line-spacing))
+  (defun my/set-org-line-spacing ()
+    (setopt-local line-spacing 0.1))
+  (add-hook 'org-mode-hook #'my/set-org-line-spacing)
 
   (add-hook 'org-mode-hook #'variable-pitch-mode)
 
@@ -357,6 +357,17 @@ buffer list remain reachable."
 
 (add-to-list 'default-frame-alist '(width . 220))
 (add-to-list 'default-frame-alist '(fullscreen . fullheight))
+
+;; Child frames would otherwise inherit `fullscreen' from
+;; `default-frame-alist'.  On NS, `alter-fullscreen-frames' is `inhibit', so a
+;; fullscreen frame rejects any resize that changes its height, and popups stay
+;; at their initial size.
+(define-advice make-frame (:filter-args (args) my/no-fullscreen-child-frames)
+  (pcase-let ((`(,parameters) args))
+    (if (and (assq 'parent-frame parameters)
+             (not (assq 'fullscreen parameters)))
+        (list (cons (cons 'fullscreen nil) parameters))
+      args)))
 
 (add-to-list 'auto-mode-alist `(,(rx ".mts" (? "x") eos) . typescript-ts-mode))
 
@@ -769,6 +780,12 @@ a column or so wider than what is drawn."
   (with-eval-after-load 'eglot
     ;; (add-to-list 'eglot-ignored-server-capabilities :hoverProvider)
     (add-hook 'eglot-managed-mode-hook #'eldoc-box-hover-at-point-mode t)))
+
+(with-eval-after-load 'company-box
+  ;; Same `fullscreen' inheritance problem as the eldoc-box childframe above:
+  ;; without this the completion and doc frames never resize from their
+  ;; initial size, and the doc frame shows a single character.
+  (setf (alist-get 'fullscreen company-box-frame-parameters) nil))
 
 (use-package! gotest)
 
@@ -2711,21 +2728,82 @@ revisions (i.e., use a \"...\" range)."
 (after! forge
   (setq forge-topic-list-limit '(1000 . -1)))
 
-(after! lsp-mode
-  (setq lsp-idle-delay 1.0)
-  (setq-default lsp-enable-file-watchers nil) ;; This causes problems with large repos, but means changing branches is worse
+(with-eval-after-load 'lsp-mode
+  (setopt lsp-idle-delay 1.0)
+  (setopt lsp-enable-suggest-server-download nil)
+  (setopt lsp-file-watch-threshold 5000)
+  ;; (setq-default lsp-enable-file-watchers nil) ;; This causes problems with large repos, but means changing branches is worse
   (setq-default lsp-go-directory-filters ["-vendor" "-manifests"])
 
+  (defun my/lsp-eldoc-compose ()
+    "Show every eldoc source at once in lsp-mode buffers, as eglot does.
+With the default strategy eldoc shows only the first source that answers,
+which is `lsp-eldoc-function', so flymake diagnostics never appear."
+    (if lsp-managed-mode
+        (setq-local eldoc-documentation-strategy #'eldoc-documentation-compose)
+      (kill-local-variable 'eldoc-documentation-strategy)))
+  (add-hook 'lsp-managed-mode-hook #'my/lsp-eldoc-compose)
+
   (lsp-register-custom-settings
-   '(("gopls.memoryMode" "DegradeClosed")
-     ("gopls.staticcheck" t t)
+   '(("gopls.staticcheck" t t)
      ("gopls.usePlaceholders" t t)
      ("gopls.analyses.fieldalignment" t t)
      ("gopls.analyses.nilness" t t)
      ("gopls.analyses.shadow" t t)
      ("gopls.analyses.unusedparams" t t)
      ("gopls.analyses.unusedwrite" t t)
-     ("eslint.useESLintClass" t t))))
+     ("eslint.useESLintClass" t t)))
+
+  ;; lsp-mode holds back `didChange' for full-sync servers until
+  ;; `lsp-debounce-full-sync-notifications-interval' of idle time.  But
+  ;; `lsp--send-no-wait' first sends the held-back changes for every server,
+  ;; whichever server the message is for.  When a full-sync server shares a
+  ;; buffer with an incremental-sync one, the incremental server's
+  ;; per-keystroke `didChange' therefore also sends the full buffer to the
+  ;; full-sync server on every keystroke.  With ts-ls and type-aware oxlint,
+  ;; oxlint ran one slow lint per keystroke, and the diagnostics updated
+  ;; once per character for seconds after typing stopped.
+  ;;
+  ;; This advice sends only the held-back changes for the destination
+  ;; server.  It depends on lsp-mode internals as of 10.0.0: the arguments
+  ;; of `lsp--send-no-wait', the (WORKSPACE BUFFER DOCUMENT CHANGE) entries
+  ;; of `lsp--delayed-requests', and `lsp--not-flushing-delayed-changes'.
+  (defun my/lsp-send-delayed-changes-for (proc)
+    "Send the delayed `textDocument/didChange' notifications for PROC.
+Delayed changes for other servers are left to `lsp--delay-timer'."
+    (when-let* ((own (seq-filter (lambda (req)
+                                   (eq (lsp--workspace-proc (car req)) proc))
+                                 lsp--delayed-requests)))
+      (setq lsp--delayed-requests (seq-difference lsp--delayed-requests own #'eq))
+      (pcase-dolist (`(,workspace ,buffer ,document ,change) (nreverse own))
+        (with-current-buffer buffer
+          (with-lsp-workspace workspace
+            (lsp-notify "textDocument/didChange"
+                        (list :textDocument document
+                              :contentChanges (vector change)))
+            (lsp-diagnostics--request-pull-diagnostics workspace))))))
+
+  (define-advice lsp--send-no-wait (:around (orig message proc) my/lsp-send-no-wait-flush-own)
+    "Around advice for `lsp--send-no-wait'.
+Before sending MESSAGE, send only the delayed changes destined for PROC,
+rather than those for every server."
+    (when (and lsp--not-flushing-delayed-changes
+               lsp-flush-delayed-changes-before-next-message)
+      (let ((lsp--not-flushing-delayed-changes nil))
+        (my/lsp-send-delayed-changes-for proc)))
+    (let ((lsp--not-flushing-delayed-changes nil))
+      (funcall orig message proc)))
+
+  (define-advice lsp-diagnostics--flymake-update-diagnostics
+      (:around (orig-fn &rest args) my/all-workspaces)
+    "Call ORIG-FN with ARGS with no current workspace bound.
+lsp-mode runs `lsp-diagnostics-updated-hook' with `lsp--cur-workspace'
+bound to the server that sent the diagnostics, so `lsp-diagnostics'
+returns only that server's diagnostics.  The Flymake report then
+replaces the other servers' diagnostics for the buffer, such as tsgo's
+type errors whenever oxlint publishes."
+    (let ((lsp--cur-workspace nil))
+      (apply orig-fn args))))
 
 (after! eglot
   (add-to-list 'eglot-server-programs '(haskell-mode . ("haskell-language-server" "--lsp")))
@@ -2778,8 +2856,7 @@ revisions (i.e., use a \"...\" range)."
     (add-hook! go-ts-mode (add-hook 'before-save-hook 'eglot-format-buffer -80 t))
 
     (when-let* ((bin (seq-find #'executable-find '("typescript-language-server"))))
-      (add-to-list 'eglot-server-programs `(typescript-ts-mode ,bin "--stdio"))
-      (add-to-list 'eglot-server-programs `(tsx-ts-mode ,bin "--stdio")))
+      (add-to-list 'eglot-server-programs `((typescript-ts-mode tsx-ts-mode) ,bin "--stdio")))
     (put 'typescript-ts-mode 'eglot-language-id "typescript")
     (put 'tsx-ts-mode 'eglot-language-id "typescriptreact")
 
@@ -3227,6 +3304,7 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
    :desc "project diagnositics" "p" #'flymake-show-project-diagnostics))
 
 (use-package eslint-json-flymake
+  :disabled
   :after flymake
   :config
   (setenv "ESLINT_D_PPID" (format "%s" (emacs-pid)))

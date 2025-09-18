@@ -263,9 +263,23 @@ This allows special buffers to appear in project-dedicated frames."
              (buffer-name)
              (file-name-nondirectory (directory-file-name project-root)))))
 
+(defun frame-project-dedicate--inhibit-switch-frame-p (action)
+  "Return non-nil if a `display-buffer' action inhibits switching frames.
+Check the `inhibit-switch-frame' entry of ACTION, the action argument of
+`display-buffer', and of `display-buffer-overriding-action'."
+  (declare (side-effect-free t))
+  (seq-some (lambda (a)
+              (and (consp a)
+                   (cdr (assq 'inhibit-switch-frame (cdr a)))))
+            (list action display-buffer-overriding-action)))
+
 (defun frame-project-dedicate--display-buffer-advice (oldfun buffer-or-name &optional action frame)
   (if-let* (((or (null frame) (not (framep frame))))
             ((display-graphic-p)) ; Don't redirect from TTY frames.
+            ;; Callers that set `inhibit-switch-frame', such as
+            ;; `elisp--company-doc-buffer', expect the buffer to stay in the
+            ;; selected frame.
+            ((not (frame-project-dedicate--inhibit-switch-frame-p action)))
             (buffer (if (bufferp buffer-or-name)
                         buffer-or-name
                       (get-buffer buffer-or-name)))
