@@ -32,13 +32,15 @@ def my_create_left_prompt [] {
         sys host | get hostname | str replace --regex `\..*` ''
       })
     let user = whoami
+    let aws_profile = ($env | get -o AWS_PROFILE)
 
     [
       (if $nu.history-enabled { "" } else { "🥷  " })
+      (if $aws_profile != null { $"[AWS ($aws_profile)] " })
       (if $user =~ "^(dani?|dwb)$" { "" } else { $"($user)@" })
       (if $hostname == "tanxe" { "" } else { $"($hostname) " })
       (do $env.PROMPT_COMMAND_DEFUALT)
-    ] | str join
+    ] | where { $in != null } | str join
 }
 
 def my_create_right_prompt [] {
