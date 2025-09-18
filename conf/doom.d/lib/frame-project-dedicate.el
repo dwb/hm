@@ -96,19 +96,10 @@ This is used for special buffers like *Help*, *Messages*, etc.")
 (defvar frame-project-dedicate--called-recursively nil)
 (defvar frame-project-dedicate--project-buffers-cache nil)
 
-(defmacro frame-project-dedicate--with-project-buffers-cache (&rest body)
-  `(let* ((frame-project-dedicate--project-buffers-cache
-          (or frame-project-dedicate--project-buffers-cache
-              (make-hash-table :test #'equal))))
-     ,@body))
-
-(defun frame-project-dedicate--get-project-buffers (project)
-  (when (null frame-project-dedicate--project-buffers-cache)
-    (error "frame-project-dedicate--get-project-buffers: not called within frame-project-dedicate--with-project-buffers-cache"))
-  (if-let* ((cache frame-project-dedicate--project-buffers-cache)
-            (buffers (gethash project cache)))
-      buffers
-    (puthash project (project-buffers project) cache)))
+(defun frame-project-dedicate--buffer-in-project-p (buffer project)
+  (let ((root (expand-file-name (file-name-as-directory (project-root project)))))
+    (string-prefix-p root (expand-file-name
+                           (buffer-local-value 'default-directory buffer)))))
 
 (defun frame-project-dedicate--buffer-allowed-p (project buffer)
   "Return t if BUFFER should be allowed in a frame dedicated to PROJECT."
@@ -117,18 +108,17 @@ This is used for special buffers like *Help*, *Messages*, etc.")
         ;; (setq my/fpdbt (backtrace-get-frames 'backtrace-get-frames))
         ;; (message "frame-project-dedicate--buffer-allowed-p: called recursively")
         ))
-    (let ((frame-project-dedicate--called-recursively t))
-      (when (buffer-live-p buffer)
-        (frame-project-dedicate--with-project-buffers-cache
-         (or
-          ;; Buffer has honorary project that matches
-          (let ((honorary (buffer-local-value 'frame-project-dedicate--honorary-project buffer)))
-            (and honorary
-                 (string= honorary (project-root project))))
-          ;; Buffer belongs to the project (using project.el functionality)
-          (seq-contains-p (frame-project-dedicate--get-project-buffers project) buffer)
-          ;; Special buffers without files that should always be allowed
-          (frame-project-dedicate--special-buffer-p buffer))))))
+    (when-let* (((buffer-live-p buffer))
+                (frame-project-dedicate--called-recursively t))
+      (or
+       ;; Buffer has honorary project that matches
+       (let ((honorary (buffer-local-value 'frame-project-dedicate--honorary-project buffer)))
+         (and honorary
+              (string= honorary (project-root project))))
+       ;; Buffer belongs to the project (using project.el functionality)
+       (frame-project-dedicate--buffer-in-project-p buffer project)
+       ;; Special buffers without files that should always be allowed
+       (frame-project-dedicate--special-buffer-p buffer))))
 
 (defun frame-project-dedicate--special-buffer-p (buffer)
   "Return t if BUFFER is a special buffer that should be allowed in any frame."

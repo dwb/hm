@@ -1650,7 +1650,7 @@ If ARG (universal argument), open selection in other-window."
    :ni "s-v" #'eat-yank))
 
 (use-package! pgmacs
-  :disable t
+  :disabled
   :config
   (when (modulep! :ui popup)
     (set-popup-rule! '(derived-mode . pgmacs-mode) :ignore t)))
@@ -2090,8 +2090,8 @@ revisions (i.e., use a \"...\" range)."
 
   (defun my/consult-project-buffer ()
     (interactive)
-    (consult-buffer '(consult--source-project-buffer
-                      consult--source-project-recent-file)))
+    (consult-buffer '(consult-source-project-buffer
+                      consult-source-project-recent-file)))
 
   (map!
    :leader
@@ -2361,27 +2361,67 @@ revisions (i.e., use a \"...\" range)."
    :leader
    :n "m t d" #'my/go-test-debug-single))
 
-(after! pgmacs
-  (after! evil-collection
-    (defun my/evil-collection-pgmacs-setup ()
-      "Set up `evil' bindings for `pgmacs'"
-      (evil-set-initial-state 'pgmacs-mode 'normal)
+(use-package! pgmacs
+  :disabled
+  :config
 
-      (keymap-unset pgmacs-row-list-map "j")
-      (keymap-unset pgmacs-row-list-map "k")
-      (evil-collection-define-key 'normal 'pgmacs-row-list-map
-        "?" #'evil-ex-search-backward
-        "h" #'evil-backward-char
-        "j" #'evil-next-line
-        "k" #'evil-previous-line
-        "l" #'evil-forward-char
-        "H" #'pgmacstbl-previous-column
-        "L" #'pgmacstbl-next-column
-        (kbd "S-TAB") #'pgmacstbl-previous-column
-        (kbd "TAB") #'pgmacstbl-next-column
-        "i" #'pgmacs--insert-row-empty))
+  (evil-set-initial-state 'pgmacs-mode 'emacs)
 
-    (my/evil-collection-pgmacs-setup)))
+  (set-popup-rule! '(derived-mode . pgmacs-mode) :ignore t)
+  
+  ;; help
+  (keymap-unset pgmacs-row-list-map "h")
+  (keymap-unset pgmacs-proc-list-map "h")
+  
+  (dolist (map (list pgmacs-row-list-map/table pgmacs-table-list-map/table))
+    (keymap-set map "j" #'next-line)
+    (keymap-set map "k" #'previous-line)
+    (keymap-set map "J" #'pgmacs--row-as-json)
+    (keymap-set map "p" #'pgmacs--yank-row)
+    (keymap-set map "Y" #'pgmacs--copy-row)
+    (keymap-set map "h" #'pgmacstbl-previous-column)
+    (keymap-set map "l" #'pgmacstbl-next-column)
+    )
+
+  (keymap-set pgmacs-paginated-map "H" #'pgmacs--paginated-prev)
+  (keymap-set pgmacs-paginated-map "L" #'pgmacs--paginated-next))
+
+;; (after! pgmacs
+;;   (after! evil-collection
+;;     (defun my/evil-collection-pgmacs-setup ()
+;;       "Set up `evil' bindings for `pgmacs'"
+;;       (evil-set-initial-state 'pgmacs-mode 'normal)
+
+;;       (dolist (m '(pgmacs-row-list-map))
+;;         (keymap-unset pgmacs-row-list-map "j")
+;;         (keymap-unset pgmacs-row-list-map "k"))
+      
+;;       (evil-collection-define-key 'normal 'pgmacs-row-list-map
+;;         "?" #'evil-ex-search-backward
+;;         "h" #'evil-backward-char
+;;         "j" #'evil-next-line
+;;         "k" #'evil-previous-line
+;;         "l" #'evil-forward-char
+;;         "H" #'pgmacstbl-previous-column
+;;         "L" #'pgmacstbl-next-column
+;;         (kbd "S-TAB") #'pgmacstbl-previous-column
+;;         (kbd "TAB") #'pgmacstbl-next-column
+;;         "i" #'pgmacs--insert-row-empty)
+
+;;       (evil-collection-define-key 'normal 'pgmacs-row-list-map/table
+;;         "j" #'evil-next-line
+;;         "k" #'evil-previous-line
+;;         "J" #'pgmacs--row-as-json
+;;         )
+
+;;       (evil-collection-define-key 'normal 'pgmacs-table-list-map/table
+;;         "j" #'evil-next-line
+;;         "k" #'evil-previous-line
+;;         "J" #'pgmacs--row-as-json
+;;         ))
+
+;;     ;; (my/evil-collection-pgmacs-setup)
+;;     ))
 
 (use-package! monet
   :disabled
@@ -2598,28 +2638,58 @@ revisions (i.e., use a \"...\" range)."
 ;;; DIAGNOSTICS
 ;;;
 
+;; Hypothesis for line-number margin flickering in special buffers on focus regain:
+;;
+;; Doom enables `display-line-numbers-mode' only for prog/text/conf-mode buffers,
+;; via mode hooks.  When the mode activates, it sets `display-line-numbers'
+;; buffer-locally.  Special buffers (magit, help, dashboard, etc.) never run those
+;; hooks, so they have no buffer-local binding and inherit the variable's default
+;; value, which is normally nil.
+;;
+;; Two plausible causes of the flicker:
+;;
+;; A) Something transiently sets the *default* value of `display-line-numbers' to
+;;    non-nil (e.g. via `setq-default' or `set-default'), causing the margin to
+;;    appear in every buffer without a local binding, then restores it to nil.
+;;
+;; B) The opposite: those buffers somehow already have `display-line-numbers' set
+;;    to non-nil (either as a local binding or via the default), and something on
+;;    focus regain or keypress sets it to nil — producing a flicker that reads as
+;;    "on briefly, then off".
+;;
+;; The watcher below catches both directions (nil and non-nil) for non-code buffers
+;; and for all default-value changes, to distinguish these cases.
+
 (defun my/line-numbers-watcher (_sym val op where)
-  "Log when `display-line-numbers' is set in a non-code buffer."
-  (when (and (eq op 'set) val where
-             (buffer-live-p where)
-             (with-current-buffer where
-               (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode))))
-    (with-current-buffer where
-      (let ((bt (backtrace-to-string)))
+  "Log all changes to `display-line-numbers' in non-code buffers or to the default.
+WHERE is nil when the default value is changed, or a buffer for local sets."
+  (when (eq op 'set)
+    (cond
+     ;; Default value changed (nil or non-nil) — affects all buffers without a local binding.
+     ((null where)
+      (display-warning
+       'my/line-numbers
+       (format "display-line-numbers DEFAULT set to %s\n%s"
+               val (backtrace-to-string))
+       :warning))
+     ;; Buffer-local set (either direction) in a non-code buffer.
+     ((and (buffer-live-p where)
+           (with-current-buffer where
+             (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode))))
+      (with-current-buffer where
         (display-warning
          'my/line-numbers
          (format "display-line-numbers set to %s in %s (%s)\n%s"
-                 val (buffer-name) major-mode bt)
-         :warning)))))
+                 val (buffer-name) major-mode (backtrace-to-string))
+         :warning))))))
 
 (defun my/line-numbers-mode-advice (&optional arg)
-  "Log when `display-line-numbers-mode' is enabled in a non-code buffer."
-  (when (and (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode))
-             (or (not arg) (> arg 0)))
+  "Log when `display-line-numbers-mode' is toggled in a non-code buffer."
+  (when (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode))
     (display-warning
      'my/line-numbers
-     (format "display-line-numbers-mode called in %s (%s)\n%s"
-             (buffer-name) major-mode (backtrace-to-string))
+     (format "display-line-numbers-mode called with arg=%s in %s (%s)\n%s"
+             arg (buffer-name) major-mode (backtrace-to-string))
      :warning)))
 
 (define-minor-mode my/watch-line-numbers-mode
@@ -2639,6 +2709,8 @@ revisions (i.e., use a \"...\" range)."
             (defun my/suppress-line-numbers-in-special-buffers-h ()
               (unless (derived-mode-p 'prog-mode 'text-mode 'conf-mode)
                 (display-line-numbers-mode -1)))))
+
+(my/watch-line-numbers-mode 1)
 
 ;; END DIAGNOSTICS
 
