@@ -4,7 +4,7 @@ export-env {
     only_buffer_difference: false
     marker: "* "
     type: {
-        layout: description
+        layout: list
         page_size: 50
     }
     style: {
@@ -23,6 +23,10 @@ export-env {
         each {
           {
             value: $in
+            description: (ls -l $in | get 0 |
+              select mode user group size modified |
+              update modified { date to-timezone Etc/UTC | format date "%FT%TZ" } |
+              values | str join "\t")
             span: {
               start: $start
               end: ($start + ($in | str length))
