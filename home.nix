@@ -71,6 +71,7 @@ in
   ]) ++ (with pkgsUnstable; [
     # ghostty ## fucks sake marked broken on darwin
     aider-chat
+    delta # diff formatter
     delve
     go
     gopls
@@ -82,18 +83,6 @@ in
         mv $out/bin/bundle $out/bin/gobundle
       '';
     })
-    # delve
-    # go
-    # gopls
-    # (symlinkJoin {
-    #   name = "gotools";
-    #   paths = [ gotools ];
-    #   # clashes with ruby bundler!
-    #   postBuild = ''
-    #     mv $out/bin/bundle $out/bin/gobundle
-    #   '';
-    # })
-    delta # diff formatter
 
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
