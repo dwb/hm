@@ -158,7 +158,7 @@
   :recipe (:files ("*.el" "*.texi" "terminfo")))
 
 (package! claude-code
-  :pin "67185585865fa4c432689279befcefccc6d80a7d"
+  :pin "becece683bcf60f7b150a87a30ef14885dcf8ce3"
   :recipe (:type git :host github :repo "stevemolitor/claude-code.el" :branch "main" :depth 1
                    :files ("*.el" (:exclude "images/*"))))
 ;; claude-code IDE integration:
@@ -169,5 +169,5 @@
 ;; from elpa
 (package! vc-jj)
 (package! jj-mode
-  :pin "6f73f91764b382e8d4974cd27c1ff8c579ed3eb6"
+  :pin "96bee43f6a60c42f86c27b109c497cf6e1827743"
   :recipe (:host github :repo "bolivier/jj-mode.el"))
