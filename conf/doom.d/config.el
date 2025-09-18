@@ -169,6 +169,31 @@ setting only during fontification (see `org-do-emphasis-faces')."
     (add-hook 'org-mode-hook #'my/org-setup-emphasis-markers)))
 
 (with-eval-after-load 'markdown-mode
+  (defun my/markdown-follow-file-link-with-line (url)
+    "Follow a relative or file: URL whose filename ends in :LINE.
+LINE is one-based.  Return nil for other links so Markdown can follow them
+normally."
+    (when-let* ((parsed (url-generic-parse-url url))
+                ((member (url-type parsed) '(nil "file")))
+                ((member (url-host parsed) '(nil "" "localhost")))
+                (filename (url-filename parsed))
+                ((string-match (rx string-start
+                                   (group (+ (not (any "?#\n"))))
+                                   ":"
+                                   (group (in "1-9") (* (in "0-9")))
+                                   string-end)
+                               filename))
+                (file (match-string 1 filename))
+                (line (string-to-number (match-string 2 filename))))
+      (find-file (funcall markdown-translate-filename-function file))
+      (widen)
+      (goto-char (point-min))
+      (forward-line (1- line))
+      (my/recenter-without-buffer-trailer)
+      t))
+
+  (add-hook 'markdown-follow-link-functions #'my/markdown-follow-file-link-with-line)
+
   (dolist (face '(markdown-markup-face
                   markdown-table-face
                   markdown-inline-code-face
@@ -185,6 +210,8 @@ setting only during fontification (see `org-do-emphasis-faces')."
       (add-hook 'markdown-ts-mode-hook #'variable-pitch-mode)
       (set-face-attribute 'markdown-ts-code-block nil :inherit 'fixed-pitch)
       (set-face-attribute 'markdown-ts-code-block-markup-hidden nil :inherit 'fixed-pitch)
+
+      (setopt markdown-ts-hide-markup t)
 
       (with-eval-after-load 'evil
         (defvar-local my/markdown-ts-markup-was-hidden nil)
@@ -392,14 +419,18 @@ buffer list remain reachable."
         (setq f (next-frame f)))))
   (keymap-global-set "M-s-m" #'my/iconfiy-other-frames))
 
+(defun my/recenter-without-buffer-trailer ()
+  (interactive)
+  (recenter (- (+ 1 (count-screen-lines (point) (point-max) t)))))
+
 (define-advice scroll-up
     (:before-while (&optional _arg) my/no-scrolling-past-end-of-buffer)
-  (let ((end (window-end)))
+  (let* ((end (window-end)))
     (with-current-buffer (window-buffer)
       (or (null end)
           (< end (point-max))
           (prog1 nil
-            (recenter (- (+ 1 (count-screen-lines (point) (point-max)))))
+            (my/recenter-without-buffer-trailer)
             ;; This isn't quite right but at least it means that the point
             ;; doesn't appear to be where it isn't:
             (goto-char (point-max)))))))
@@ -1127,9 +1158,18 @@ Return nil for every other input so the advised function handles it."
   (advice-add 'vc-diff :around #'my/vc-jj-diff-revision-advice)
   (advice-add 'vc-root-diff :around #'my/vc-jj-root-diff-revision-advice))
 
+;; lib/my-jj-squash.el
+(use-package! my-jj-squash
+  :commands my/jj-squash-diff
+  :init
+  (map! :after diff-mode
+        :map diff-mode-map
+        :localleader
+        :desc "Squash into jj change" "s" #'my/jj-squash-diff))
+
 (use-package! majutsu
   :commands (majutsu majutsu-log)
-  :config
+  :init
   (map!
    :leader
    :desc "Jujutsu status"

@@ -55,9 +55,10 @@ let
       emacsWithPackages = pkgsUnstableSlow.callPackage ./pkgs/emacs-app-wrapper.nix { } final;
       withPackages = final.emacsWithPackages;
 
-      # Pinned to reviewed commits. nixpkgs has older MELPA snapshots of
-      # clutch and mysql, and no pgsql.
+      # Pinned to reviewed commits. nixpkgs has older snapshots of clutch,
+      # majutsu and mysql, and no pgsql.
       clutch = final.callPackage ./pkgs/emacs-clutch.nix { };
+      majutsu = final.callPackage ./pkgs/emacs-majutsu.nix { };
       mysql = final.callPackage ./pkgs/emacs-mysql.nix { };
       pgsql = final.callPackage ./pkgs/emacs-pgsql.nix { };
 
@@ -84,6 +85,7 @@ let
       gotest
       jira
       llm
+      majutsu
       mysql
       nushell-ts-mode
       org-modern
