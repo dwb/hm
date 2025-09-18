@@ -43,6 +43,8 @@
     (setopt org-directory d)
     (setopt org-roam-directory d))
 
+  (setopt org-agenda-todo-ignore-scheduled 'future)
+
   (dolist (face '(org-block-begin-line 
                   org-block-end-line 
                   org-block
@@ -56,7 +58,9 @@
   (when (fboundp 'ns-dock-badge-set)
     (defun my/org-open-todos-count ()
       (let ((count 0))
-        (org-map-entries (lambda () (cl-incf count)) "/!" 'agenda)
+        (org-map-entries (lambda () (cl-incf count))
+                         "+SCHEDULED=\"\"|+SCHEDULED<=*\"<today>\"/!"
+                         'agenda)
         count))
 
     (defun my/org-todos-dock-update ()
@@ -792,7 +796,7 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
     "Return a completion table for existing revisions of FILES."
     (let* ((log
             (apply #'vc-jj--process-lines "log" "-r" "mine() & trunk()..@" "--no-graph"
-                   "-T" "self.change_id() ++ \"\\0\" ++ self.description().first_line() ++ \"\\n\"" "--" files))
+                   "-T" "pad_end(6, self.change_id().shortest(3)) ++ \"\\0\" ++ self.description().first_line() ++ \"\\n\"" "--" files))
            (revision-descriptions (make-hash-table :test 'equal))
            (revision-ids '()))
 
