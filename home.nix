@@ -67,7 +67,6 @@ in
     zstd
   ]) ++ (with pkgsUnstable; [
     aider-chat
-    delta # diff formatter
     delve
     go
     gopls
@@ -272,13 +271,6 @@ in
       rebase.autoSquash = true;
       rerere.enabled = true;
 
-      # as in https://dandavison.github.io/delta
-      # the diff formatter
-      delta = {
-        light = true;
-        pager = "";
-      };
-
       # this is too problematic
       # url."ssh://git@github.com/".insteadOf = "https://github.com/";
     };
@@ -289,14 +281,10 @@ in
     package = pkgsUnstable.jujutsu;
     settings = let
       privateCommits = "description(glob:'wip:*') | description(glob:'private:*')";
-      delta = "${pkgsUnstable.delta}/bin/delta";
     in {
       user = {
         name = userName;
         email = userEmail;
-      };
-      diff = {
-        tool = delta;
       };
       ui = {
         bookmark-list-sort-keys = ["committer-date"];
@@ -364,12 +352,6 @@ in
         "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
         "private_commits()" = privateCommits;
       };
-      "--scope" = [
-        {
-          "--when".commands = ["diff" "show"];
-          ui.pager = delta;
-        }
-      ];
     };
   };
 
