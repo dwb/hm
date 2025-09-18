@@ -478,16 +478,21 @@
   (:map jj-mode-map
         ("k" . #'jj-goto-prev-changeset)
         ("j" . #'jj-goto-next-changeset))
-  config
+  :config
   (map!
-   :map jj-mode-map
-   "SPC" doom-leader-map
-   "C-w" evil-window-map)
+   (:leader
+    :desc "Jujutsu log"
+    "g j" #'jj-log)
+
+   (:map jj-mode-map
+         "SPC" doom-leader-map
+         "C-w" evil-window-map))
 
   (after! evil
     (evil-set-initial-state 'jj-mode 'emacs))
 
-  (set-popup-rule! '(derived-mode . jj-mode) :ttl nil :side 'right :vslot 0 :slot 0 :select t))
+  ;; (set-popup-rule! '(derived-mode . jj-mode) :ttl nil :side 'right :vslot 0 :slot 0 :select t)
+  (set-popup-rule! '(derived-mode . jj-mode) :ignore t))
 
 (use-package! frame-project-dedicate
   :config
@@ -2153,7 +2158,7 @@ revisions (i.e., use a \"...\" range)."
     #'my/compilation-buffer-p
     :side 'right :width 81 :modeline t :select t :ttl 0)
 
-  (set-popup-rule! '(derived-mode . diff-mode) :height 0.5))))
+  (set-popup-rule! '(derived-mode . diff-mode) :height 0.5))
 
 (when (modulep! :editor word-wrap)
   (add-hook! (prog-mode text-mode) #'+word-wrap-mode))
