@@ -356,7 +356,11 @@ in
         # diff from trunk
         dt = ["diff" "-r" "trunk()..@"];
         # log to trunk
-        lt = ["log" "--reversed" "-r" "fork_point(trunk() | ancestors(@, 2))::@"];
+        # lt = ["log" "--reversed" "-r" "fork_point(trunk() | ancestors(@, 2))::@"];
+        lt = ["util" "exec" "--" "sh" "-c" ''
+          from=''${1-@}
+          exec jj log --reversed -r "''${from}::@ | trunk()..''${from} | parents(trunk()..''${from})"
+        '' "jj-lt"];
 
         gf = ["git" "fetch"];
         gp = ["git" "push"];
