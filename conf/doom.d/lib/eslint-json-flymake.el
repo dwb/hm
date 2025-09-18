@@ -163,8 +163,8 @@ Returns a list of Flymake diagnostics."
               (seq-map
                (apply-partially #'eslint-json-flymake--diagnostic-for-message source-buffer))
               (seq-filter #'flymake--diag-p)))
-        (error
-         (flymake-log :error "Failed to parse ESLint JSON output: %s" err))))))
+        (prog1 nil
+          (error (flymake-log :error "Failed to parse ESLint JSON output: %s" err)))))))
 
 (defun eslint-json-flymake--format-error-message (exit-code stderr-output)
   "Format an error message from ESLint process EXIT-CODE and STDERR-OUTPUT."
@@ -234,6 +234,7 @@ Calls REPORT-FN with a list of diagnostics or error information."
                                   (t
                                    (funcall report-fn
                                             :panic
+                                            :explanation
                                             (eslint-json-flymake--format-error-message
                                              exit-code stderr-output)))))
 
