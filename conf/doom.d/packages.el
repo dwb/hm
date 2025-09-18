@@ -51,7 +51,8 @@
 
 ;; overrides
 
-(package! projectile :pin "271007c6611fcb08ddd326d7de9727c2ad5ef265")
+;; dont think this needs to be pinned any more
+;; (package! projectile :pin "271007c6611fcb08ddd326d7de9727c2ad5ef265")
 
 ;; required for config
 
