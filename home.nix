@@ -5,6 +5,29 @@ let
 
   userName = "Dani Brown";
   userEmail = "d@dani.cool";
+
+  difftAutoDisplay = pkgs.writeShellApplication {
+    name = "difft-auto-display";
+    runtimeInputs = [ pkgsUnstable.difftastic ];
+    text = ''
+      display=inline
+      width=$(tput cols)
+
+      args=("$@")
+      for ((i=0; i<''${#args[@]} ; i++)); do
+          if [[ "''${args[i]}" == "--width" ]]; then
+              width="''${args[i+1]}"
+              break
+          fi
+      done
+
+      if (( width >= 156 )); then
+        display=side-by-side
+      fi
+      
+      exec difft --display "$display" "$@"
+    '';
+  };
 in
 {
   imports = [
@@ -234,7 +257,11 @@ in
       wip = "!git add --all :/ && git commit -n -m DANWIP";
     };
 
-    difftastic.enable = true;
+    difftastic = {
+      enable = true;
+      display = "inline";
+    };
+
     lfs.enable = true;
 
     extraConfig = {
@@ -290,7 +317,12 @@ in
         bookmark-list-sort-keys = ["committer-date"];
         default-command = ["log-status"];
         diff-editor = ":builtin";
-        diff-formatter = ["difft" "--color=always" "$left" "$right"];
+        diff-formatter = [
+          "${difftAutoDisplay}/bin/difft-auto-display"
+          "--width" "$width"
+          "--color" "always"
+          "$left" "$right"
+        ];
         # diff-formatter = ":git";
         pager = ":builtin";
         paginate = "auto";
