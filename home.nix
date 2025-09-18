@@ -211,6 +211,23 @@ in
   #     engine-strict=true
   #   '';
   # };
+  # home.file.".yarnrc.yml" = {
+  #   text = ''
+  #       npmMinimalAgeGate: 10080
+  #   ''
+  # }
+
+  xdg.configFile."pnpm/rc" = {
+    text = ''
+        minimum-release-age=10080
+    '';
+  };
+
+  xdg.configFile."uv/uv.toml" = {
+    text = ''
+        exclude-newer = "7 days"
+    '';
+  };
 
   home.file.".config/ghostty/config" = {
     text = ''
