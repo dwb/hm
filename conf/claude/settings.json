@@ -28,7 +28,7 @@
       "Bash(git:*)"
     ]
   },
-  "model": "opus",
+  "model": "opusplan",
   "hooks": {
     "PreToolUse": [
       {

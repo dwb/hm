@@ -9,6 +9,11 @@ Use this skill when asked to explore, navigate, or research repository history u
 
 **CRITICAL: This skill permits ONLY read-only commands. NO MUTATING COMMANDS are allowed.**
 
+## Context
+
+If "$ARGUMENTS[0]" is non-empty, it is a change ID that the user is giving as context for the
+conversation. Look at it and its relation to `@` to understand how we should proceed.
+
 ## Core Concepts (Key Differences from Git)
 
 ### Change ID vs Commit ID
