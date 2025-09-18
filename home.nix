@@ -309,7 +309,7 @@ in
       aliases = {
         di = ["diff"];
         # diff from trunk
-        dt = ["diff" "-r" "trunk()..@"]
+        dt = ["diff" "-r" "trunk()..@"];
         # log to trunk
         lt = ["log" "--reversed" "-r" "trunk()::@"];
         # (heads of) my branches (even ahead of bookmarks)
