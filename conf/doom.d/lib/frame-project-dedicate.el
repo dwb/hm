@@ -244,18 +244,6 @@ This allows special buffers to appear in project-dedicated frames."
              (buffer-name)
              (file-name-nondirectory (directory-file-name project-root)))))
 
-(defun frame-project-dedicate--server-switch-buffer-advice (&optional next-buffer &rest _)
-  "Select the appropriate project frame before server displays buffer.
-This is needed because `server-switch-buffer' bypasses `display-buffer'
-when `server-window' is nil, calling `switch-to-buffer' directly."
-  (when (bufferp next-buffer)
-    (if-let* ((project (frame-project-dedicate-project-of-buffer next-buffer))
-              (frame (frame-project-dedicate--find-project-frame project)))
-        (select-frame-set-input-focus frame)
-      ;; No project (e.g., temp commit message): keep the topmost frame
-      (when-let* ((frame (car (or (frame-list-z-order) (frame-list)))))
-        (select-frame-set-input-focus frame)))))
-
 (defun frame-project-dedicate--display-buffer-advice (oldfun buffer-or-name &optional action frame)
   (if-let* (((or (null frame) (not (framep frame))))
             (buffer (if (bufferp buffer-or-name)
@@ -320,16 +308,12 @@ indirectly called by the latter."
                (newfn #'frame-project-dedicate-display-buffer-use-dedicated-frame))
           (setf display-buffer-base-action
                 (cons (cons newfn fns) attrs)))
-        (advice-add 'server-switch-buffer :before
-                    #'frame-project-dedicate--server-switch-buffer-advice)
         (advice-add 'display-buffer :around #'frame-project-dedicate--display-buffer-advice))
     (let* ((orig display-buffer-base-action)
            (newfns (delq 'frame-project-dedicate-display-buffer-use-dedicated-frame
                          (car orig))))
       (setf display-buffer-base-action
             (cons newfns (cdr orig))))
-    (advice-remove 'server-switch-buffer
-                   #'frame-project-dedicate--server-switch-buffer-advice)
     (advice-remove 'display-buffer #'frame-project-dedicate--display-buffer-advice)))
 
 (defun frame-project-dedicate-unload-function ()

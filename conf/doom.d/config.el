@@ -3253,6 +3253,7 @@ WHERE the buffer for buffer-local sets or nil for default sets."
 
 (load (concat doom-user-dir "config-local.el") t)
 
-(after! server
+(with-eval-after-load 'server
+  (setopt server-window #'pop-to-buffer)
   (when (not (server-running-p server-name))
     (server-start)))
