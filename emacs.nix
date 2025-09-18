@@ -36,6 +36,12 @@ let
     final: _prev: {
       emacsWithPackages = pkgsUnstableSlow.callPackage ./pkgs/emacs-app-wrapper.nix { } final;
       withPackages = final.emacsWithPackages;
+
+      # Pinned to reviewed commits. nixpkgs has older MELPA snapshots of
+      # clutch and mysql, and no pgsql.
+      clutch = final.callPackage ./pkgs/emacs-clutch.nix { };
+      mysql = final.callPackage ./pkgs/emacs-mysql.nix { };
+      pgsql = final.callPackage ./pkgs/emacs-pgsql.nix { };
     }
   );
 
@@ -45,6 +51,7 @@ let
       auth-source-1password
       buffer-terminator
       caddyfile-mode
+      clutch
       dape
       eldoc-box
       eglot
@@ -56,9 +63,11 @@ let
       gotest
       jira
       llm
+      mysql
       nushell-ts-mode
       org-modern
       org-preview-html
+      pgsql
       posframe
       prettier
       protobuf-mode

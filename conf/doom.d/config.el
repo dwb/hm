@@ -72,7 +72,28 @@
             (ns-dock-badge-set count)
           (system-taskbar-badge (if (eq 0 count) nil count)))))
     
-    (run-with-idle-timer 2 t #'my/org-todos-dock-update)))
+    (run-with-idle-timer 2 t #'my/org-todos-dock-update))
+
+  (setopt org-capture-templates
+          '(("t" "Personal todo" entry (file+headline +org-capture-todo-file "Inbox") "* TODO %?\n%i\n%a"
+             :prepend t)
+            ("n" "Personal notes" entry (file+headline +org-capture-notes-file "Inbox") "* %u %?\n%i\n%a"
+             :prepend t)
+            ("j" "Journal" entry (file+olp+datetree +org-capture-journal-file) "* %U %?\n%i\n%a" :prepend t)
+            ("p" "Templates for projects")
+            ("pt" "Project-local todo" entry (file+headline +org-capture-project-todo-file "Inbox")
+             "* TODO %?\n%i\n%a" :prepend t)
+            ("pn" "Project-local notes" entry (file+headline +org-capture-project-notes-file "Inbox")
+             "* %U %?\n%i\n%a" :prepend t)
+            ("pc" "Project-local changelog" entry
+             (file+headline +org-capture-project-changelog-file "Unreleased") "* %U %?\n%i\n%a" :prepend t)
+            ("o" "Centralized templates for projects")
+            ("ot" "Project todo" entry #'+org-capture-central-project-todo-file "* TODO %?\n %i\n %a" :heading
+             "Tasks" :prepend nil)
+            ("on" "Project notes" entry #'+org-capture-central-project-notes-file "* %U %?\n %i\n %a" :heading
+             "Notes" :prepend t)
+            ("oc" "Project changelog" entry #'+org-capture-central-project-changelog-file "* %U %?\n %i\n %a"
+             :heading "Changelog" :prepend t))))
 
 (with-eval-after-load 'markdown-mode
   (dolist (face '(markdown-markup-face
@@ -436,8 +457,6 @@ OS-level focus; we only need to update Emacs's internal state."
 
 (require 's)
 
-(setf vterm-compile-module-use-nix t)
-
 (defun my/add-paths-from-my-env-to-exec-path ()
   "Parse the PATH variable from the output of `printenv` and add its paths to `exec-path`."
   (when-let* ((path-line (thread-last (shell-command-to-string "printenv")
@@ -622,7 +641,7 @@ OS-level focus; we only need to update Emacs's internal state."
   (add-hook 'eldoc-mode-hook #'eldoc-box-hover-at-point-mode)
   (add-hook 'eldoc-box-buffer-setup-hook #'eldoc-box-prettify-ts-errors 0 t)
   (with-eval-after-load 'eglot
-    (add-to-list 'eglot-ignored-server-capabilites :hoverProvider)
+    ;; (add-to-list 'eglot-ignored-server-capabilities :hoverProvider)
     (add-hook 'eglot-managed-mode-hook #'eldoc-box-hover-at-point-mode t)))
 
 (use-package! gotest)
@@ -686,7 +705,7 @@ OS-level focus; we only need to update Emacs's internal state."
 (use-package aidermacs
   :disabled
   :init
-  (setopt aidermacs-backend 'vterm)
+  ;; (setopt aidermacs-backend 'vterm)
   :config
   (map!
    :leader
@@ -1251,7 +1270,7 @@ The actual buffer content (the absolute path) remains unchanged."
 
 ;; eagar-load vterm to load my mappings below
 (use-package! vterm
-  :ensure t
+  :disabled
   :config
   (setopt vterm-shell "/bin/zsh --login"))
 
@@ -2458,6 +2477,19 @@ If ARG (universal argument), open selection in other-window."
  :desc "Rotate windows"
  "w }" #'rotate-windows)
 
+(with-eval-after-load 'transient
+  ;; `transient--show' sets `no-other-window' on the window showing the
+  ;; menu.  `transient--delete-window' only restores it when that window's
+  ;; `quit-restore' type is `other'; otherwise it deletes the window.  When a
+  ;; menu is invoked from a side window, it can end up in the frame's main
+  ;; window, which can't be deleted.  The error is demoted and the window
+  ;; keeps `no-other-window', so windmove and `other-window' skip it.
+  (define-advice transient--delete-window (:before () my/restore-no-other-window)
+    (when (window-live-p transient--window)
+      (set-window-parameter transient--window 'no-other-window
+                            (window-parameter transient--window
+                                              'prev--no-other-window)))))
+
 (after! magit
   ;; doom sets this to #'+magit-display-buffer-fn, which is a nicer behaviour
   ;; but causes infinite recursion when window-purpose is loaded, for some reason.
@@ -3385,6 +3417,121 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
     (add-hook 'bourdet-notification-functions #'my/bourdet-notify)
     (add-hook 'bourdet-notification-clear-functions #'my/bourdet-notify-clear)))
 
+(use-package! clutch
+  :commands (clutch-mode clutch-query-console clutch-query-sqlite-file)
+  :config
+  (setopt clutch-connect-timeout-seconds 10
+          clutch-read-idle-timeout-seconds 30
+          clutch-query-timeout-seconds 20
+          clutch-jdbc-rpc-timeout-seconds 15
+          clutch-jdbc-validate-after-idle-seconds 300)
+
+  (defun my/clutch-result-copy-cell-value ()
+    "Copy the full value of the clutch result cell at point to the kill ring.
+The value is formatted as `clutch--format-value' formats it for display,
+without the CSV/TSV quoting that `clutch-result-copy-dispatch' applies.  A
+NULL value is copied as \"NULL\"."
+    (interactive)
+    (pcase-let ((`(,_ridx ,_cidx ,val) (or (clutch--cell-at-point)
+                                            (user-error "No cell at point"))))
+      (let ((text (clutch--format-value (clutch-db-require-complete-value val))))
+        (kill-new text)
+        (message "Copied %d character%s" (length text)
+                 (if (= (length text) 1) "" "s")))))
+
+  (map! :leader
+        :desc "clutch query console"
+        :n "o q" #'clutch-query-console)
+
+  (map! :localleader
+        :map clutch-mode-map
+        (:prefix ("e" . "execute")
+                 "e" #'clutch-execute-dwim
+                 "r" #'clutch-execute-region
+                 "b" #'clutch-execute-buffer
+                 "p" #'clutch-preview-execution-sql)
+        (:prefix ("t" . "transaction")
+                 "c" #'clutch-commit
+                 "r" #'clutch-rollback
+                 "a" #'clutch-toggle-auto-commit)
+        "c" #'clutch-connect
+        "s" #'clutch-switch-schema
+        "S" #'clutch-refresh-schema
+        "j" #'clutch-jump
+        "d" #'clutch-describe-dwim
+        "o" #'clutch-act-dwim
+        "?" #'clutch-dispatch)
+
+  ;; clutch has no evil support, and evil's normal-state keys hide most of its
+  ;; one-letter keys.  In the read-only buffers, clutch's own key is restored
+  ;; where evil's key is an editing command (disabled there) or a motion with no
+  ;; use in a table.  Otherwise the command moves to another key, so that evil
+  ;; motions, search and visual selection keep working.  The `g?' / `C-c ?'
+  ;; menus show clutch's own keys.
+  (map! :map clutch-result-mode-map
+        :n "RET"   #'clutch-result-open-record
+        :n "TAB"   #'clutch-result-next-cell
+        :n "<tab>" #'clutch-result-next-cell
+        :n "gc"     #'clutch-result-goto-column
+        :n "{"     #'clutch-result-first-column
+        :n "}"     #'clutch-result-last-column
+        :n "]]"    #'clutch-result-next-page
+        :n "[["    #'clutch-result-prev-page
+        :n "zl"    #'clutch-result-scroll-right
+        :n "zh"    #'clutch-result-scroll-left
+        :n "zf"    #'clutch-result-fullscreen-toggle
+        :n "="     #'clutch-result-widen-column
+        :n "-"     #'clutch-result-narrow-column
+        :n "#"     #'clutch-result-count-total
+        :n "s"     #'clutch-result-sort-by-column
+        :n "F"     #'clutch-result-filter
+        :n "W"     #'clutch-result-apply-filter
+        :n "o"     #'clutch-result-view-value
+        :n "Y"     #'my/clutch-result-copy-cell-value
+        :n "K"     #'clutch-result-column-info
+        :n "|"     #'clutch-result-shell-command-on-cell
+        :n "E"     #'clutch-result-export
+        :n "i"     #'clutch-result-insert-row
+        :n "I"     #'clutch-clone-row-to-insert
+        :n "g?"    #'clutch-result-dispatch
+        ;; These act on the region when it is active.
+        :nv "c"    #'clutch-result-copy-dispatch
+        :nv "d"    #'clutch-result-delete-rows
+        :nv "A"    #'clutch-result-aggregate)
+
+  (map! :map clutch-record-mode-map
+        :n "RET" #'clutch-record-toggle-expand
+        :n "]]"  #'clutch-record-next-row
+        :n "[["  #'clutch-record-prev-row
+        :n "o"   #'clutch-record-view-value
+        :n "I"   #'clutch-clone-row-to-insert
+        :n "g?"  #'clutch-record-dispatch)
+
+  (map! :map clutch-describe-mode-map
+        :n "s" #'clutch-object-show-ddl-or-source)
+
+  (map! :map clutch--result-insert-major-mode-map
+        :n "RET"   #'clutch-result-insert-submit-field
+        :n "TAB"   #'clutch-result-insert-next-field
+        :n "<tab>" #'clutch-result-insert-next-field
+        :n "ZZ"    #'clutch-result-insert-stage
+        :n "ZQ"    #'clutch-result-insert-cancel)
+
+  ;; clutch enables these minor modes from inside commands.  Bindings tied to
+  ;; the mode symbol apply at once, without waiting for
+  ;; `evil-normalize-keymaps'.
+  (evil-define-minor-mode-key 'normal 'clutch-refine-mode
+    "m" #'clutch-refine-toggle-row
+    "x" #'clutch-refine-toggle-col
+    (kbd "RET") #'clutch-refine-confirm)
+
+  (evil-define-minor-mode-key 'normal 'clutch--result-edit-mode
+    "ZZ" #'clutch-result-edit-finish
+    "ZQ" #'clutch-result-edit-cancel)
+
+  (evil-define-minor-mode-key 'normal 'clutch--result-insert-json-mode
+    "ZZ" #'clutch-result-insert-json-finish
+    "ZQ" #'clutch-result-insert-json-cancel))
 
 (use-package zig-mode
   :mode ("\\.\\(zig\\|zon\\)\\'" . zig-mode))
