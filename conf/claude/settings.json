@@ -7,19 +7,48 @@
   "permissions": {
     "allow": [
       "Skill(jj)",
-      "Bash(jj st:*)",
-      "Bash(jj status:*)",
+      "Skill(tdd)",
+      "Bash(jj bookmark list:*)",
+      "Bash(jj config get:*)",
       "Bash(jj diff:*)",
       "Bash(jj dt:*)",
+      "Bash(jj file list:*)",
+      "Bash(jj file show:*)",
+      "Bash(jj help:*)",
       "Bash(jj log:*)",
       "Bash(jj lt:*)",
-      "Bash(find:*)",
-      "Bash(ls:*)",
+      "Bash(jj show:*)",
+      "Bash(jj st:*)",
+      "Bash(jj status:*)",
       "Bash(grep:*)"
     ],
     "deny": [
       "Bash(git:*)"
     ]
+  },
+  "hooks": {
+      "PreToolUse": [
+          {
+              "matcher": "Edit|Write",
+              "hooks": [
+                  {
+                      "type": "command",
+                      "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj status >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
+                  }
+              ]
+          }
+      ],
+      "PostToolUse": [
+          {
+              "matcher": "Edit|Write",
+              "hooks": [
+                  {
+                      "type": "command",
+                      "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj status >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
+                  }
+              ]
+          }
+      ]
   },
   "model": "opus",
   "spinnerTipsEnabled": false,

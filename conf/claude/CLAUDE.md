@@ -9,3 +9,14 @@
     * Throwing errors for extremely rare corner cases might be an acceptable compromise.
     * Leaving a dependency on an old version and making do is often an acceptable compromise.
     * Changing large amounts of code in order to comply with the current task (unless the current task is inherently about changing large amounts of code) is almost always an unacceptable compromise: always ask before doing so.
+* When using a plan, be sure to update it as you go with the progress of the task, and any new developments and research. Remember that this is the main document to keep going after compaction.
+* When writing comments in code, remember who the audience is and what their context is. Comments are for other readers of the code, with the context of the code at that point in time. So please:
+    * Always use neutral, concise, business-like language, like I asked for above. Don't use dramatic or emphatic formatting or language unless there is a serious security or correctness problem that is easy to miss.
+    * Always follow comment structure conventions if relevant. For example, JSDoc, godoc, etc.
+    * Don't refer to previous versions of the code unless they are core to understanding the overall change.
+        * For example, when iterating on a bug fix, the comment shouldn't refer to a previous version of the fix that would never be committed.
+    * Do note potentially surprising changes that could contradict previous assumptions.
+    * Do reference any other relevant things by a useful identifier (greppable code identifier, ticket number, URL, etc) so readers can follow links.
+    * Don't simply translate the code to English, unless the code is particularly and necessarily unclear or complex. (If it is unnecessarily unclear or complex, consider simplification!)
+    * Don't write inline comments (that is, comments that don't get picked up by documentation generators) for the sake of it. A good comment pays dividends, but a useless comment wastes people's time and energy. Don't be afraid to write good comments (I can always delete them), but try not to write comments that don't add any insight.
+* When writing Bash commands, you often fail to consider the current working directory, resulting in confusing errors. Ideally you would write commands with good knowledge of the current working directory to get them right first time. If you're unsure, stick to absolute paths rather than using `cd`.

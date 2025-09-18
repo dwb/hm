@@ -164,6 +164,46 @@ jj log -r '<workspace>@'        # See another workspace's working copy
 - `merges()` - merge commits
 - `working_copies()` - working copy commits across all workspaces
 
+## Custom Templates
+
+Use `-T` to customize output. Key points:
+
+### Accessing Timestamps
+Timestamps are accessed via signature objects, NOT as top-level keywords:
+```bash
+# WRONG - these don't exist:
+jj log -T 'commit_timestamp.ago()'
+jj log -T 'format_timestamp(commit_timestamp, "%Y-%m-%d")'
+
+# CORRECT:
+jj log -T 'committer.timestamp().ago()'
+jj log -T 'author.timestamp().format("%Y-%m-%d")'
+```
+
+### Common Template Methods
+- `committer.timestamp()` / `author.timestamp()` → Timestamp object
+- `.ago()` → relative time string ("2 days ago")
+- `.format("%Y-%m-%d")` → custom strftime format
+- `.local()` / `.utc()` → timezone conversion
+
+### Useful Template Examples
+```bash
+# Compact one-line format with date
+jj log -T 'change_id.short() ++ " " ++ committer.timestamp().ago() ++ " " ++ description.first_line() ++ "\n"'
+
+# Machine-readable with ISO date
+jj log -T 'commit_id ++ " " ++ committer.timestamp().format("%Y-%m-%d") ++ "\n"'
+```
+
+### Getting Help
+Use `jj help -k <keyword>` (or `--keyword`) for detailed inline documentation. Running it without a keyword shows available topics (currently: `bookmarks`, `config`, `filesets`, `glossary`, `revsets`, `templates`, `tutorial` — if this list has changed, update this skill file).
+
+Output is markdown and can be lengthy. Filter to headings first to find relevant sections:
+```bash
+jj help -k templates | grep '^#'      # See section structure
+jj help -k revsets | grep -A2 '^## '  # Headings with brief context
+```
+
 ## Example Queries
 
 ### First: Understand the Repo
