@@ -203,15 +203,11 @@ frames, avoiding `project-current' which is expensive and side-effectful."
           (message "Switched to existing frame for project: %s"
                    (project-root project)))
       ;; Create new dedicated frame
-      (let ((frame (make-frame)))
-        (prog1 frame
-          (frame-project-dedicate--set-frame-project frame project)
-          (select-frame frame)
-          (let* ((win (car (window-list frame)))
-                 (buffer (frame-project-dedicate--project-placeholder-buffer project)))
-            (set-window-buffer win buffer)
-            (set-window-prev-buffers win nil))
-          (raise-frame frame))))))
+      (with-current-buffer (frame-project-dedicate--project-placeholder-buffer project)
+        (let ((frame (make-frame)))
+          (prog1 frame
+            (frame-project-dedicate--set-frame-project frame project)
+            (select-frame-set-input-focus frame)))))))
 
 (defun frame-project-dedicate-project-of-buffer (buffer)
   (project-current nil (buffer-local-value 'default-directory buffer)))

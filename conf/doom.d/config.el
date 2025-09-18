@@ -659,6 +659,8 @@ OS-level focus; we only need to update Emacs's internal state."
   ;; (setopt agent-shell-anthropic-claude-environment
   ;;         nil
   ;;         (agent-shell-make-environment-variables :inherit-env t))
+  (setopt agent-shell-session-restore-verbosity 'full)
+  (setopt agent-shell-preferred-agent-config '(preselect . claude-code))
   (setopt agent-shell-display-action
           '((display-buffer-in-side-window)
             (side . right)
@@ -3189,7 +3191,17 @@ revisions (i.e., use a \"...\" range)."
                 (id (plist-get plist :id))
                 (detail (or (plist-get plist :detail) ""))
                 (group (my/bourdet-notification-id id))
-                (title (format "Claude [%s]" (bourdet-session-name session)))
+                (title (let* ((dir (plist-get plist :cwd))
+                              (project (and dir (project-current nil dir)))
+                              (project-name (and project (project-name project)))
+                              (session-name (bourdet-session-name session))
+                              (parts))
+                         (when project-name (push project-name parts))
+                         (when session-name (push session-name parts))
+                         (format "Claude%s"
+                                 (if parts
+                                     (format " [%s]" (string-join parts " : "))
+                                   ""))))
                 (message (format "%s  %s" type detail))
                 (emacsclient (executable-find "emacsclient")))
       (start-process "bourdet-notify" nil
