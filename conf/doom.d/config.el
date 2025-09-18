@@ -56,7 +56,7 @@
   ;; This was causing variable-pitch flickering just like the line number flickering :(
   ;; (add-hook 'org-mode-hook #'variable-pitch-mode)
 
-  (when (fboundp 'ns-dock-badge-set)
+  (when (or (fboundp 'ns-dock-badge-set) (fboundp 'system-taskbar-badge))
     (defun my/org-open-todos-count ()
       (let ((count 0))
         (org-map-entries (lambda () (cl-incf count))
@@ -65,7 +65,10 @@
         count))
 
     (defun my/org-todos-dock-update ()
-      (ns-dock-badge-set (my/org-open-todos-count)))
+      (let* ((count (my/org-open-todos-count)))
+        (if (fboundp 'ns-dock-badge-set)
+            (ns-dock-badge-set count)
+          (system-taskbar-badge count))))
     
     (run-with-idle-timer 2 t #'my/org-todos-dock-update)))
 
@@ -201,6 +204,9 @@ buffer list remain reachable."
 (add-to-list 'default-frame-alist '(fullscreen . fullheight))
 
 (add-to-list 'auto-mode-alist `(,(rx ".mts" (? "x") eos) . typescript-ts-mode))
+
+(when (fboundp 'system-taskbar-mode)
+  (system-taskbar-mode))
 
 (defun my/select-previous-window ()
   (interactive)
