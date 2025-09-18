@@ -60,7 +60,7 @@
     (defun my/org-open-todos-count ()
       (let ((count 0))
         (org-map-entries (lambda () (cl-incf count))
-                         "+SCHEDULED=\"\"|+SCHEDULED<=*\"<today>\"/!"
+                         "+SCHEDULED=\"\"|+SCHEDULED<=*\"<now>\"/!"
                          'agenda)
         count))
 
@@ -887,6 +887,9 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
   ;; (set-popup-rule! '(derived-mode . jj-mode) :ttl nil :side 'right :vslot 0 :slot 0 :select t)
   (when (modulep! :ui popup)
     (set-popup-rule! '(derived-mode . jj-mode) :ignore t)))
+
+(with-eval-after-load 'git-link
+  (setopt git-link-consider-ssh-config t))
 
 (use-package! frame-project-dedicate
   :if (display-graphic-p)

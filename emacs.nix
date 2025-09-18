@@ -86,7 +86,8 @@ in
           epkgs: with epkgs; [
             treesit-grammars.with-all-grammars
             vterm
-            (epkgs.callPackage (import ./pkgs/ghostel.nix) {})
+            ghostel
+            # (epkgs.callPackage (import ./pkgs/ghostel.nix) {})
           ]
         );
   };
