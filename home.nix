@@ -309,6 +309,10 @@ in
       aliases = {
         add-parent = ["util" "exec" "--" "${pkgs.python3}/bin/python"
                       ./jj-commands/add-parent.py];
+        ap = ["add-parent"];
+        rm-parent = ["util" "exec" "--" "${pkgs.python3}/bin/python"
+                      ./jj-commands/rm-parent.py];
+        rp = ["rm-parent"];
 
         di = ["diff"];
         # diff from trunk
