@@ -172,6 +172,14 @@ jj st                           # What's the current state?
 jj lt                           # What's the history to trunk?
 ```
 
+### Catching Up on a Branch
+When asked to "catch up" or "see what changed" on a branch, **always start with `jj lt <bookmark>`** before using `jj diff`:
+
+1. `jj lt <bookmark>` - See commit structure, messages, and context first
+2. Then `jj diff --from <base> --to <tip> --git` if you need the full diff
+
+**Why**: The log shows *what* was done and *why* (commit messages), while diff only shows *how*. Understanding the sequence and intent first makes the diff more meaningful.
+
 ### Megamerge Navigation (when applicable)
 ```bash
 jj log -r '@-'                  # See what branches the megamerge combines
