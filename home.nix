@@ -171,8 +171,8 @@ in
     text = ''
       font-family = "Iosevka DWB Term"
       font-size = 12
-      window-theme = system
-      theme = light:Zenwritten Light,dark:Zenwritten Dark
+      window-theme = dark
+      theme = light:GitHub,dark:GitHub Dark
       auto-update = off
 
       keybind = ctrl+[=text:\x1b
@@ -300,7 +300,7 @@ in
 
     lfs.enable = true;
 
-    extraConfig = {
+    settings = {
       core = {
         sparseCheckout = true;
         quotepath = false;
@@ -372,6 +372,12 @@ in
           # diff-formatter = ":git";
           pager = ":builtin";
           paginate = "auto";
+        };
+        colors = {
+          "diff token" = {
+            underline = false;
+            bold = true;
+          };
         };
         git = {
           private-commits = privateCommits;
@@ -564,7 +570,7 @@ in
       # units
     ];
     configFile.text = lib.concatLines (
-      # ["source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"] ++
+      ["source ${nu-scripts}/modules/formats/from-env.nu"] ++
       (lib.pipe
         [
           ./conf/config.nu
@@ -606,7 +612,7 @@ in
     escapeTime = 10; # ms, after which it's a person pressing Esc
     keyMode = "vi";
     mouse = true;
-    newSession = true;
+    newSession = false;
     shortcut = "a";
 
     extraConfig = ''
