@@ -1,7 +1,7 @@
 ---
 name: code-review
 description: Structured code review of a jj change with numbered findings for discussion.
-argument-hint: "[change-id]"
+argument-hint: "[change-id] [extra-intructions]"
 disable-model-invocation: true
 effort: max
 ---
@@ -102,3 +102,11 @@ The user will then discuss the findings:
 - They may eventually sign off (e.g. "fix 1 and 4", or "looks good, address the must-fixes")
 
 Only after the user explicitly directs you to address findings should you make any code changes. Address only the findings the user has approved.
+
+## Extra Instructions
+
+If the user has any extra instructions for this particular code review, they will be here. They can override any of the above, but will most likely just include particular things to watch out for:
+
+<extra-instructions>
+$1
+</extra-instructions>

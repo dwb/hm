@@ -145,7 +145,9 @@
 (add-hook 'focus-out-hook #'my/save-all-file-buffers)
 
 (setopt desktop-load-locked-desktop 'check-pid)
-(setf desktop-path (list (concat doom-local-dir "state/desktop")))
+(setopt desktop-path (list (concat doom-local-dir "state/desktop")))
+;; TODO: not good enough, doesn't prioritise visible buffers
+;; (setopt desktop-restore-eager 5)
 (with-eval-after-load 'desktop
   (desktop-save-mode 1))
 
@@ -2272,14 +2274,14 @@ revisions (i.e., use a \"...\" range)."
                     (set-window-prev-buffers win win-prev-bufs))))))))))))
 
 (after! vertico
-  (defun my/vertico-config-experiments ()
-    (vertico-multiform-mode)
+  (setopt vertico-sort-function nil)
 
-    (setq vertico-multiform-commands
-          '((consult-grep buffer indexed)))
+  (vertico-multiform-mode)
 
-    (setq vertico-multiform-categories
-          '((consult-grep buffer)))))
+  (setopt vertico-multiform-commands
+          '((execute-extended-command
+             (vertico-sort-function . vertico-sort-history-length-alpha)
+             (:keymap "X" execute-extended-command-cycle)))))
 
 (after! lispy
   ;; fix where square brackets don't insert themselves in insert mode
@@ -2659,7 +2661,10 @@ revisions (i.e., use a \"...\" range)."
 (use-package! bourdet
   :bind-keymap
   (("C-c C-'" . bourdet-command-map))
+  
   :config
+  (require 'my-bourdet-extra-renderers)
+
   (when (modulep! :ui popup)
     (set-popup-rule! '(derived-mode . bourdet-mode)
       :side 'right :width 101 :height 0.5 :vslot 0 :slot 1
@@ -2700,6 +2705,7 @@ revisions (i.e., use a \"...\" range)."
       (warn "bourdet config: terminal-notifier not installed")
     (add-hook 'bourdet-notification-functions #'my/bourdet-notify)
     (add-hook 'bourdet-notification-clear-functions #'my/bourdet-notify-clear)))
+
 
 (use-package zig-mode
   :mode ("\\.\\(zig\\|zon\\)\\'" . zig-mode))
