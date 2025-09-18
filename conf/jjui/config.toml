@@ -1,0 +1,10 @@
+[ui.colors]
+"selected" = { bg = "red" }
+
+[ui.tracer]
+enabled = true
+
+# [leader.yc]
+# help = "copy change ID"
+# context = ["$change_id"]
+# send = ["$", "pbcopy <<<'$change_id'"]
