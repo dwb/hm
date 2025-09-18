@@ -13,6 +13,7 @@
   "permissions": {
     "allow": [
       "Skill(jj)",
+      "Skill(org-jj)",
       "Skill(tdd)",
       "Bash(exit 1)",
       "Bash(jj bookmark list:*)",
@@ -20,8 +21,11 @@
       "Bash(jj diff:*)",
       "Bash(jj dt:*)",
       "Bash(jj evolog:*)",
+      "Bash(jj file annotate:*)",
       "Bash(jj file list:*)",
+      "Bash(jj file search:*)",
       "Bash(jj file show:*)",
+      "Bash(jj git fetch:*)",
       "Bash(jj help:*)",
       "Bash(jj log:*)",
       "Bash(jj lt:*)",

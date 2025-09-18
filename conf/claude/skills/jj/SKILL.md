@@ -12,6 +12,10 @@ Use this skill when asked to explore, navigate, or research repository history u
 If "$ARGUMENTS[0]" is non-empty, it is a change ID that the user is giving as context for the
 conversation. Look at it and its relation to `@` to understand how we should proceed.
 
+## General Invocation
+
+Make sure you are in the right current directory for any calls. Don't habitually use the `-R` flag as it defeats the user's auto-approve patterns.
+
 ## User's Configured Aliases
 
 ### `jj lt [revset]` - Log to Trunk (PREFERRED)

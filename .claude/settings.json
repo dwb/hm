@@ -1,7 +1,7 @@
 {
     "permissions": {
         "deny": [
-            "Write(~/.emacs.d)"
+            "Edit(~/.emacs.d)"
         ],
         "additionalDirectories": ["~/.emacs.d"]
     }

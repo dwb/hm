@@ -558,6 +558,8 @@ OS-level focus; we only need to update Emacs's internal state."
 (require 'clique)
 (require 'clique-doom)
 
+(require 'my-org-jj)
+
 ;; Session ID
 
 (defvar-local my/term-session-id nil)
@@ -961,147 +963,6 @@ Return nil for every other input so the advised function handles it."
 
   (advice-add 'vc-diff :around #'my/vc-jj-diff-revision-advice)
   (advice-add 'vc-root-diff :around #'my/vc-jj-root-diff-revision-advice))
-
-;; Org "jj:" links to a file at a jj revision, optionally at a line:
-;;
-;;   [[jj:src/foo.el::abc123]]
-;;   [[jj:src/foo.el::abc123::42]]
-;;
-;; PATH is resolved like a "file:" link. The revision is any revset that
-;; resolves to one commit. Following a link shows the file in a read-only
-;; buffer that does not visit a file.
-
-(defvar-local my/org-jj-file nil
-  "Absolute name of the file shown in this jj revision buffer.")
-(put 'my/org-jj-file 'permanent-local t)
-
-(defvar-local my/org-jj-revision nil
-  "The jj revision shown in this jj revision buffer.")
-(put 'my/org-jj-revision 'permanent-local t)
-
-(defun my/org-jj--parse-link (link)
-  "Parse jj LINK into a list (PATH REV LINE).
-LINK has the form PATH::REV or PATH::REV::LINE. PATH is the text before
-the first \"::\", since REV may itself contain \"::\". A final \"::\"
-followed only by digits is taken as LINE, otherwise LINE is nil."
-  (let ((sep (or (string-search "::" link)
-                 (user-error "No revision in jj link: %s" link))))
-    (let ((path (substring link 0 sep))
-          (rest (substring link (+ sep 2))))
-      (save-match-data
-        (if (string-match "\\`\\(.+\\)::\\([0-9]+\\)\\'" rest)
-            (list path (match-string 1 rest)
-                  (string-to-number (match-string 2 rest)))
-          (list path rest nil))))))
-
-;; These call jj directly because the signatures of vc-jj's private
-;; process helpers differ between vc-jj releases.
-(defun my/org-jj--lines (&rest args)
-  "Run jj with ARGS in `default-directory' and return stdout as lines.
-Discard stderr, where jj prints warnings. Signal an error if jj fails."
-  (with-temp-buffer
-    (let ((status (apply #'process-file "jj" nil '(t nil) nil args)))
-      (unless (eq status 0)
-        (error "jj %s exited with status %s" (string-join args " ") status))
-      (split-string (buffer-string) "\n" t))))
-
-(defun my/org-jj--fileset (file)
-  "Return a jj fileset expression matching exactly FILE."
-  (format "root:%S"
-          (file-relative-name file (vc-call-backend 'JJ 'root file))))
-
-(defun my/org-jj--commit-ids (revset)
-  "Return the commit IDs of the commits in jj REVSET.
-Run jj in `default-directory'."
-  (my/org-jj--lines "log" "--no-graph" "-r" revset
-                    "-T" "commit_id ++ \"\\n\""))
-
-(defun my/org-jj--commit-id (rev)
-  "Return the commit ID that jj revision REV resolves to.
-Run jj in `default-directory'."
-  (car (my/org-jj--commit-ids rev)))
-
-(defun my/org-jj--working-copy-commit-id (file)
-  "Return the ID of a commit holding the current saved content of FILE.
-Return the parent of @ when @ has one parent and does not change FILE.
-Unlike @, that commit is not replaced by the next working-copy snapshot,
-so the link does not depend on a hidden commit that `jj util gc' can
-remove. Otherwise return @."
-  (let ((changed (my/org-jj--lines "diff" "--name-only" "-r" "@" "--"
-                                   (my/org-jj--fileset file)))
-        (parents (my/org-jj--commit-ids "parents(@)")))
-    (if (and (null changed) (length= parents 1))
-        (car parents)
-      (my/org-jj--commit-id "@"))))
-
-(defun my/org-jj--link (file commit line)
-  "Return a list (LINK DESCRIPTION) for FILE at COMMIT and LINE."
-  (list (format "jj:%s::%s::%d" (abbreviate-file-name file) commit line)
-        (format "%s@%s:%d"
-                (file-name-nondirectory file) (substring commit 0 12) line)))
-
-(defun my/org-jj-revision-buffer (file rev)
-  "Return a read-only buffer showing FILE at jj revision REV.
-The buffer does not visit a file."
-  (let ((buf (get-buffer-create
-              (format "%s.~%s~" (file-name-nondirectory file) rev))))
-    (with-current-buffer buf
-      (setq default-directory (file-name-directory file))
-      (let ((inhibit-read-only t))
-        (vc-find-revision-no-save file rev 'JJ buf))
-      ;; vc-find-revision-no-save uses delay-mode-hooks, which also
-      ;; stops global-font-lock-mode from enabling font-lock.
-      (font-lock-mode 1)
-      (setq my/org-jj-file file
-            my/org-jj-revision rev))
-    buf))
-
-(defun my/org-jj-open (link _arg)
-  "Follow jj LINK. See `my/org-jj--parse-link' for its form."
-  (pcase-let ((`(,path ,rev ,line) (my/org-jj--parse-link link)))
-    (pop-to-buffer (my/org-jj-revision-buffer (expand-file-name path) rev))
-    (when line
-      (goto-char (point-min))
-      (forward-line (1- line)))))
-
-(defun my/org-jj-store-link (&optional _interactive)
-  "Store a jj link to the current line of a jj revision buffer.
-The revision is stored as a commit ID, so links from buffers opened
-with relative revsets such as \"@-\" keep pointing at the same content."
-  (when my/org-jj-revision
-    (pcase-let ((`(,link ,desc)
-                 (my/org-jj--link my/org-jj-file
-                                  (my/org-jj--commit-id my/org-jj-revision)
-                                  (line-number-at-pos nil t))))
-      (org-link-store-props :type "jj" :link link :description desc)
-      t)))
-
-(defun my/org-jj-store-link-at-commit ()
-  "Store a jj link to the current line of this file at its current commit.
-The link goes in `org-stored-links', for `org-insert-link'. See
-`my/org-jj--working-copy-commit-id' for how the commit is chosen.
-
-This is a separate command so that `org-store-link' keeps storing
-\"file:\" links in buffers visiting files tracked by jj."
-  (interactive)
-  (unless (and buffer-file-name (eq (vc-backend buffer-file-name) 'JJ))
-    (user-error "Buffer is not visiting a file tracked by jj"))
-  (require 'ol)
-  (let ((entry (my/org-jj--link
-                buffer-file-name
-                (my/org-jj--working-copy-commit-id buffer-file-name)
-                (line-number-at-pos nil t))))
-    (setq org-stored-links (cons entry (delete entry org-stored-links)))
-    (message "Stored: %s%s" (cadr entry)
-             (if (buffer-modified-p)
-                 " (buffer has unsaved changes, so the line may not match)"
-               ""))))
-
-(with-eval-after-load 'org
-  (with-eval-after-load 'vc-jj
-    (org-link-set-parameters "jj"
-                             :follow #'my/org-jj-open
-                             :store #'my/org-jj-store-link)))
 
 (use-package! majutsu
   :commands (majutsu majutsu-log)
