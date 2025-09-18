@@ -109,8 +109,7 @@
               (< end (point-max)))
           t
         (prog1 nil
-          (recenter (- (line-number-at-pos (max (window-start) (point)))
-                       (+ 1 (line-number-at-pos (point-max))))))))))
+          (recenter (- (+ 1 (count-screen-lines (point) (point-max))))))))))
 
 (after! imenu
   ;; default is 60, way too small
@@ -152,6 +151,13 @@
   (desktop-save-mode 1))
 
 (keymap-global-set "<f5>" #'repeat)
+
+(defun my/profiler-start-cpu ()
+  (interactive)
+  (profiler-start 'cpu))
+(keymap-global-set "<f7>" #'my/profiler-start-cpu)
+(keymap-global-set "<f8>" #'profiler-stop)
+(keymap-global-set "S-<f8>" #'profiler-report)
 
 (with-eval-after-load 'rx
   (rx-define my-file-name (+ (not ?/)))
@@ -221,12 +227,22 @@
                                     :size (if is-retina 12.0 14.0))
                          (font-spec :family "Iosevka Term SS08" :weight 'medium
                                     :size (if is-retina 12.0 14.0))))
+             (goodvarfonts (list
+                            (font-spec :family "Helvetica Neue" :weight 'medium
+                                       :size (if is-retina 12.0 14.0))
+                            (font-spec :family "Helvetica Neue" :weight 'medium
+                                       :size (if is-retina 12.0 14.0))))
              (ffl (font-family-list))
              (matching-font (seq-find
                              #'(lambda (f) (member (symbol-name (font-get f :family))
                                                    ffl))
-                             goodfonts)))
-    (setf doom-font matching-font)))
+                             goodfonts))
+             (matching-var-font (seq-find
+                                 #'(lambda (f) (member (symbol-name (font-get f :family))
+                                                       ffl))
+                                 goodvarfonts)))
+    (setf doom-font matching-font)
+    (setf doom-variable-pitch-font matching-var-font)))
 
 (setf doom-big-font-increment 2)
 
@@ -256,6 +272,11 @@
 
  :desc "Rename visited file"
  "f R" #'rename-visited-file)
+
+;; TODO: nice idea but doesn't work
+(define-advice find-file (:around (oldfun &rest args) my/pop-to-buffer)
+  (cl-flet ((pop-to-buffer-same-window (&rest args) (apply #'pop-to-buffer args)))
+    (apply oldfun args)))
 
 (load "my-core-ext.el")
 
@@ -1582,18 +1603,100 @@ If ARG (universal argument), open selection in other-window."
                 (encoded (gterm-send-key gterm--terminal 'key-w 2)))
       (process-send-string gterm--process encoded)))
 
+  (defun my/project-gterm (&optional arg)
+    "Open a gterm in the current project."
+    (interactive "p")
+    (cond
+     ((or (null arg) (eq arg 1))
+      (my/project-gterm-named))
+     ((eq arg 4)
+      (if-let* ((project (project-current))
+                (root (project-root project)))
+          (let* ((default-directory root))
+            (my/project-gterm-named))
+        (my/project-gterm-named)))
+     (t
+      (let* ((default-directory (getenv "HOME")))
+        (my/project-gterm-named)))))
+
+  (defun my/gterm-buffer-name (project &optional name)
+    (let* ((suffix (if (and name (length> name 0)) (format " %s" name) ""))
+           (pn (doom-project-name (project-root project))))
+      (format "*gterm %s%s*" pn suffix)))
+
+  (defun my/project-gterm-named (&optional arg)
+    "Open a gterm in the current project with a particular name."
+    (interactive "MTerminal name: ")
+    (gterm :buffer-name (my/gterm-buffer-name (project-current) arg)))
+
+  (defun my/rename-gterm-buffer (arg)
+    "Rename a gterm buffer to a nice pattern"
+    (interactive "MNew name: ")
+    (when (not (eq major-mode 'gterm-mode)) (error "not a gterm buffer"))
+    (let ((name arg))
+      (rename-buffer (my/gterm-buffer-name (project-current) name))))
+
+  (defun my/set-gterm-width ()
+    (interactive)
+    (my/window-resize-standard-width)
+    (my/window-preserve-size-any-buffer nil t t))
+
   (map!
+
+   (:leader
+    :desc "Open project gterm"
+    "o t" #'my/project-gterm)
+   
    :map gterm-mode-map
 
    :desc "window"
-   :ni "C-w" 'evil-window-map
+   :eni "C-w" 'evil-window-map
 
    :i "C-c C-w" #'my/gterm-send-C-w
-   :ni "C-c ," #'my/consult-term-buffer)
+   :eni "C-c ," #'switch-to-buffer
+
+   :i "s-v" #'yank
+
+   :desc "New gterm"
+   :en "C-c n" #'my/project-gterm-named
+
+   :desc "Rename buffer"
+   :eni "C-c r" #'my/rename-gterm-buffer
+
+   :desc "Find URL"
+   :en "C-c l" #'link-hint-open-link)
+
+  (after! consult
+    (setf my/consult-source-gterm-buffer
+          `(:name     "gterm Buffer"
+            :narrow   ?t
+            :default t
+            :category buffer
+            :face     consult-buffer
+            :history  buffer-name-history
+            :state    ,#'consult--buffer-state
+            :items
+            ,(lambda () (consult--buffer-query :sort 'visibility
+                                               :as #'buffer-name
+                                               :mode 'gterm-mode
+                                               :predicate
+                                               (lambda (buf)
+                                                 (seq-find #'(lambda (pb) (eq (car pb) buf))
+                                                           (window-prev-buffers)))))))
+
+    (defun my/consult-gterm-buffer ()
+      (interactive)
+      (consult-buffer `(my/consult-source-gterm-buffer ,@consult-buffer-sources)))
+
+    (map!
+     :map gterm-mode-map
+
+     :desc "Switch buffer"
+     :i "C-c ," #'my/consult-gterm-buffer))
 
   (when (modulep! :ui popup)
     (set-popup-rule! '(derived-mode . gterm-mode)
-      :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil)))
+                     :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil)))
 
 (use-package! eat
   :disabled
@@ -2617,6 +2720,7 @@ revisions (i.e., use a \"...\" range)."
 
    `(((or
        (category . comint)
+       (category . terminal)
        (derived-mode . vterm-mode)
        (derived-mode . gterm-mode)
        (derived-mode . compilation-mode)
@@ -2629,14 +2733,15 @@ revisions (i.e., use a \"...\" range)."
      ((derived-mode . bourdet-mode)
       (display-buffer-in-side-window)
       (side . right)
-      (slot . 0)
+      (slot . 1)
       (window-width . 101))
 
      ((or
        (category . help)
        (derived-mode . help-mode)
        (derived-mode . helpful-mode)
-       (derived-mode . Info-mode))
+       (derived-mode . Info-mode)
+       (derived-mode . profiler-report-mode))
       (display-buffer-reuse-mode-window
        display-buffer-in-side-window)
       (side . bottom)))))
@@ -2799,6 +2904,7 @@ WHERE is nil when the default value is changed, or a buffer for local sets."
                 (display-line-numbers-mode -1)))))
 
 ;; This is not actually showing up the problem
+;; (my/watch-line-numbers-mode 1)
 ;; (my/watch-line-numbers-mode 1)
 
 ;; END DIAGNOSTICS
