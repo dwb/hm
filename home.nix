@@ -287,6 +287,7 @@ in
       ui = {
         bookmark-list-sort-keys = ["committer-date"];
         default-command = ["log" "--reversed"];
+        diff-editor = ":builtin";
         pager = ":builtin";
         paginate = "never";
       };
