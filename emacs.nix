@@ -41,9 +41,34 @@ let
 
   emacsPackage = emacsPackages.emacsWithPackages (
     epkgs: with epkgs; [
-      treesit-grammars.with-all-grammars
-      vterm
+      add-node-modules-path
+      auth-source-1password
+      buffer-terminator
+      caddyfile-mode
+      dape
+      eldoc-box
+      eglot
+      eldoc
+      ellama
+      evil-owl
+      evil-textobj-tree-sitter
       ghostel
+      gotest
+      jira
+      llm
+      nushell-ts-mode
+      org-modern
+      org-preview-html
+      posframe
+      prettier
+      protobuf-mode
+      s
+      track-changes
+      treesit-grammars.with-all-grammars
+      vc-jj
+      zig-mode
+
+      # vterm
       # (epkgs.callPackage (import ./pkgs/ghostel.nix) {})
     ]
   );

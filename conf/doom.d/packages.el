@@ -56,101 +56,62 @@
 
 ;; required for config
 
-(package! s)
-
 ;; new stuff
 
 ;; Automatically compile Emacs Lisp libraries
 ;; not actually using this so disable for now
 ;; (package! auto-compile :pin "4cbd304698a897baf438400c9a2b31d3dfb3a7f9")
 
-(package! posframe)
 
 ;; (package! flow-js2-mode :pin "7520bd")
-(package! prettier)                     ; not pinned cos it needs to be from melpa
-(package! deadgrep)
-(package! protobuf-mode)
-(package! literate-calc-mode)
-(package! org-jira)
-(package! org-preview-html)
-(package! org-modern)
+;; (package! literate-calc-mode)
+;; (package! org-jira)
 
-(package! evil-owl)
 
-(package! nushell-ts-mode :recipe (:host github :repo "herbertjones/nushell-ts-mode"))
-
-(package! add-node-modules-path)
-
-(package! hyperbole)
-
-(when (>= emacs-major-version 30)
-  (package! eglot :built-in t)
-  (package! eldoc :built-in t)
-  (package! track-changes :built-in t))
-
-(package! eldoc-box :pin "ebc0e2c13791f5a22cf81be050b32f0ebf726855")
+;; (package! hyperbole)
 
 ;; (package! gptai
 ;;   :recipe (:host github :repo "antonhibl/gptai"
 ;;            :branch "main")
 ;;   :pin "5cdea5c85b102e1e57904ea6bb826cccd506067f")
 
-(package! ellama)
+;; (package! ellama)
 
-(package! norns :pin "022b433334cd1db4f83e77f055cd89e9f857076d")
+;; (package! norns :pin "022b433334cd1db4f83e77f055cd89e9f857076d")
 
-(package! evil-textobj-tree-sitter)
+;; (package! unison-ts-mode
+;;   :pin "04cbd1f73f94346e68f9b42f8ab9d7ab8ab43ad3"
+;;   :recipe
+;;   (:host github
+;;    :repo "fmguerreiro/unison-ts-mode"
+;;    :branch "main"))
 
-(package! gotest)
-
-(package! unison-ts-mode
-  :pin "04cbd1f73f94346e68f9b42f8ab9d7ab8ab43ad3"
-  :recipe
-  (:host github
-   :repo "fmguerreiro/unison-ts-mode"
-   :branch "main"))
-
-(package! unison-daemon
-  :pin "270f8305be32c8a34fbf9f88f4dfdb13ebae6e9c"
-  :recipe
-  (:host github
-   :repo "jmibanez/unison-daemon-el"
-   :branch "main"))
+;; (package! unison-daemon
+;;   :pin "270f8305be32c8a34fbf9f88f4dfdb13ebae6e9c"
+;;   :recipe
+;;   (:host github
+;;    :repo "jmibanez/unison-daemon-el"
+;;    :branch "main"))
 
 ;; disable / not really using / TODO: update to just-ts-mode and pin
 ;; (package! just-mode)
 
-(package! lilypond-mode
-  :pin "b7908403efe0761cec86c94db0c529db031246a0" ; 2.24.4
-  :recipe
-  (:type git
-   :repo "https://git.savannah.gnu.org/git/lilypond.git/"
-   :files ("elisp/*.el")
-   :pre-build ("nix" "shell" "nixpkgs#python3" "-c" "python" "scripts/build/lilypond-words.py" "--el" "--dir=elisp/")))
+;; (package! lilypond-mode
+;;   :pin "b7908403efe0761cec86c94db0c529db031246a0" ; 2.24.4
+;;   :recipe
+;;   (:type git
+;;    :repo "https://git.savannah.gnu.org/git/lilypond.git/"
+;;    :files ("elisp/*.el")
+;;    :pre-build ("nix" "shell" "nixpkgs#python3" "-c" "python" "scripts/build/lilypond-words.py" "--el" "--dir=elisp/")))
 
-;; nice big debugger integration
-;; in elpa
-;; https://github.com/svaante/dape
-(package! dape)
-
-(package! auth-source-1password
-  :pin "7bb8ad3507c58cc642b2ebbd7e57a91efab80e14"
-  :recipe
-  (:host github
-   :repo "dlobraico/auth-source-1password"))
-
-(package! caddyfile-mode)
-
-;; from elpa
-(package! vc-jj)
 ;; (package! jj-mode
 ;;   :pin "20b7b516f9a1bcb96fc1fedbc0a43138f9fe8765"
 ;;   :recipe (:host github :repo "bolivier/jj-mode.el"))
 
-(package! majutsu
-  ;; checked safe
-  :pin "a3758463aa8ad453c8fde4548704cebfece7ed43"
-  :recipe (:host github :repo "0WD0/majutsu"))
+;; (package! majutsu
+;;   ;; checked safe
+;;   :pin "a3758463aa8ad453c8fde4548704cebfece7ed43"
+;;   :recipe (:host github :repo "0WD0/majutsu"))
 
 
 (package! bourdet
@@ -166,19 +127,3 @@
 ;;                    ("terminfo/67" "terminfo/67/*")
 ;;                    ("terminfo/78" "terminfo/78/*"))))
 
-;; installed by nix
-;; (package! ghostel)
-;; (package! evil-ghostel)
-
-;; non-gnu elpa
-(package! zig-mode)
-
-;; melpa
-;; auto-closes buffers
-(package! buffer-terminator)
-
-;; melpa
-;; (package! agent-shell)
-
-;; melpa
-(package! jira)

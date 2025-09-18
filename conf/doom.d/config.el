@@ -162,16 +162,19 @@ binding `switch-to-prev-buffer-skip' to this function."
              (project (frame-project-dedicate--get-frame-project frame)))
     (frame-project-dedicate--project-placeholder-buffer project)))
 
-(defun my/window-deletable-p (window _only-window-on-frame)
-  "Veto implicit deletion of windows that should show a placeholder instead.
+(defun my/window-deletable-p (window only-window-on-frame)
+  "Veto deletion of a project frame whose last window loses its buffer.
 For `window-deletable-functions', which `quit-restore-window',
 `kill-buffer' and `bury-buffer' consult.  A nil return keeps WINDOW alive
 and has Emacs show some other buffer in it, which
 `my/switch-to-prev-buffer-fallback' then supplies.
 
-Side windows are left to the default handling, so an exhausted one is
-still deleted rather than left showing a dead buffer."
-  (or (and (window-parameter window 'window-side) t)
+Only ONLY-WINDOW-ON-FRAME deletions are vetoed, which is the case where
+`quit-restore-window' would otherwise delete the frame.  Ordinary windows
+stay deletable, so `quit-window' and `kill-buffer' can still close a
+window that `display-buffer' created for the buffer being dismissed.
+Side windows need no special case: one is never a frame's root window."
+  (or (not only-window-on-frame)
       (not (my/frame-project-placeholder-buffer (window-frame window)))))
 
 (add-hook 'window-deletable-functions #'my/window-deletable-p)
@@ -196,8 +199,10 @@ Show the frame's project placeholder buffer, or `*scratch*'."
              my/from-prev-buffers-only)
   "Restrict candidates to WINDOW's `window-prev-buffers'.
 On kill/bury with no viable candidate, show the frame's project
-placeholder (else `*scratch*'); window deletion is decided earlier by
-`quit-restore-window' and `my/window-deletable-p'. For plain navigation,
+placeholder (else `*scratch*').  Since that always succeeds, the
+`window--delete' fallback in `quit-restore-window' is unreachable: an
+exhausted window is only ever deleted by that function's earlier
+branches, subject to `my/window-deletable-p'.  For plain navigation,
 defer to the original implementation so `next-buffers' and the frame
 buffer list remain reachable."
   (when (or (null window) (window-live-p window))
@@ -604,8 +609,16 @@ OS-level focus; we only need to update Emacs's internal state."
 
 (use-package! eldoc-box
   :config
-  (eldoc-box-hover-at-point-mode 1)
-  (after! eglot
+  ;; Without this the childframe inherits (fullscreen . fullheight) from
+  ;; `default-frame-alist'. On NS, `alter-fullscreen-frames' is `inhibit', so
+  ;; `set-frame-size' is ignored for the childframe and it never resizes to fit
+  ;; its content. Fixed upstream in casouri/eldoc-box#149; drop this once the
+  ;; pin in packages.el is past 2026-09-03.
+  (setf (alist-get 'fullscreen eldoc-box-frame-parameters) nil)
+  (add-hook 'eldoc-mode-hook #'eldoc-box-hover-at-point-mode)
+  (add-hook 'eldoc-box-buffer-setup-hook #'eldoc-box-prettify-ts-errors 0 t)
+  (with-eval-after-load 'eglot
+    (add-to-list 'eglot-ignored-server-capabilites :hoverProvider)
     (add-hook 'eglot-managed-mode-hook #'eldoc-box-hover-at-point-mode t)))
 
 (use-package! gotest)
@@ -735,7 +748,8 @@ OS-level focus; we only need to update Emacs's internal state."
             (slot . 1)
             (window-width . 101))))
 
-(use-package! norns)
+(use-package! norns
+  :disabled)
 (use-package! combobulate
   :disabled
   :hook (go-ts-mode typescript-ts-base-mode)
@@ -793,8 +807,10 @@ OS-level focus; we only need to update Emacs's internal state."
     (setf auth-source-1password-vault "Employee")
     (auth-source-1password-enable)))
 
-(use-package unison-ts-mode)
-(use-package unison-daemon)
+(use-package unison-ts-mode
+  :disabled)
+(use-package unison-daemon
+  :disabled)
 
 (after! vc
   (defun my/vc-dir-diff (dir)
@@ -1226,7 +1242,8 @@ The actual buffer content (the absolute path) remains unchanged."
 ;; (use-package! window-purpose)
 
 
-(use-package! literate-calc-mode)
+(use-package! literate-calc-mode
+  :disabled)
 
 ;; eagar-load vterm to load my mappings below
 (use-package! vterm
