@@ -269,6 +269,13 @@ in
       rebase.autoSquash = true;
       rerere.enabled = true;
 
+      # as in https://dandavison.github.io/delta
+      # the diff formatter
+      delta = {
+        light = true;
+        pager = "";
+      };
+
       # this is too problematic
       # url."ssh://git@github.com/".insteadOf = "https://github.com/";
     };
@@ -277,26 +284,33 @@ in
   programs.jujutsu = {
     enable = true;
     package = pkgsUnstable.jujutsu;
-    settings = {
+    settings = let
+      privateCommits = "description(glob:'wip:*') | description(glob:'private:*')";
+      delta = "${pkgsUnstable.delta}/bin/delta";
+    in {
       user = {
         name = userName;
         email = userEmail;
+      };
+      diff = {
+        tool = delta;
       };
       ui = {
         bookmark-list-sort-keys = ["committer-date"];
         default-command = ["log" "--reversed"];
         diff-editor = ":builtin";
-        # do something like this https://github.com/jj-vcs/jj/discussions/4690
-        # diff-formatter = ["${pkgsUnstable.delta}/bin/delta" "--paging" "never" "$left" "$right"];
+        diff-formatter = ":git";
         pager = ":builtin";
-        paginate = "never";
+        paginate = "auto";
       };
       git = {
-        private-commits = "description(glob:'wip:*') | description(glob:'private:*')";
+        private-commits = privateCommits;
       };
       aliases = {
         di = ["diff"];
+        # log to trunk
         lt = ["log" "--reversed" "-r" "parents(trunk()) | trunk()..@"];
+        # (heads of) my branches (even ahead of bookmarks)
         mb = ["log" "--reversed" "-r" "visible_heads() & mine()::"];
         pre-commit = ["util" "exec" "--" "bash" "-c" ''
           set -euo pipefail
@@ -317,11 +331,25 @@ in
 
           pre-commit run --from="$FROM" --to="$TO" "$@"
         ''];
+        # rebase on trunk
         retrunk = ["rebase" "-d" "trunk()"];
+        # split before private (commits)
+        sbp = ["split" "--insert-after" "heads((trunk()..@) ~ private_commits())"];
+        tug = ["bookmark" "move" "--from" "closest_bookmark(@)" "--to" "closest_public_nonempty(@)"];
       };
       revset-aliases = {
+        "closest_bookmark(to)" = "heads(::to & bookmarks())";
+        "closest_nonempty(to)" = "heads(::to ~ empty())";
+        "closest_public_nonempty(to)" = "closest_nonempty(to) ~ private_commits()";
         "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
+        "private_commits()" = privateCommits;
       };
+      "--scope" = [
+        {
+          "--when".commands = ["diff" "show"];
+          ui.pager = delta;
+        }
+      ];
     };
   };
 
