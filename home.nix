@@ -297,7 +297,7 @@ in
       };
       ui = {
         bookmark-list-sort-keys = ["committer-date"];
-        default-command = ["log" "--reversed" "-r" "trunk()::@"];
+        default-command = ["log-status"];
         diff-editor = ":builtin";
         diff-formatter = ":git";
         pager = ":builtin";
@@ -318,7 +318,15 @@ in
         # diff from trunk
         dt = ["diff" "-r" "trunk()..@"];
         # log to trunk
-        lt = ["log" "--reversed" "-r" "trunk()::@"];
+        lt = ["log" "--reversed" "-r" "fork_point(@- | trunk())::@ ~ ::trunk()-"];
+
+        log-status = ["util" "exec" "--" "sh" "-c" ''
+          set -e
+          jj lt --ignore-working-copy "$@"
+          echo
+          jj status "$@"
+        '' "jj-log-status"];
+
         # (heads of) my branches (even ahead of bookmarks)
         mb = ["log" "--reversed" "-r" "visible_heads() & mine()::"];
         pre-commit = ["util" "exec" "--" "bash" "-c" ''
