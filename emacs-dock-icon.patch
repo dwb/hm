@@ -1,0 +1,160 @@
+diff --git i/lisp/term/ns-win.el w/lisp/term/ns-win.el
+index 665198596d0..2d2a4ad03ad 100644
+--- i/lisp/term/ns-win.el
++++ w/lisp/term/ns-win.el
+@@ -598,6 +598,109 @@ If FRAME is nil, the change applies to the selected frame."
+   (if (not tool-bar-mode) (tool-bar-mode t)))
+ 
+ 
++;;;; Dock icon badge.
++
++(declare-function ns-set-dock-badge-label "nsfns.m" (label))
++
++(defvar ns--dock-badge-value nil
++  "The current macOS Dock icon badge value.
++This holds the value last given to `ns-dock-badge-set' or produced by
++`ns-dock-badge-update'.  It may be any Lisp object; it is turned into a
++badge label by `ns-dock-badge-render-functions'.")
++
++(defcustom ns-dock-badge-render-functions nil
++  "Abnormal hook to turn a Dock badge value into a badge label.
++Each function is called with one argument, the current badge value (see
++`ns-dock-badge-set'), and should return one of:
++
++  a string   use it as the badge label;
++  an integer show it as the label, except 0, which clears the badge;
++  nil        clear the badge;
++  `skip'     decline, so that the next function is tried.
++
++Any other return value is ignored, with a warning, and the next function
++is tried.  The functions are called in order until one returns a value
++other than `skip'.  If none does, or the list is empty, the value is
++rendered directly: strings and integers as above, nil clears the badge,
++and any other value is ignored with a warning, leaving the badge
++unchanged."
++  :type '(repeat function)
++  :group 'ns
++  :version "30.3")
++
++(defun ns--dock-badge-int-label (n)
++  "Return the badge label string for integer N, or nil to clear the badge."
++  (declare (side-effect-free t))
++  (unless (zerop n)
++    (number-to-string n)))
++
++(defun ns--dock-badge-compute-label (value)
++  "Compute the Dock badge label for VALUE.
++Return a string to display, nil to clear the badge, or the symbol
++`unchanged' to leave the current badge as-is.  See
++`ns-dock-badge-render-functions' for the rules."
++  (catch 'ns--dock-badge-done
++    (dolist (fn ns-dock-badge-render-functions)
++      (let ((result (funcall fn value)))
++        (cond
++         ((eq result 'skip))            ; Decline; try the next function.
++         ((stringp result) (throw 'ns--dock-badge-done result))
++         ((integerp result)
++          (throw 'ns--dock-badge-done (ns--dock-badge-int-label result)))
++         ((null result) (throw 'ns--dock-badge-done nil))
++         (t (display-warning
++             '(ns dock-badge)
++             (format "Render function %S returned disallowed value %S"
++                     fn result))))))
++    ;; No function produced a label; render VALUE directly.
++    (cond
++     ((stringp value) value)
++     ((integerp value) (ns--dock-badge-int-label value))
++     ((null value) nil)
++     (t (display-warning
++         '(ns dock-badge)
++         (format "Cannot render Dock badge value %S" value))
++        'unchanged))))
++
++(defun ns--dock-badge-refresh ()
++  "Re-render the current badge value and update the Dock icon."
++  (let ((label (ns--dock-badge-compute-label ns--dock-badge-value)))
++    (unless (eq label 'unchanged)
++      (ns-set-dock-badge-label label))))
++
++(defun ns-dock-badge-set (value)
++  "Set the macOS Dock icon badge to VALUE and update the Dock icon.
++VALUE may be any Lisp object.  It is turned into a badge label by
++`ns-dock-badge-render-functions'; by default an integer is shown as
++itself (0 clears the badge), a string is shown as-is, and nil clears the
++badge.  Return VALUE."
++  (setq ns--dock-badge-value value)
++  (ns--dock-badge-refresh)
++  value)
++
++(defun ns-dock-badge-update (function)
++  "Update the macOS Dock icon badge value using FUNCTION.
++FUNCTION is called with one argument, the current badge value, and its
++return value becomes the new badge value (see `ns-dock-badge-set').  The
++read, call, and store happen without an intervening thread switch, so
++concurrent updates do not lose changes, provided FUNCTION itself does not
++yield.  Return the new value."
++  (ns-dock-badge-set (funcall function ns--dock-badge-value)))
++
++(defun ns-dock-badge ()
++  "Return the current macOS Dock icon badge value.
++This is the value last given to `ns-dock-badge-set' or produced by
++`ns-dock-badge-update', not the displayed label."
++  (declare (side-effect-free t))
++  ns--dock-badge-value)
++
++(defun ns-dock-badge-refresh ()
++  "Re-render the current Dock badge value and update the Dock icon.
++This is useful after changing `ns-dock-badge-render-functions'."
++  (interactive)
++  (ns--dock-badge-refresh))
++
++
+ ;;;; Dialog-related functions.
+ 
+ ;; Ask user for confirm before printing.  Due to Kevin Rodgers.
+diff --git i/src/nsfns.m w/src/nsfns.m
+index 29e3de44f35..c866048b619 100644
+--- i/src/nsfns.m
++++ w/src/nsfns.m
+@@ -2193,6 +2193,33 @@ Frames are listed from topmost (first) to bottommost (last).  */)
+ }
+ 
+ 
++DEFUN ("ns-set-dock-badge-label", Fns_set_dock_badge_label,
++       Sns_set_dock_badge_label, 1, 1, 0,
++       doc: /* Set the macOS Dock icon badge to LABEL.
++LABEL is a string to display on the badge, or nil to remove the badge.
++This is a low-level primitive; Lisp code should normally use
++`ns-dock-badge-set'.  On GNUstep this has no effect.  */)
++  (Lisp_Object label)
++{
++  check_window_system (NULL);
++  if (!NILP (label))
++    CHECK_STRING (label);
++#ifdef NS_IMPL_COCOA
++  NSString *s = NILP (label) ? nil : [NSString stringWithLispString: label];
++  NSDockTile *tile = [NSApp dockTile];
++  /* Dock tile updates must happen on the main thread; a Lisp thread
++     created with `make-thread' can call this from another thread.  */
++  if ([NSThread isMainThread])
++    [tile setBadgeLabel: s];
++  else
++    [tile performSelectorOnMainThread: @selector (setBadgeLabel:)
++                           withObject: s
++                        waitUntilDone: NO];
++#endif /* NS_IMPL_COCOA */
++  return Qnil;
++}
++
++
+ DEFUN ("ns-font-name", Fns_font_name, Sns_font_name, 1, 1, 0,
+        doc: /* Determine font PostScript or family name for font NAME.
+ NAME should be a string containing either the font name or an XLFD
+@@ -4020,6 +4047,7 @@ - (Lisp_Object)lispString
+   defsubr (&Sns_hide_others);
+   defsubr (&Sns_hide_emacs);
+   defsubr (&Sns_emacs_info_panel);
++  defsubr (&Sns_set_dock_badge_label);
+   defsubr (&Sns_list_services);
+   defsubr (&Sns_perform_service);
+   defsubr (&Sx_select_font);

@@ -72,6 +72,7 @@ in
               patches = old.patches ++ [
                 ./emacs-window-name.patch
                 ./emacs-flicker-fix.patch
+                ./emacs-dock-icon.patch
               ];
             })
         else

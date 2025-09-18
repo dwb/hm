@@ -51,7 +51,18 @@
                   org-verbatim))
     (set-face-attribute face nil :inherit 'fixed-pitch))
 
-  (add-hook 'org-mode-hook #'variable-pitch-mode))
+  (add-hook 'org-mode-hook #'variable-pitch-mode)
+
+  (when (fboundp 'ns-dock-badge-set)
+    (defun my/org-open-todos-count ()
+      (let ((count 0))
+        (org-map-entries (lambda () (cl-incf count)) "/!" 'agenda)
+        count))
+
+    (defun my/org-todos-dock-update ()
+      (ns-dock-badge-set (my/org-open-todos-count)))
+    
+    (run-with-idle-timer 2 t #'my/org-todos-dock-update)))
 
 (with-eval-after-load 'markdown-mode
   (dolist (face '(markdown-markup-face
