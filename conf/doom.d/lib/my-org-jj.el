@@ -7,6 +7,9 @@
 (defvar org-stored-links)
 (defvar org-dblock-start-re)
 (defvar org-dblock-end-re)
+(defvar org-src-lang-modes)
+(defvar diff-font-lock-keywords)
+(defvar diff-font-lock-syntax)
 (declare-function org-entry-get "org")
 (declare-function org-mode "org")
 (declare-function org-update-all-dblocks "org")
@@ -599,6 +602,39 @@ For `org-open-at-point-functions'."
   "Follow jj-diff LINK. See `my/org-jj--parse-diff-link' for its form."
   (pcase-let ((`(,path ,from ,to) (my/org-jj--parse-diff-link link)))
     (vc-diff-internal t (list 'JJ (list (expand-file-name path))) from to)))
+
+;; Source language highlighting in Org "diff" source blocks, including
+;; those written by jj-diff blocks.
+
+(defun my/org-jj--diff-overlay-faces-to-text (limit)
+  "Add the faces of `diff-mode' overlays between point and LIMIT to the text.
+This is a font-lock matcher, run after the keywords of `diff-mode'.
+`diff-mode' puts source language and refinement faces on overlays,
+which Org does not copy from the buffer it fontifies source blocks in.
+Always return nil, so font-lock does nothing else with this matcher."
+  (let ((start (point)))
+    (dolist (ol (overlays-in start limit))
+      (when-let* (((memq (overlay-get ol 'diff-mode) '(syntax fine)))
+                  (face (overlay-get ol 'face)))
+        (add-face-text-property (max start (overlay-start ol))
+                                (min limit (overlay-end ol))
+                                face))))
+  nil)
+
+(define-derived-mode my/org-jj-src-diff-mode diff-mode "Diff"
+  "Major mode for fontifying Org \"diff\" source blocks.
+Highlight the text of each hunk using the major mode for its file name,
+from the hunk alone, as in `diff-font-lock-syntax' `hunk-only'. Put
+these faces in text properties, so that
+`org-src-font-lock-fontify-block' copies them into the Org buffer."
+  (setq-local diff-font-lock-syntax 'hunk-only)
+  (setq-local font-lock-defaults
+              (cons (append diff-font-lock-keywords
+                            '((my/org-jj--diff-overlay-faces-to-text)))
+                    (cdr font-lock-defaults))))
+
+(with-eval-after-load 'org-src
+  (add-to-list 'org-src-lang-modes '("diff" . my/org-jj-src-diff)))
 
 (with-eval-after-load 'org
   (add-hook 'org-open-at-point-functions #'my/org-jj-diff-open-at-point)
