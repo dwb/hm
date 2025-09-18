@@ -72,6 +72,7 @@ in
   home.packages = (with pkgs; [
     aws-vault
     fd
+    gh
     git-absorb
     git-extras
     graphviz
@@ -93,10 +94,12 @@ in
       nokogiri
       pry
     ]))
+    uv
     wget
     zstd
   ]) ++ (with pkgsUnstable; [
     # aider-chat # dependency kvazaar fails tests rn and i dont use it
+    awscli2
     delve
     difftastic
     go
@@ -109,7 +112,7 @@ in
         mv $out/bin/bundle $out/bin/gobundle
       '';
     })
-
+    jjui
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin ((with pkgs; [
     reattach-to-user-namespace
   ]) ++ (with pkgsUnstable; [
