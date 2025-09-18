@@ -874,7 +874,7 @@ description(\"\")" ];
   programs.yt-dlp.enable = true;
 
   programs.wezterm = {
-    enable = true;
+    enable = false;
     package = pkgsUnstable.wezterm;
     extraConfig = builtins.readFile ./conf/wezterm.lua;
   };
