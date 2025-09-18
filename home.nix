@@ -290,7 +290,8 @@ in
         bookmark-list-sort-keys = ["committer-date"];
         default-command = ["log-status"];
         diff-editor = ":builtin";
-        diff-formatter = ":git";
+        diff-formatter = ["difft" "--color=always" "$left" "$right"];
+        # diff-formatter = ":git";
         pager = ":builtin";
         paginate = "auto";
       };
