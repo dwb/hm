@@ -284,6 +284,23 @@ in
         name = userName;
         email = userEmail;
       };
+      ui = {
+        bookmark-list-sort-keys = ["committer-date"];
+        default-command = ["log" "--reversed"];
+        pager = ":builtin";
+        paginate = "never";
+      };
+      git = {
+        private-commits = "description(glob:'wip:*') | description(glob:'private:*')";
+      };
+      aliases = {
+        di = ["diff"];
+        lt = ["log" "-r" "parents(trunk()) | trunk()..@" "--reversed"];
+        retrunk = ["rebase" "-d" "trunk()"];
+      };
+      revset-aliases = {
+        "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
+      };
     };
   };
 
