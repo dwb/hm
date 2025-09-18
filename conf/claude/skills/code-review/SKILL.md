@@ -4,6 +4,7 @@ description: Structured code review of a jj change with numbered findings for di
 argument-hint: "[change-id] [extra-intructions]"
 disable-model-invocation: true
 effort: max
+allowed-tools: AskUserQuestion, EnterPlanMode
 ---
 
 # Code Review
@@ -12,6 +13,7 @@ Review the code change at jj change `$0`. If no change was specified, the target
 
 ## Pre-Review Setup
 
+1. If you are not in plan mode, use EnterPlanMode. Record the review in the plan file. Do not call ExitPlanMode until the user has reviewed the findings.
 1. **Invoke the jj skill** before running any jj commands.
 2. **Fetch the change**: Run `jj show <change> --git` on the target change (the argument `$0`, or `@` if none was given). Also run `jj lt <change>` (or `jj log` if `jj lt` fails) to see the change in context.
 3. **Identify the change**: The diff from `jj show` is the code to review. If the description is empty or is a megamerge marker (e.g. `private: WORKING`), that is normal — it just means the work hasn't been described yet. In a megamerge at `@`, the diff may contain changes across unrelated areas. Focus on changes in the main source directories and ignore peripheral concerns (repository setup, meta-settings, config boilerplate, etc.).
@@ -106,7 +108,7 @@ If there are no findings, say so explicitly. An empty findings section is a vali
 
 ## After the Review
 
-**CRITICAL: After presenting the review, UNCONDITIONALLY STOP.** Do not proceed to fix anything. Do not ask if you should fix things. Simply present the review and wait.
+**CRITICAL: After presenting the review, UNCONDITIONALLY STOP.** Do not call ExitPlanMode. Do not proceed to fix anything. Do not ask if you should fix things. Simply present the review and wait.
 
 The user will then discuss the findings:
 - They may dismiss some findings (e.g. "dismiss 3, that's intentional")

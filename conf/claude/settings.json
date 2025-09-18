@@ -144,6 +144,8 @@
       }
     ]
   },
+  "outputStyle": "Plain",
+  "viewMode": "verbose",
   "spinnerTipsEnabled": false,
   "spinnerVerbs": {
     "mode": "replace",
@@ -152,10 +154,10 @@
     ]
   },
   "alwaysThinkingEnabled": true,
+  "effortLevel": "xhigh",
+  "tui": "default",
   "theme": "auto",
   "editorMode": "vim",
-  "viewMode": "verbose",
-  "outputStyle": "Concise",
   "feedbackSurveyState": {
     "lastShownTime": 1754299769863
   }
