@@ -8,7 +8,7 @@
 (require 'add-node-modules-path)
 
 (defun yarn-project/add-node-modules-path (oldfun)
-  (if-let ((yarnlockdir (locate-dominating-file default-directory "yarn.lock")))
+  (if-let* ((yarnlockdir (locate-dominating-file default-directory "yarn.lock")))
       (let ((default-directory yarnlockdir))
         (funcall oldfun))
     (funcall oldfun)))

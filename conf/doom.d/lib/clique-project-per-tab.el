@@ -4,8 +4,8 @@
 (require 'project-per-tab)
 
 (defclique tabproject
-           (when-let ((proj (project-per-tab-project-of-tab))
-                      (buf (current-buffer)))
+           (when-let* ((proj (project-per-tab-project-of-tab))
+                       (buf (current-buffer)))
              (memq buf (project-buffers proj))))
 
 (provide 'clique-project-per-tab)

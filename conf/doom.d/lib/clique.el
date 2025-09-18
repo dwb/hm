@@ -39,7 +39,7 @@ Keyword arguments may precede the body:
          (let* ((buffn (lambda (b) (with-current-buffer b (progn ,@body))))
                 (newclique (make-clique :name symname :buffn buffn :intensity ,intensity)))
            (puthash symname newclique clique-map)
-           (cl-incf clique-count))))))
+           (incf clique-count))))))
 
 (defun clique-cliques-of-buffer (&optional buffer-or-name any-cliques all-cliques)
   "Return the clique memberships of BUFFER-OR-NAME.

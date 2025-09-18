@@ -38,8 +38,8 @@
 (with-eval-after-load 'org
   ;; If you use `org' and don't want your org files in the default location below,
   ;; change `org-directory'. It must be set before org loads!
-  (when-let ((d (seq-find #'file-exists-p '(;; "~/Library/Mobile Documents/com~apple~CloudDocs/org/"
-                                            "~/org/"))))
+  (when-let* ((d (seq-find #'file-exists-p '(;; "~/Library/Mobile Documents/com~apple~CloudDocs/org/"
+                                             "~/org/"))))
     (setopt org-directory d)
     (setopt org-roam-directory d))
 
@@ -59,7 +59,7 @@
   (when (or (fboundp 'ns-dock-badge-set) (fboundp 'system-taskbar-badge))
     (defun my/org-open-todos-count ()
       (let ((count 0))
-        (org-map-entries (lambda () (cl-incf count))
+        (org-map-entries (lambda () (incf count))
                          "+SCHEDULED=\"\"|+SCHEDULED<=*\"<now>\"/!"
                          'agenda)
         count))
@@ -155,30 +155,49 @@ binding `switch-to-prev-buffer-skip' to this function."
               (not (my/switch-to-prev-buffer--skip-p window buf bury-or-kill)))))
      (window-prev-buffers window))))
 
+(defun my/frame-project-placeholder-buffer (frame)
+  "FRAME's project placeholder buffer, or nil if it has no project."
+  (and-let* (((fboundp 'frame-project-dedicate--get-frame-project))
+             ((fboundp 'frame-project-dedicate--project-placeholder-buffer))
+             (project (frame-project-dedicate--get-frame-project frame)))
+    (frame-project-dedicate--project-placeholder-buffer project)))
+
+(defun my/window-deletable-p (window _only-window-on-frame)
+  "Veto implicit deletion of windows that should show a placeholder instead.
+For `window-deletable-functions', which `quit-restore-window',
+`kill-buffer' and `bury-buffer' consult.  A nil return keeps WINDOW alive
+and has Emacs show some other buffer in it, which
+`my/switch-to-prev-buffer-fallback' then supplies.
+
+Side windows are left to the default handling, so an exhausted one is
+still deleted rather than left showing a dead buffer."
+  (or (and (window-parameter window 'window-side) t)
+      (not (my/frame-project-placeholder-buffer (window-frame window)))))
+
+(add-hook 'window-deletable-functions #'my/window-deletable-p)
+
+;; Route `kill-buffer' through `quit-restore-window' rather than the older
+;; path in `replace-buffer-in-windows' that only deleted dedicated windows.
+;; This is what makes `window-deletable-functions' apply, and it lets Emacs
+;; delete an exhausted window itself instead of `switch-to-prev-buffer' having
+;; to call `delete-window' mid-iteration, which used to error on side windows.
+(setopt kill-buffer-quit-windows t)
+
 (defun my/switch-to-prev-buffer-fallback (window)
   "Fallback when WINDOW has no viable prev-buffer on kill/bury.
-Delete side windows; otherwise show the frame's project placeholder
-buffer, or `*scratch*'."
-  (unless (window-parameter window 'window-side)
-      ;; TODO: this makes replace-buffer-in-windows error for side windows
-      ;; above used to be an if, we're just not doing this now.
-      ;; (progn (delete-window window) nil)
-    (let ((buffer
-           (or (and-let* (((fboundp 'frame-project-dedicate--get-frame-project))
-                          ((fboundp 'frame-project-dedicate--project-placeholder-buffer))
-                          (project (frame-project-dedicate--get-frame-project
-                                    (window-frame window))))
-                 (frame-project-dedicate--project-placeholder-buffer project))
-               (get-scratch-buffer-create))))
-      (set-window-buffer window buffer)
-      buffer)))
+Show the frame's project placeholder buffer, or `*scratch*'."
+  (let ((buffer (or (my/frame-project-placeholder-buffer (window-frame window))
+                    (get-scratch-buffer-create))))
+    (set-window-buffer window buffer)
+    buffer))
 
 (define-advice switch-to-prev-buffer
     (:around (orig-fn &optional window bury-or-kill)
              my/from-prev-buffers-only)
   "Restrict candidates to WINDOW's `window-prev-buffers'.
-On kill/bury with no viable candidate, delete side windows or show the
-frame's project placeholder (else `*scratch*'). For plain navigation,
+On kill/bury with no viable candidate, show the frame's project
+placeholder (else `*scratch*'); window deletion is decided earlier by
+`quit-restore-window' and `my/window-deletable-p'. For plain navigation,
 defer to the original implementation so `next-buffers' and the frame
 buffer list remain reachable."
   (when (or (null window) (window-live-p window))
@@ -197,6 +216,12 @@ buffer list remain reachable."
         (funcall orig-fn window bury-or-kill))))))
 
 (setq window-sides-vertical t)
+
+;; Emacs 31 changed the default to `longest', which prefers a horizontal split
+;; on landscape frames.  `window-min-width' is 101 here and the right-hand side
+;; window takes 101 of a 220-column frame, so a horizontal split of what's left
+;; cannot meet the minimum anyway.  Keep the pre-31 behaviour.
+(setopt split-window-preferred-direction 'vertical)
 
 (setq uniquify-buffer-name-style 'post-forward-angle-brackets)
 
@@ -237,10 +262,7 @@ buffer list remain reachable."
 (when (fboundp 'system-taskbar-mode)
   (system-taskbar-mode))
 
-(defun my/select-previous-window ()
-  (interactive)
-  (other-window -1))
-(keymap-global-set "C-M-`" #'my/select-previous-window)
+(keymap-global-set "C-M-`" #'other-window-backward)
 
 (when (fboundp 'iconify-frame)
   (defun my/iconfiy-other-frames ()
@@ -295,7 +317,12 @@ buffer list remain reachable."
 (defun my/save-all-file-buffers ()
   (save-some-buffers t))
 
-(add-hook 'focus-out-hook #'my/save-all-file-buffers)
+(defun my/save-all-file-buffers-on-defocus ()
+  "Save file buffers once no frame has input focus.
+`after-focus-change-function' runs on both gain and loss of focus, so
+check `frame-focus-state' rather than assuming a loss."
+  (unless (seq-some #'frame-focus-state (visible-frame-list))
+    (my/save-all-file-buffers)))
 
 
 (when (eq initial-window-system 'ns)
@@ -333,11 +360,29 @@ OS-level focus; we only need to update Emacs's internal state."
         my/after-focus-change-function-orig)
   (add-function :after after-focus-change-function #'my/ns-focus-fix))
 
+;; Replaces `focus-out-hook', obsolete since Emacs 27.1 and, on NS, driven by
+;; events the port does not reliably deliver.  Added after the block above,
+;; which resets `after-focus-change-function' to its pristine value on reload.
+(add-function :after after-focus-change-function
+              #'my/save-all-file-buffers-on-defocus)
+
 (setopt desktop-load-locked-desktop 'check-pid)
 (setopt desktop-path (list (concat doom-local-dir "state/desktop")))
 ;; TODO: not good enough, doesn't prioritise visible buffers
 ;; (setopt desktop-restore-eager 5)
 (with-eval-after-load 'desktop
+  ;; `uniquify-buffer-name-style' is set above, so saved window states record
+  ;; names like "config.el<doom.d>", which fail to match on restore if the
+  ;; disambiguating set of buffers differs.  Emacs 31's
+  ;; `window-state-normalize-buffer-name' makes `window-state-get' record the
+  ;; base name instead.  Bind it only here: other `window-state-get' callers
+  ;; (persp-mode, `rotate-windows') round-trip states within one session and
+  ;; need the exact buffer back.
+  (define-advice desktop-save-frameset
+      (:around (orig-fn) my/normalize-uniquify-names)
+    (let ((window-state-normalize-buffer-name t))
+      (funcall orig-fn)))
+
   (desktop-save-mode 1))
 
 (keymap-global-set "<f5>" #'repeat)
@@ -406,31 +451,31 @@ OS-level focus; we only need to update Emacs's internal state."
 ;; Set font to the first good one
 ;; https://lists.gnu.org/archive/html/bug-gnu-emacs/2022-12/msg00665.html
 (ignore-errors
-  (when-let ((monitors (car (display-monitor-attributes-list)))
-             (mm-size (map-elt monitors 'mm-size))
-             (geometry (map-elt monitors 'geometry))
-             (wpix (nth 2 geometry))
-             (wmm (nth 0 mm-size))
-             (is-retina (>= (/ wpix wmm) 4))
-             (goodfonts (list
-                         (font-spec :family "Iosevka DWB Term" :weight 'medium
-                                    :size (if is-retina 12.0 14.0))
-                         (font-spec :family "Iosevka Term SS08" :weight 'medium
-                                    :size (if is-retina 12.0 14.0))))
-             (goodvarfonts (list
-                            (font-spec :family "Helvetica Neue" :weight 'light
-                                       :size (if is-retina 13.0 14.0))
-                            (font-spec :family "Helvetica Neue" :weight 'light
-                                       :size (if is-retina 13.0 14.0))))
-             (ffl (font-family-list))
-             (matching-font (seq-find
-                             #'(lambda (f) (member (symbol-name (font-get f :family))
-                                                   ffl))
-                             goodfonts))
-             (matching-var-font (seq-find
-                                 #'(lambda (f) (member (symbol-name (font-get f :family))
-                                                       ffl))
-                                 goodvarfonts)))
+  (when-let* ((monitors (car (display-monitor-attributes-list)))
+              (mm-size (map-elt monitors 'mm-size))
+              (geometry (map-elt monitors 'geometry))
+              (wpix (nth 2 geometry))
+              (wmm (nth 0 mm-size))
+              (is-retina (>= (/ wpix wmm) 4))
+              (goodfonts (list
+                          (font-spec :family "Iosevka DWB Term" :weight 'medium
+                                     :size (if is-retina 12.0 14.0))
+                          (font-spec :family "Iosevka Term SS08" :weight 'medium
+                                     :size (if is-retina 12.0 14.0))))
+              (goodvarfonts (list
+                             (font-spec :family "Helvetica Neue" :weight 'light
+                                        :size (if is-retina 13.0 14.0))
+                             (font-spec :family "Helvetica Neue" :weight 'light
+                                        :size (if is-retina 13.0 14.0))))
+              (ffl (font-family-list))
+              (matching-font (seq-find
+                              #'(lambda (f) (member (symbol-name (font-get f :family))
+                                                    ffl))
+                              goodfonts))
+              (matching-var-font (seq-find
+                                  #'(lambda (f) (member (symbol-name (font-get f :family))
+                                                        ffl))
+                                  goodvarfonts)))
     (setf doom-font matching-font)
     (setf doom-variable-pitch-font matching-var-font)))
 
@@ -438,8 +483,8 @@ OS-level focus; we only need to update Emacs's internal state."
 
 ;; macOS tries to set SSH_AUTH_SOCK to something helpful but it really isn't
 ;; turns out it is quite helpful
-;; (when-let ((home    (getenv "HOME"))
-;;            (newsock (concat (file-name-as-directory home) ".gnupg/S.gpg-agent.ssh")))
+;; (when-let* ((home    (getenv "HOME"))
+;;             (newsock (concat (file-name-as-directory home) ".gnupg/S.gpg-agent.ssh")))
 ;;   (when (file-exists-p newsock) (setenv "SSH_AUTH_SOCK" newsock)))
 
 ;; add private lib dir to load-path
@@ -486,7 +531,6 @@ OS-level focus; we only need to update Emacs's internal state."
 ;;  (my/gimme 'nodejs_20))
 
 (require 'alfred)
-(require 'rotate)
 
 (require 'subproject)
 ;; enabled after projectile so that subprojects are looked at first
@@ -572,13 +616,13 @@ OS-level focus; we only need to update Emacs's internal state."
   :commands (lilypond-mode))
 
 ;; gptai
-(if-let ((user  "d@dani.cool")
-         (entry (car (auth-source-search :max 1
-                                         :host "api.openai.com" :user user
-                                         :port "https"
-                                         :require '(:user :port :secret))))
-         (secretf (plist-get entry :secret))
-         (secret (if (functionp secretf) (funcall secretf) secretf)))
+(if-let* ((user  "d@dani.cool")
+          (entry (car (auth-source-search :max 1
+                                          :host "api.openai.com" :user user
+                                          :port "https"
+                                          :require '(:user :port :secret))))
+          (secretf (plist-get entry :secret))
+          (secret (if (functionp secretf) (funcall secretf) secretf)))
     (use-package! gptai
       :disabled
       :config
@@ -1095,7 +1139,7 @@ Other values of PRESERVE are reserved for future use."
 
 (defun my/select-main-window ()
   (interactive)
-  (if-let ((w (window-main-window)))
+  (if-let* ((w (window-main-window)))
       (progn
         (evil-force-normal-state)
         (prog1
@@ -1305,6 +1349,10 @@ end of the workspace list."
        (advice-add sym :around #'my/inhibit-switch-to-buffer-display-actions)))))
 
 (after! elisp-mode
+  ;; Emacs 31: use code analysis to fontify symbols by their actual role.
+  ;; See Info node `(emacs) Semantic Font Lock'.
+  (setopt elisp-fontify-semantically t)
+
   (defun my/eval-print-last-sexp-pp-advice (orig-fun &rest args)
     (let ((result (apply orig-fun args)))
       (if (not (equal result 'nil))
@@ -1481,7 +1529,7 @@ end of the workspace list."
 
   (defun my/show-org ()
     (interactive)
-    (if-let ((tab-index (tab-bar--tab-index-by-name "org")))
+    (if-let* ((tab-index (tab-bar--tab-index-by-name "org")))
         (tab-bar-select-tab (1+ tab-index))
       (projectile-switch-project-by-name "org")))
 
@@ -1531,24 +1579,24 @@ end of the workspace list."
 Use consult narrowing with another workspace number to open a buffer from that workspace
  BUG but it opens it in the current workspace (ivy also does this, but who cares)"
     (interactive)
-    (when-let ((purpose (purpose-buffer-purpose (current-buffer)))
-               (ws-buffers (+workspace-buffer-list (+workspace-current)))
-               (buffers
-                (seq-filter
-                 (lambda (b) (eq purpose
-                                 (purpose-buffer-purpose b)))
-                 ws-buffers))
-               (items (mapcar #'buffer-name buffers))
-               (buffer (consult--read items
-                                      :state (consult--buffer-state)
-                                      :category 'buffer
-                                      :require-match
-                                      (confirm-nonexistent-file-or-buffer)
-                                      :prompt (format "Switch to buffer (%s:%s): "
-                                                      (+workspace-current-name) purpose)
-                                      :history 'consult--buffer-history
-                                      :default (cdr (seq-intersection consult--buffer-history items))
-                                      :sort nil)))
+    (when-let* ((purpose (purpose-buffer-purpose (current-buffer)))
+                (ws-buffers (+workspace-buffer-list (+workspace-current)))
+                (buffers
+                 (seq-filter
+                  (lambda (b) (eq purpose
+                                  (purpose-buffer-purpose b)))
+                  ws-buffers))
+                (items (mapcar #'buffer-name buffers))
+                (buffer (consult--read items
+                                       :state (consult--buffer-state)
+                                       :category 'buffer
+                                       :require-match
+                                       (confirm-nonexistent-file-or-buffer)
+                                       :prompt (format "Switch to buffer (%s:%s): "
+                                                       (+workspace-current-name) purpose)
+                                       :history 'consult--buffer-history
+                                       :default (cdr (seq-intersection consult--buffer-history items))
+                                       :sort nil)))
       ;; When the buffer does not belong to a source,
       ;; create a new buffer with the name.
       (funcall consult--buffer-display buffer)))
@@ -1600,12 +1648,12 @@ Use consult narrowing with another workspace number to open a buffer from that w
     `(:name ,(+workspace-current-name)
       :state    #'consult--buffer-state
       :items ,(lambda ()
-                (when-let ((ws-buffers (+workspace-buffer-list (+workspace-current)))
-                           (buffers
-                            (seq-filter
-                             (lambda (b) (eq purpose
-                                             (purpose-buffer-purpose b)))
-                             ws-buffers))))
+                (when-let* ((ws-buffers (+workspace-buffer-list (+workspace-current)))
+                            (buffers
+                             (seq-filter
+                              (lambda (b) (eq purpose
+                                              (purpose-buffer-purpose b)))
+                              ws-buffers))))
                 (mapcar #'buffer-name buffers))))
 
   (defun my/ivy-switch-workspace-buffer-with-purpose (&optional arg)
@@ -1952,7 +2000,7 @@ If ARG (universal argument), open selection in other-window."
    :map gterm-mode-map
 
    :eni "C-`" #'my/switch-window-gterm
-   :eni "C-M-`" #'my/select-previous-window
+   :eni "C-M-`" #'other-window-backward
    :eni "C-~" #'my/project-gterm-named
 
    :desc "window"
@@ -2201,7 +2249,7 @@ If ARG (universal argument), open selection in other-window."
    :map ghostel-mode-map
 
    :eni "C-`" #'my/switch-window-ghostel
-   :eni "C-M-`" #'my/select-previous-window
+   :eni "C-M-`" #'other-window-backward
    :eni "C-~" #'my/project-ghostel-named
 
    :eni "C-c ," #'switch-to-buffer
@@ -2381,12 +2429,13 @@ If ARG (universal argument), open selection in other-window."
      (doom-modeline-set-modeline 'my-main 'default))
     (add-hook 'doom-modeline-mode-hook 'my/setup-custom-doom-modeline)))
 
-(after! rotate
-
-  (map!
-   :leader
-   :desc "Rotate windows"
-   "w }" #'rotate-window))
+;; `rotate-windows' is the Emacs 31 replacement for the vendored rotate.el's
+;; `rotate-window'; it lives in window-x.el and is autoloaded.  See also
+;; `rotate-windows-change-selected' and the `window-layout-*' commands.
+(map!
+ :leader
+ :desc "Rotate windows"
+ "w }" #'rotate-windows)
 
 (after! magit
   ;; doom sets this to #'+magit-display-buffer-fn, which is a nicer behaviour
@@ -2407,7 +2456,7 @@ If ARG (universal argument), open selection in other-window."
         (cl-remove 'overlong-summary-line git-commit-style-convention-checks))
 
   (defun my/magit-get-fork-point (from-rev)
-     (when-let ((refs (magit-git-string "merge-base" "--fork-point" from-rev)))
+     (when-let* ((refs (magit-git-string "merge-base" "--fork-point" from-rev)))
        (car (split-string refs))))
 
   (defun my/magit-diff-fork-point (rev &optional args files)
@@ -2432,7 +2481,7 @@ revisions (i.e., use a \"...\" range)."
                    (magit-get-current-branch))
                   (magit-diff-arguments)))
 
-    (if-let ((fprev (my/magit-get-fork-point rev)))
+    (if-let* ((fprev (my/magit-get-fork-point rev)))
         (magit-diff-setup-buffer fprev nil args files)
       (user-error "No fork point found")))
 
@@ -2443,27 +2492,25 @@ revisions (i.e., use a \"...\" range)."
   ;; (add-hook 'after-save-hook 'magit-after-save-refresh-status t)
 
   (defun my/magit-last-few-commit-messages ()
-    (let ((buf (generate-new-buffer " *temp my/magit/last-few-commit-messages*" t)))
-      (unwind-protect (when (eql 0
-                                 (magit-process-git buf
-                                                    (list "log"
-                                                          "--walk-reflogs"
-                                                          "-n" "50"
-                                                          "--format=%s")))
-                        (with-current-buffer buf
-                          (goto-char (point-max))
-                          (move-beginning-of-line nil)
-                          (let ((out) (done))
-                            (while (not done)
-                              (let ((line
-                                     (buffer-substring-no-properties (line-beginning-position)
-                                                                     (line-end-position))))
-                                (unless (or (string= line "") (string= line (car out)))
-                                  (push line out)))
-                              (when (bobp) (setf done t))
-                              (forward-line -1))
-                            out)))
-        (kill-buffer buf))))
+    (with-work-buffer
+      (when (eql 0
+                 (magit-process-git (current-buffer)
+                                    (list "log"
+                                          "--walk-reflogs"
+                                          "-n" "50"
+                                          "--format=%s")))
+        (goto-char (point-max))
+        (move-beginning-of-line nil)
+        (let ((out) (done))
+          (while (not done)
+            (let ((line
+                   (buffer-substring-no-properties (line-beginning-position)
+                                                   (line-end-position))))
+              (unless (or (string= line "") (string= line (car out)))
+                (push line out)))
+            (when (bobp) (setf done t))
+            (forward-line -1))
+          out))))
 
   (defvar my/magit-commit-history nil)
 
@@ -2564,7 +2611,7 @@ revisions (i.e., use a \"...\" range)."
     (add-hook! go-ts-mode #'eglot-ensure)
     (add-hook! go-ts-mode (add-hook 'before-save-hook 'eglot-format-buffer -80 t))
 
-    (when-let ((bin (seq-find #'executable-find '("typescript-language-server"))))
+    (when-let* ((bin (seq-find #'executable-find '("typescript-language-server"))))
       (add-to-list 'eglot-server-programs `(typescript-ts-mode ,bin "--stdio"))
       (add-to-list 'eglot-server-programs `(tsx-ts-mode ,bin "--stdio")))
     (put 'typescript-ts-mode 'eglot-language-id "typescript")
@@ -2575,11 +2622,11 @@ revisions (i.e., use a \"...\" range)."
 
     (when nil
       (dolist (p major-mode-remap-alist)
-        (when-let ((mode (car p))
-                   (tsmode (cdr p))
-                   (eglotdef (eglot--lookup-mode mode))
-                   (definedmodes (car eglotdef))
-                   (svr (cdr eglotdef)))
+        (when-let* ((mode (car p))
+                    (tsmode (cdr p))
+                    (eglotdef (eglot--lookup-mode mode))
+                    (definedmodes (car eglotdef))
+                    (svr (cdr eglotdef)))
           (unless (and (listp definedmodes) (memq tsmode definedmodes))
             (add-to-list 'eglot-server-programs `(,tsmode . ,svr))))))))
 
@@ -2638,7 +2685,7 @@ revisions (i.e., use a \"...\" range)."
 
 (after! prettier
   (defun my/prettier-ignore-buffer ()
-    (let ((hasconfig (when-let ((fn (buffer-file-name)))
+    (let ((hasconfig (when-let* ((fn (buffer-file-name)))
                        (seq-some #'(lambda (cfn) (locate-dominating-file fn cfn))
                                  '(".prettierrc" ".prettierrc.json"
                                    ".prettierrc.yml" ".prettierrc.yaml"
@@ -2753,9 +2800,9 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
   (after! project-per-tab
     (defclique tabproject
                :pred #'(lambda ()
-                         (when-let ((p (project-current))
-                                    (bp (if (featurep 'subproject) (subproject-parent-or-self p) p))
-                                    (tp (project-per-tab-project-of-tab)))
+                         (when-let* ((p (project-current))
+                                     (bp (if (featurep 'subproject) (subproject-parent-or-self p) p))
+                                     (tp (project-per-tab-project-of-tab)))
                            (equal bp tp)))))
 
   ;; (map!
@@ -2955,40 +3002,29 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
       :side 'bottom :height 0.4 :select t :ttl 0)))
 
 (after! treesit
-  (setf treesit-language-source-alist
-        '((css "https://github.com/tree-sitter/tree-sitter-css")
-          (go "https://github.com/tree-sitter/tree-sitter-go" "v0.20.0")
-          (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript" "master" "src"))
-          (nu . ("https://github.com/nushell/tree-sitter-nu" "main" "src"))
-          (python "https://github.com/tree-sitter/tree-sitter-python")
-          (ruby "https://github.com/tree-sitter/tree-sitter-ruby")
-          (swift "https://github.com/alex-pinkus/tree-sitter-swift")
-          (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src"))
-          (tsx . ("https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src"))
-          (yaml "https://github.com/ikatyang/tree-sitter-yaml")
-          (lua "https://github.com/tjdevries/tree-sitter-lua")
-          (unison "https://github.com/kylegoetz/tree-sitter-unison")))
+  ;; Grammars come from Nix (`treesit-grammars.with-all-grammars' in emacs.nix),
+  ;; so `treesit-language-source-alist' is left empty and Emacs never builds
+  ;; one.  `treesit-install-language-grammar' still works, but prompts for the
+  ;; repository URL rather than reading a recipe from here.
 
-  ;; i think this is now done by my nix setup
-  ;; (dolist (s treesit-language-source-alist)
-  ;;   (unless (treesit-language-available-p (car s))
-  ;;     (treesit-install-language-grammar (car s))))
+  ;; `treesit-enabled-modes' populates `major-mode-remap-alist' from
+  ;; `treesit-major-mode-remap-alist'.  Naming the modes rather than using t
+  ;; keeps the set to the ones this config wants.  It has a defcustom `:set'
+  ;; function, so it needs `setopt'.
+  (setopt treesit-enabled-modes
+          '(python-ts-mode
+            c-ts-mode
+            go-ts-mode
+            css-ts-mode
+            typescript-ts-mode
+            tsx-ts-mode
+            js-ts-mode
+            yaml-ts-mode))
 
-  (defun my/treesit-update-all ()
-    (interactive)
-    (dolist (l treesit-language-source-alist)
-      (cl-destructuring-bind (lang &rest _) l
-        (treesit-install-language-grammar lang))))
-
-  (dolist (m '((python-mode . python-ts-mode)
-               (c-mode . c-ts-mode)
-               (go-mode . go-ts-mode)
-               (css-mode . css-ts-mode)
-               (typescript-mode . typescript-ts-mode)
-               (typescript-tsx-mode . tsx-ts-mode) ; for the benefit of the reverse mapping
-               (js-mode . js-ts-mode)
-               (css-mode . css-ts-mode)
-               (yaml-mode . yaml-ts-mode)))
+  ;; Not in `treesit-major-mode-remap-alist': `typescript-tsx-mode' is Doom's,
+  ;; and `js-mode' is registered there only under its `javascript-mode' alias.
+  (dolist (m '((typescript-tsx-mode . tsx-ts-mode) ; for the benefit of the reverse mapping
+               (js-mode . js-ts-mode)))
     (add-to-list 'major-mode-remap-alist m))
 
   (after! go-ts (my/setup-go-ts-mode)))
@@ -3041,6 +3077,16 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
 (after! tab-bar
   (tab-bar-mode)
   (tab-rename "home"))
+
+(with-eval-after-load 'embark
+  (setopt embark-indicators
+          '(embark-minimal-indicator  ; default is embark-mixed-indicator
+            embark-highlight-indicator
+            embark-isearch-highlight-indicator))
+  (with-eval-after-load 'vertico
+    (add-to-list 'vertico-multiform-categories '(embark-keybinding grid)))
+  (setopt embark-verbose-indicator-display-action
+          '(display-buffer-in-side-window (side . bottom))))
 
 (after! avy
   (map!
@@ -3322,6 +3368,14 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
 (use-package zig-mode
   :mode ("\\.\\(zig\\|zon\\)\\'" . zig-mode))
 
+(defun my/editing-area-window (&rest _)
+  "Return the most recently used live window that is not a side window.
+Suitable as a `some-window' action alist entry: `get-mru-window' happily
+returns a side window, which is rarely where you want to land."
+  (car (sort (seq-remove (lambda (w) (window-parameter w 'window-side))
+                         (window-list nil 'never-minibuf))
+             :key #'window-use-time :lessp #'>)))
+
 ;; trad emacs buffer display setup
 (unless (modulep! :ui popup)
   ;; left top right bottom
@@ -3351,6 +3405,14 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
       (side . right)
       (slot . 1)
       (window-width . 101))
+
+     ;; Emacs 31 routes xref jumps through `display-buffer' under this category.
+     ;; Land them in the editing area, so jumping from a terminal or compilation
+     ;; side window doesn't replace that window's buffer.
+     ((category . xref-jump)
+      (display-buffer-reuse-window
+       display-buffer-use-some-window)
+      (some-window . my/editing-area-window))
 
      ((or
        (category . help)
@@ -3403,7 +3465,7 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
 
   (after! eat
     (defun my/eat-buffer-p (bn &rest _)
-      (when-let ((buffer (window-normalize-buffer bn)))
+      (when-let* ((buffer (window-normalize-buffer bn)))
         (with-current-buffer buffer
           (derived-mode-p 'eat-mode))))
     (set-popup-rule! #'my/eat-buffer-p

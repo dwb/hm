@@ -1,15 +1,15 @@
 ;;; lib/my-eglot-fixes.el -*- lexical-binding: t; -*-
 
 (defun my/eglot--running-server (project mode)
-  (when-let ((projsrv (gethash project eglot--servers-by-project)))
+  (when-let* ((projsrv (gethash project eglot--servers-by-project)))
     (cl-find mode projsrv
              :key #'eglot--major-modes
              :test #'memq)))
 
 (defun my/eglot--major-mode-unmapped ()
   (or
-   (when-let ((m (and (boundp 'major-mode-remap-alist)
-                      (rassq major-mode major-mode-remap-alist))))
+   (when-let* ((m (and (boundp 'major-mode-remap-alist)
+                       (rassq major-mode major-mode-remap-alist))))
              (car m))
    major-mode))
 

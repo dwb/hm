@@ -108,10 +108,10 @@
     (alist-get 'project tab)))
 
 (defun project-per-tab-set-project-of-tab (project &optional force)
-  (when-let ((project (project-per-tab--normalise-project project))
-             (tab (project-per-tab--current-tab))
-             (tabparams (cdr tab)))
-    (if-let (oldproj (and (not force) (alist-get 'project tabparams)))
+  (when-let* ((project (project-per-tab--normalise-project project))
+              (tab (project-per-tab--current-tab))
+              (tabparams (cdr tab)))
+    (if-let* ((oldproj (and (not force) (alist-get 'project tabparams))))
         (unless (equal oldproj project)
           (warn "project-per-tab: Not overwriting tab's project with different project"))
       (let ((newparams (assq-delete-all 'project tabparams)))
@@ -191,8 +191,8 @@ With a prefix arg INVALIDATE-CACHE invalidates the cache first."
   (equal project (project-per-tab--project-of-buffer buffer)))
 
 (defun project-per-tab--display-buffer (buffer alist)
-  (when-let ((project (with-current-buffer buffer (project-current)))
-             (name (funcall project-per-tab-tab-name-function project)))
+  (when-let* ((project (with-current-buffer buffer (project-current)))
+              (name (funcall project-per-tab-tab-name-function project)))
     (prog1
         (display-buffer-in-tab buffer
                                (append
@@ -205,10 +205,10 @@ With a prefix arg INVALIDATE-CACHE invalidates the cache first."
 ;; experimental
 (defun project-per-tab--kill-buffer-hook ()
   "Close the tab if the only remaining displayed buffer is unrelated to the project"
-  (when-let ((tab (project-per-tab--current-tab))
-             (tabname (alist-get 'name tab))
-             (proj (project-current))
-             (tabproj (project-per-tab-project-of-tab)))
+  (when-let* ((tab (project-per-tab--current-tab))
+              (tabname (alist-get 'name tab))
+              (proj (project-current))
+              (tabproj (project-per-tab-project-of-tab)))
     (when (and
            (not (minibuffer-window-active-p (selected-window)))
            (one-window-p)
@@ -221,10 +221,10 @@ With a prefix arg INVALIDATE-CACHE invalidates the cache first."
 ;; don't depend on what's displayed.
 (defun project-per-tab--kill-buffer-hook ()
   "Close the tab if the only remaining displayed buffer is unrelated to the project"
-  (when-let ((tab (project-per-tab--current-tab))
-             (tabname (alist-get 'name tab))
-             (proj (project-current))
-             (tabproj (project-per-tab-project-of-tab)))
+  (when-let* ((tab (project-per-tab--current-tab))
+              (tabname (alist-get 'name tab))
+              (proj (project-current))
+              (tabproj (project-per-tab-project-of-tab)))
     (when (and
            (not (minibuffer-window-active-p (selected-window)))
            (one-window-p)

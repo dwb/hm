@@ -89,10 +89,10 @@
     (alist-get 'project tab)))
 
 (defun project-per-tab-set-project-of-tab (project &optional force)
-  (when-let ((project (project-per-tab--normalise-project project))
-             (tab (project-per-tab--current-tab))
-             (tabparams (cdr tab)))
-    (if-let (oldproj (and (not force) (alist-get 'project tabparams)))
+  (when-let* ((project (project-per-tab--normalise-project project))
+              (tab (project-per-tab--current-tab))
+              (tabparams (cdr tab)))
+    (if-let* ((oldproj (and (not force) (alist-get 'project tabparams))))
         (unless (equal oldproj project)
           (warn "project-per-tab: Not overwriting tab's project with different project"))
       (let ((newparams (assq-delete-all 'project tabparams)))
@@ -174,11 +174,11 @@ call to `format'. The format-string is expected to have a single
 
 (defun project-per-tab--kill-buffer-hook ()
   "Close the tab if the only remaining displayed buffer is unrelated to the project"
-  (when-let ((tab (project-per-tab--current-tab))
-             (tabname (alist-get 'name tab))
-             (buf (current-buffer))
-             (proj (project-current))
-             (tabproj (project-per-tab-project-of-tab)))
+  (when-let* ((tab (project-per-tab--current-tab))
+              (tabname (alist-get 'name tab))
+              (buf (current-buffer))
+              (proj (project-current))
+              (tabproj (project-per-tab-project-of-tab)))
     (when (and
            (buffer-file-name buf)
            (not (minibuffer-window-active-p (selected-window)))
@@ -196,9 +196,9 @@ call to `format'. The format-string is expected to have a single
 
 (defun project-per-tab--kill-all-buffers (tab _onlyinframe)
   (when (not project-per-tab--clearing-tab-project-buffers)
-    (when-let ((project-per-tab--clearing-tab-project-buffers t)
-               (project (project-per-tab-project-of-tab tab))
-               (buffers (project-buffers project)))
+    (when-let* ((project-per-tab--clearing-tab-project-buffers t)
+                (project (project-per-tab-project-of-tab tab))
+                (buffers (project-buffers project)))
       (seq-do #'kill-buffer buffers))))
 
 (provide 'project-per-tab)

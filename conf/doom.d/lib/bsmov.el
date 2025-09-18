@@ -45,7 +45,7 @@
 
 (defun bsmov--cancel ()
   (interactive)
-  (when-let ((p bsmov--start-point))
+  (when-let* ((p bsmov--start-point))
     (goto-char p)))
 
 (defhydra bsmov-lines (evil-normal-state-map "g C-j"
