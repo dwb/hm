@@ -88,6 +88,10 @@
 (add-to-list 'default-frame-alist '(width . 220))
 (add-to-list 'default-frame-alist '(fullscreen . fullheight))
 
+(after! imenu
+  ;; default is 60, way too small
+  (setopt imenu-max-item-length 250))
+
 (defun my/save-all-file-buffers ()
   (save-some-buffers t))
 
@@ -162,8 +166,8 @@
              (wmm (nth 0 mm-size))
              (is-retina (>= (/ wpix wmm) 4))
              (goodfonts (list
-                         ;; (font-spec :family "Fantasque Sans Mono"
-                         ;;            :size (if is-retina 12.0 15.0))
+                         (font-spec :family "Iosevka DWB" :weight 'medium
+                                    :size (if is-retina 12.0 14.0))
                          (font-spec :family "Iosevka SS08" :weight 'medium
                                     :size (if is-retina 12.0 14.0))))
              (ffl (font-family-list))
@@ -505,7 +509,34 @@ so that merge commits diff correctly against all parents."
         (funcall orig-fn files "@" "@" buffer async)
       (funcall orig-fn files rev1 rev2 buffer async)))
 
-  (advice-add 'vc-jj-diff :around #'my/vc-jj-diff-fix-merge-commits))
+  (advice-add 'vc-jj-diff :around #'my/vc-jj-diff-fix-merge-commits)
+
+  (defun my/vc-jj-revision-completion-table/with-limit (files)
+    "Return a completion table for existing revisions of FILES."
+    (let* ((log
+            (apply #'vc-jj--process-lines "log" "--no-graph"
+                   "-T" "self.change_id() ++ \"\\0\" ++ self.description().first_line() ++ \"\\n\"" "--" files))
+           (revision-descriptions (make-hash-table :test 'equal))
+           (revision-ids '()))
+
+      (dolist (line log)
+        (let* ((line-parts (string-split line "\0"))
+               (changeid (cl-first line-parts))
+               (desc (cl-second line-parts)))
+          (push changeid revision-ids)
+          (puthash changeid desc revision-descriptions)))
+      
+      (let* ((annotate #'(lambda (id)
+                           (format " %s"
+                                   (propertize (gethash id revision-descriptions)
+                                               'face 'completions-annotations)))))
+        (lambda (string pred action)
+          (if (eq action 'metadata)
+              `(metadata . ((display-sort-function . ,#'identity)
+                            (annotation-function . ,annotate)))
+            (complete-with-action action revision-ids string pred))))))
+
+  (advice-add 'vc-jj-revision-completion-table :override #'my/vc-jj-revision-completion-table/with-limit))
 
 (use-package! jj-mode
   :bind
@@ -1634,6 +1665,9 @@ revisions (i.e., use a \"...\" range)."
   (setf eglot-autoshutdown nil)
 
   (defun my/eglot-format-buffer-unless-prettier ()
+    (cond
+     ((and (eglot-managed-p) (bound-and-true-p prettier-mode))
+      (prettier-prettify)))
     (when (and (eglot-managed-p) (bound-and-true-p prettier-mode))
       (eglot-format-buffer)))
 
@@ -2029,7 +2063,8 @@ revisions (i.e., use a \"...\" range)."
 (use-package eslint-json-flymake
   :after flymake
   :config
-  (setopt eslint-json-flymake-command '("yarn" "eslint"))
+  (setenv "ESLINT_D_PPID" (format "%s" (emacs-pid)))
+  (setopt eslint-json-flymake-command '("eslint_d"))
 
   (add-hook! (typescript-mode typescript-ts-mode typescript-tsx-mode
                               javascript-mode js-ts-mode)
