@@ -238,6 +238,15 @@ This allows special buffers to appear in project-dedicated frames."
              (buffer-name) 
              (file-name-nondirectory (directory-file-name project-root)))))
 
+(defun frame-project-dedicate--server-switch-buffer-advice (&optional next-buffer &rest _)
+  "Select the appropriate project frame before server displays buffer.
+This is needed because `server-switch-buffer' bypasses `display-buffer'
+when `server-window' is nil, calling `switch-to-buffer' directly."
+  (when (bufferp next-buffer)
+    (when-let* ((project (frame-project-dedicate-project-of-buffer next-buffer))
+                (frame (frame-project-dedicate--find-project-frame project)))
+      (select-frame-set-input-focus frame))))
+
 (defun frame-project-dedicate-display-buffer-use-dedicated-frame (buffer alist)
   "Display BUFFER in an existing frame that should be dedicated to it.
 
@@ -279,12 +288,16 @@ indirectly called by the latter."
                (attrs (cdr orig))
                (newfn #'frame-project-dedicate-display-buffer-use-dedicated-frame))
           (setf display-buffer-base-action
-                (cons (cons newfn fns) attrs))))
+                (cons (cons newfn fns) attrs)))
+        (advice-add 'server-switch-buffer :before
+                    #'frame-project-dedicate--server-switch-buffer-advice))
     (let* ((orig display-buffer-base-action)
            (newfns (delq 'frame-project-dedicate-display-buffer-use-dedicated-frame
                          (car orig))))
       (setf display-buffer-base-action
-            (cons newfns (cdr orig))))))
+            (cons newfns (cdr orig))))
+    (advice-remove 'server-switch-buffer
+                   #'frame-project-dedicate--server-switch-buffer-advice)))
 
 (defun frame-project-dedicate-unload-function ()
   (prog1 nil
