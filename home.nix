@@ -56,7 +56,7 @@ in
     mosh
     nixd
     nixfmt-rfc-style
-    nodejs_22 # mainly for emacs copilot but generally useful too ig
+    # nodejs_22 # mainly for emacs copilot but generally useful too ig
     plantuml
     python3
     ripgrep
@@ -295,7 +295,8 @@ in
       };
       aliases = {
         di = ["diff"];
-        lt = ["log" "-r" "parents(trunk()) | trunk()..@" "--reversed"];
+        lt = ["log" "--reversed" "-r" "parents(trunk()) | trunk()..@"];
+        mb = ["log" "--reversed" "-r" "visible_heads() & mine()::"];
         retrunk = ["rebase" "-d" "trunk()"];
       };
       revset-aliases = {
