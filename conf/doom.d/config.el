@@ -85,6 +85,9 @@
 
 (setopt help-window-keep-selected t)
 
+(add-to-list 'default-frame-alist '(width . 220))
+(add-to-list 'default-frame-alist '(fullscreen . fullheight))
+
 (defun my/save-all-file-buffers ()
   (save-some-buffers t))
 
@@ -469,6 +472,34 @@
 (use-package unison-daemon)
 
 (use-package! vc-jj)
+
+(use-package! jj-mode
+  :bind
+  (:map jj-mode-map
+        ("k" . #'jj-goto-prev-changeset)
+        ("j" . #'jj-goto-next-changeset))
+  config
+  (map!
+   :map jj-mode-map
+   "SPC" doom-leader-map
+   "C-w" evil-window-map)
+
+  (after! evil
+    (evil-set-initial-state 'jj-mode 'emacs))
+
+  (set-popup-rule! '(derived-mode . jj-mode) :ttl nil :side 'right :vslot 0 :slot 0 :select t))
+
+(use-package! frame-project-dedicate
+  :config
+  (map!
+   :desc "Switch project frame"
+   "s-;" #'frame-project-dedicate-switch
+
+   :leader
+
+   :desc "Switch project frame"
+   ";" #'frame-project-dedicate-switch)
+  (frame-project-dedicate-mode))
 
 ;;;
 ;;; BETTER WINDOW SIZE PRESERVATION
@@ -1140,6 +1171,8 @@ If ARG (universal argument), open selection in other-window."
 
 
 (after! vterm
+  (setopt vterm-max-scrollback 50000)
+
   (add-to-list 'vterm-eval-cmds '("find-file" find-file-other-window))
   (add-hook! vterm-mode #'my/window-undedicate)
 
@@ -1222,6 +1255,16 @@ If ARG (universal argument), open selection in other-window."
 
    :desc "Send C-x"
    :i "C-c C-x" #'my/vterm-send-c-x
+
+   :desc "Go to previous prompt"
+   :i "C-c C-p" #'vterm-previous-prompt
+   :desc "Go to next prompt"
+   :i "C-c C-n" #'vterm-next-prompt
+
+   :desc "Scroll up"
+   :i "<prior>" #'my/scroll-up-a-bit
+   :desc "Scroll down"
+   :i "<next>" #'my/scroll-down-a-bit
 
    :desc "Send C-w"
    :i "C-c C-w" #'my/vterm-send-c-w
@@ -1343,9 +1386,9 @@ If ARG (universal argument), open selection in other-window."
       (rename-buffer (my/eat-buffer-name (project-current) name))))
 
   (map!
-   (:leader
-    :desc "Open project eat terminal"
-    "o t" #'my/project-eat)
+   ;; (:leader
+   ;;  :desc "Open project eat terminal"
+   ;;  "o t" #'my/project-eat)
 
    :map eat-mode-map
 
@@ -2110,14 +2153,7 @@ revisions (i.e., use a \"...\" range)."
     #'my/compilation-buffer-p
     :side 'right :width 81 :modeline t :select t :ttl 0)
 
-  (set-popup-rule! (rx string-start "*Diff") :height 0.5)
-
-  (after! pgmacs
-
-    (defun my/pgmacs-mode-p (&rest _)
-      (derived-mode-p 'pgmacs-mode))
-
-    (set-popup-rule! #'my/pgmacs-mode-p :ignore t)))
+  (set-popup-rule! '(derived-mode . diff-mode) :height 0.5))))
 
 (when (modulep! :editor word-wrap)
   (add-hook! (prog-mode text-mode) #'+word-wrap-mode))
@@ -2137,16 +2173,6 @@ revisions (i.e., use a \"...\" range)."
      :leader
      :desc "Switch tab"
      ";" #'tab-switch)))
-
-(after! frame-project-dedicate
-  (map!
-   :desc "Switch project frame"
-   "s-;" #'frame-project-dedicate-switch
-
-   :leader
-
-   :desc "Switch project frame"
-   ";" #'frame-project-dedicate-switch))
 
 (load (concat doom-user-dir "config-local.el") t)
 

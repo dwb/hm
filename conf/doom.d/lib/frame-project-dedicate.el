@@ -79,7 +79,8 @@ This is used for special buffers like *Help*, *Messages*, etc.")
   (let* ((project (frame-project-dedicate--get-frame-project frame))
          (name (format "project: %s" (project-name project))))
     (unless project (user-error "not a project-dedicated frame"))
-    (set-frame-name name)))
+    ;; set-frame-name only works on the selected frame
+    (modify-frame-parameters frame (list (cons 'name name)))))
 
 (defun frame-project-dedicate--project-placeholder-buffer (project)
   (let* ((name (format "*project %s*" (project-name project)))
@@ -195,8 +196,8 @@ This is used for special buffers like *Help*, *Messages*, etc.")
                          (lambda (b) (frame-project-dedicate--buffer-allowed-p project b)))))
 
 (defun frame-project-dedicate-ensure-installed-in-frames (&optional frames)
-  (seq-each #'frame-project-dedicate-ensure-installed-in-frame
-            (or frames (frame-list))))
+  (seq-do #'frame-project-dedicate-ensure-installed-in-frame
+          (or frames (frame-list))))
 
 (add-to-list 'after-make-frame-functions #'frame-project-dedicate-ensure-installed-in-frame)
 
