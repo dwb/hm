@@ -123,9 +123,9 @@ This is used for special buffers like *Help*, *Messages*, etc.")
         (frame-project-dedicate--with-project-buffers-cache
          (or
           ;; Buffer has honorary project that matches
-          ;; TODO - prob use buffer-local-value
-          ;; (and frame-project-dedicate--honorary-project
-          ;;      (string= frame-project-dedicate--honorary-project project-root))
+          (let ((honorary (buffer-local-value 'frame-project-dedicate--honorary-project buffer)))
+            (and honorary
+                 (string= honorary (project-root project))))
           ;; Buffer belongs to the project (using project.el functionality)
           (seq-contains-p (frame-project-dedicate--get-project-buffers project) buffer)
           ;; Special buffers without files that should always be allowed

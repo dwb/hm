@@ -664,8 +664,12 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
   (map!
    :desc "Switch project frame"
    "s-;" #'frame-project-dedicate-switch
+   "s-`" #'frame-project-dedicate-switch
 
    :leader
+
+   :desc "Adopt buffer"
+   "p B" #'frame-project-dedicate-set-honorary-project
 
    :desc "Switch project frame"
    ";" #'frame-project-dedicate-switch)
@@ -1140,7 +1144,9 @@ end of the workspace list."
 
    (:mode diff-mode
     :desc "Refresh"
-    :n "r" #'revert-buffer)
+    :n "r" #'revert-buffer
+    :desc "Refresh"
+    :g "s-r" #'revert-buffer)
 
    (:mode Info-mode
     :n "m" #'Info-menu
@@ -1938,6 +1944,7 @@ revisions (i.e., use a \"...\" range)."
   (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode typescript))
   (add-to-list 'prettier-major-mode-parsers '(tsx-ts-mode typescript))
 
+  (setopt prettier-pre-warm 'none)
   (setf prettier-mode-ignore-buffer-function #'my/prettier-ignore-buffer)
 
   (global-prettier-mode 1)
@@ -2001,11 +2008,11 @@ revisions (i.e., use a \"...\" range)."
 (after! clique
   (after! project-per-tab
     (defclique tabproject
-      :pred #'(lambda ()
-                (when-let ((p (project-current))
-                           (bp (if (featurep 'subproject) (subproject-parent-or-self p) p))
-                           (tp (project-per-tab-project-of-tab)))
-                  (equal bp tp)))))
+               :pred #'(lambda ()
+                         (when-let ((p (project-current))
+                                    (bp (if (featurep 'subproject) (subproject-parent-or-self p) p))
+                                    (tp (project-per-tab-project-of-tab)))
+                           (equal bp tp)))))
 
   ;; (map!
   ;;  :leader
@@ -2071,6 +2078,12 @@ revisions (i.e., use a \"...\" range)."
 
   (setf consult--buffer-display #'my/consult-buffer-display)
 
+  (setopt consult-fd-args '((if (executable-find "fdfind" 'remote) "fdfind" "fd")
+                            "--color=never"
+                            "--no-require-git"
+                            "--full-path"
+                            "--hidden --exclude .git"))
+
   (defun my/consult-project-buffer ()
     (interactive)
     (consult-buffer '(consult--source-project-buffer
@@ -2078,6 +2091,9 @@ revisions (i.e., use a \"...\" range)."
 
   (map!
    :leader
+
+   :desc "Find file in project"
+   "SPC" #'consult-fd
 
    :desc "Switch to project buffer"
    "k" #'my/consult-project-buffer)
@@ -2263,9 +2279,10 @@ revisions (i.e., use a \"...\" range)."
   :after flymake
   :config
   (setenv "ESLINT_D_PPID" (format "%s" (emacs-pid)))
-  (setopt eslint-json-flymake-command '("eslint_d" "--fix"))
+  (setopt eslint-json-flymake-command '("eslint_d"))
 
   (add-hook! (typescript-mode typescript-ts-mode typescript-tsx-mode
+                              tsx-ts-mode
                               javascript-mode js-ts-mode)
              #'eslint-json-flymake-setup))
 
@@ -2384,6 +2401,7 @@ revisions (i.e., use a \"...\" range)."
     :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
 (use-package! claude-code-ide
+  :disabled
   :bind ("C-c C-'" . claude-code-ide-menu) ; Set your favorite keybinding
   :config
 
@@ -2424,6 +2442,11 @@ revisions (i.e., use a \"...\" range)."
                                             "")
                                           (plist-get session-info :project-name))
                        "-group" group
+                       "-contentImage"
+                       (concat "file://"
+                               (expand-file-name
+                                (file-name-concat
+                                 invocation-directory "../Resources/Emacs.icns")))
                        "-execute" (format "%s -e '(claude-code-ide-focus-notification %d)'"
                                           emacsclient (plist-get plist :id))))))
 
@@ -2439,6 +2462,50 @@ revisions (i.e., use a \"...\" range)."
 
   ;; (claude-code-ide-emacs-tools-setup) ; needs web-server, cba yet, let's see
   )
+
+(use-package! bourdet
+  :bind-keymap
+  (("C-c C-'" . bourdet-command-map))
+  :config
+  (set-popup-rule! '(derived-mode . bourdet-mode)
+    :side
+    'right :width 101 :vslot 0 :slot 1 :select t :quit nil :ttl nil)
+
+  (setopt bourdet-stream-partial t)
+  (setopt bourdet--sync-custom-title t)
+
+  (defun my/bourdet-notification-id (id)
+    (format "emacs-%d-bourdet-%d" (emacs-pid) id))
+
+  (defun my/bourdet-notify (session plist)
+    "Send a terminal-notifier notification for a bourdet event."
+    (when-let* ((type (plist-get plist :type))
+                (id (plist-get plist :id))
+                (detail (or (plist-get plist :detail) ""))
+                (group (my/bourdet-notification-id id))
+                (title (format "Claude [%s]" (bourdet-session-name session)))
+                (message (format "%s  %s" type detail))
+                (emacsclient (executable-find "emacsclient")))
+      (start-process "bourdet-notify" nil
+                     "terminal-notifier"
+                     "-group" group
+                     "-title" title
+                     "-message" message
+                     "-execute" (format "%s -e '(bourdet-focus-notification %d)'"
+                                        emacsclient (plist-get plist :id)))))
+
+  (defun my/bourdet-notify-clear (session plist)
+    "Remove the terminal-notifier notification for a cleared bourdet event."
+    (when-let* ((id (plist-get plist :id))
+                (group (my/bourdet-notification-id id)))
+      (start-process "bourdet-notify-clear" nil
+                     "terminal-notifier"
+                     "-remove" group)))
+
+  (if (not (executable-find "terminal-notifier"))
+      (warn "bourdet config: terminal-notifier not installed")
+    (add-hook 'bourdet-notification-functions #'my/bourdet-notify)
+    (add-hook 'bourdet-notification-clear-functions #'my/bourdet-notify-clear)))
 
 ;;; doom modules config
 
