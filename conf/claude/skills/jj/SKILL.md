@@ -110,6 +110,30 @@ jj evolog -r <rev>              # Evolution of specific change
 jj op log                       # Operation log (undo history)
 ```
 
+**`evolog` templates use a different type** — see "evolog Templates" section below.
+
+### When to Use `evolog`
+
+`evolog` shows the **evolution of a single change** — all the historical versions of the same change ID as it was amended, rebased, or otherwise rewritten. Each entry is a snapshot of what the commit looked like at a point in time.
+
+**Use `evolog` when asked about:**
+- "What changed since I last worked on this?" / "changes over the last session"
+- "Show me the history of edits to this commit/branch"
+- "Find when a specific modification was made"
+- "How did this working copy evolve?"
+- Finding a baseline commit ID to diff against (e.g., "diff since my last edit")
+
+**Typical workflow for "show changes since X":**
+1. Run `jj evolog` to see the evolution timeline with commit IDs and timestamps
+2. Identify the commit ID that represents the "before" state (look for time gaps, or specific timestamps)
+3. Use `jj diff --from <old-commit-id> --to @ --git` to see all changes since then
+
+**Example:** User says "show me what changed since I modified the instructions"
+1. `jj evolog` — find the commit ID from when they made their edit (look for timestamp/gap)
+2. `jj diff --from <that-commit-id> --to @ --git` — see all changes since
+
+This is different from `jj log` which shows the commit graph, and `jj op log` which shows operations (undo history).
+
 ### Bookmarks & Remotes
 ```bash
 jj bookmark list                # List local bookmarks
@@ -195,6 +219,26 @@ jj log -T 'change_id.short() ++ " " ++ committer.timestamp().ago() ++ " " ++ des
 jj log -T 'commit_id ++ " " ++ committer.timestamp().format("%Y-%m-%d") ++ "\n"'
 ```
 
+### evolog Templates
+
+`jj evolog` uses a different template type (`CommitEvolutionEntry`) than `jj log` (`Commit`). You must use `self.commit()` to access commit properties:
+
+```bash
+# WRONG - these don't work in evolog:
+jj evolog -T 'change_id.short() ...'           # Error: Keyword doesn't exist
+jj evolog -T 'commit_id.short() ...'           # Error: Keyword doesn't exist
+jj evolog -T 'commit().commit_id().short()'    # Error: Function doesn't exist
+
+# CORRECT - use self.commit() to access the wrapped commit:
+jj evolog -T 'self.commit().commit_id().short() ++ " " ++ self.commit().committer().timestamp().format("%H:%M") ++ "\n"'
+```
+
+Available `CommitEvolutionEntry` methods:
+- `self.commit()` → the `Commit` object (then use normal commit methods)
+- `self.operation()` → the operation where this version was created
+- `self.predecessors()` → list of predecessor commits
+- `self.inter_diff([files])` → changes between this and predecessor versions
+
 ### Getting Help
 Use `jj help -k <keyword>` (or `--keyword`) for detailed inline documentation. Running it without a keyword shows available topics (currently: `bookmarks`, `config`, `filesets`, `glossary`, `revsets`, `templates`, `tutorial` — if this list has changed, update this skill file).
 
@@ -227,6 +271,19 @@ jj lt my-feature                # Explore a specific bookmark with full context
 jj diff --from trunk() --to @ --git  # See all work since trunk
 jj log -r '@-' -- path/to/file  # Find which parent branch contains a file change
 ```
+
+### Extracting Changes from Megamerge for Push
+To extract specific files from the megamerge working copy into a new change ready for push:
+```bash
+jj split -A develop -B @ -m "commit message" path/to/file1 path/to/file2
+```
+
+**Flags explained:**
+- `-A develop` (insert-after): The new change becomes a child of `develop`
+- `-B @` (insert-before): The new change becomes a parent of the megamerge
+- Result: `develop → new-change → megamerge`
+
+**IMPORTANT: File paths are relative to your current working directory**, not the repo root. Check `jj st` output for the correct relative paths. If `jj st` shows `../test/file.js`, use that path, not `workspace/@causal/test/file.js`.
 
 ### Cross-Workspace
 ```bash

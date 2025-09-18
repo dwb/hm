@@ -2,7 +2,7 @@ def --wrapped main [...args] {
   let change = (jj log -r '@-' --no-graph -T
     'separate(" ", change_id.short(), description.first_line(), if(bookmarks, "(" ++ bookmarks.join(", ") ++ ")")) ++ "\n"' |
     lines |
-    gum choose ...$in | split words | get 0)
+    gum filter ...$in | split words | get 0)
             
   exec jj split -A $change -B @ ...$args
 }

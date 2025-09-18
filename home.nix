@@ -384,7 +384,6 @@ in
             "$right"
           ];
           # diff-formatter = ":git";
-          pager = ":builtin";
           paginate = "auto";
         };
         colors = {
@@ -533,7 +532,6 @@ in
             "--"
             "${pkgsUnstable.nushell}/bin/nu"
             ./jj-commands/split-to-parent.nu
-            "jj-split-to-parent"
           ];
           # squash to parent
           qtp = [
@@ -542,7 +540,6 @@ in
             "--"
             "${pkgsUnstable.nushell}/bin/nu"
             ./jj-commands/squash-to-parent.nu
-            "jj-squash-to-parent"
           ];
           tug = [
             "bookmark"
