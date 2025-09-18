@@ -18,8 +18,10 @@ let
       owner = "dwb";
       repo = "carapace-bin";
       rev = "5f6412369aad905e87731f956c844f75453ee783";
-      hash = lib.fakeHash;
+      hash = "sha256-qxekB9UzJ2ncK4oElm7Ihup3179Vo/AD9IDDdH3nAfw=";
     };
+    proxyVendor = true;
+    vendorHash = "sha256-ABppEG8uIXKbEq51hlUVbCsmt1cAgJex4S25fBb37os=";
   });
 
   userName = "Dani Brown";
