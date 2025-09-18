@@ -5,14 +5,11 @@ export def --wrapped "nix profile list" [...rest] {
   let $args = ($rest | prepend '--json')
   mut out = (do --capture-errors { ^nix profile list ...$args })
   let err = $out
-  try {
-    $out = ($out | from json)
-    match $out.version {
-        2 => ($out | get elements |
-                select attrPath originalUrl url outputs priority active storePaths),
-        _ => (error make { msg: $"Unrecognised JSON version: ($out.version)" })
-    }
-  } catch {
-    print --stderr $err
+  $out = ($out | from json)
+  match $out.version {
+    2 => ($out | get elements |
+            select attrPath originalUrl url outputs priority active storePaths),
+    3 => ($out | get elements | transpose name attrs | flatten),
+    _ => (error make { msg: $"Unrecognised JSON version: ($out.version)" })
   }
 }
