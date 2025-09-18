@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Pipe stdin to a new Emacs buffer via emacsclient.
+#
+# Usage: pemacs [-m MODE]
+#
+# -m MODE   Major mode function to activate (without "-mode", default: fundamental)
+#
+# Sets the buffer's default-directory to the current working directory,
+# associating it with the project at that location (if any) for
+# frame-project-dedicate.
+set -euo pipefail
+
+mode=fundamental
+
+while getopts "m:" opt; do
+    case "$opt" in
+        m) mode="$OPTARG" ;;
+        *) printf 'Usage: %s [-m MODE]\n' "$0" >&2; exit 1 ;;
+    esac
+done
+shift "$((OPTIND - 1))"
+
+dir="$(pwd)"
+# Emacs default-directory requires a trailing slash.
+dir_slash="${dir%/}/"
+
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+
+# Drain stdin before invoking emacsclient so the file is fully written
+# and ready for insert-file-contents.
+tmpfile="$tmpdir/data"
+cat > "$tmpfile"
+
+# Escape backslashes and double-quotes for embedding in an elisp string literal.
+escape_elisp() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+e_dir="$(escape_elisp "$dir_slash")"
+e_file="$(escape_elisp "$tmpfile")"
+e_mode="$(escape_elisp "$mode")"
+
+emacsclient -e "(let* ((buf (generate-new-buffer \"*stdin*\"))
+       (dir \"${e_dir}\")
+       (project (project-current nil dir)))
+  (with-current-buffer buf
+    (insert-file-contents \"${e_file}\")
+    (setq default-directory dir)
+    (funcall (intern \"${e_mode}-mode\"))
+    (when project
+      (setq frame-project-dedicate--honorary-project
+            (project-root project))
+      (project-remember-project project))
+    (set-buffer-modified-p nil))
+  (pop-to-buffer buf)
+  (buffer-name buf))"

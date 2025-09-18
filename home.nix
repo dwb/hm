@@ -133,6 +133,10 @@ in
         name = "jj-fix-util-piper";
         text = builtins.readFile ./bin/jj-fix-util-piper;
       })
+      (writeShellApplication {
+        name = "pemacs";
+        text = builtins.readFile ./bin/pemacs;
+      })
     ])
     ++ (with pkgsUnstable; [
       # aider-chat # dependency kvazaar fails tests rn and i dont use it
