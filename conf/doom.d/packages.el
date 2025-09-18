@@ -157,12 +157,12 @@
   :recipe (:files ("*.el" "*.texi" "terminfo")))
 
 (package! claude-code
-  :pin "b4c14ea23bcec456a6b9fed3aedeee3f2a2c6aae"
+  :pin "67185585865fa4c432689279befcefccc6d80a7d"
   :recipe (:type git :host github :repo "stevemolitor/claude-code.el" :branch "main" :depth 1
                    :files ("*.el" (:exclude "images/*"))))
 ;; claude-code IDE integration:
 (package! monet
-  :pin "aad7462e476313c913e01f72ec00756edae68801"
+  :pin "72a18d372fef4b0971267bf13f127dcce681859a"
   :recipe (:type git :host github :repo "stevemolitor/monet"))
 
 ;; from elpa
