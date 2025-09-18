@@ -2150,6 +2150,21 @@ revisions (i.e., use a \"...\" range)."
   (set-popup-rule! (rx string-start "*claude")
     :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
+(after! vc
+  (defun my/vc-dir-diff (dir)
+    "Show VC diff restricted to DIR.
+With prefix arg, prompt for DIR. Otherwise use `default-directory'.
+Shows the diff for files in that directory (recursively)."
+    (interactive (list (if current-prefix-arg
+                           (read-directory-name "Directory: " default-directory)
+                         default-directory)))
+    (let* ((dir (expand-file-name dir))
+           (backend (vc-responsible-backend dir))
+           (fileset (list backend (list dir))))
+      (vc-diff-internal nil fileset nil nil)))
+
+  (map! :map vc-prefix-map "e" #'my/vc-dir-diff))
+
 ;;; doom modules config
 
 
