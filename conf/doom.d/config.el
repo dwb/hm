@@ -35,12 +35,31 @@
 ;; `load-theme' function. This is the default:
 (setq doom-theme 'modus-operandi)
 
-;; If you use `org' and don't want your org files in the default location below,
-;; change `org-directory'. It must be set before org loads!
-(when-let ((d (seq-find #'file-exists-p '(;; "~/Library/Mobile Documents/com~apple~CloudDocs/org/"
-                                          "~/org/"))))
-  (setopt org-directory d)
-  (setopt org-roam-directory d))
+(with-eval-after-load 'org
+  ;; If you use `org' and don't want your org files in the default location below,
+  ;; change `org-directory'. It must be set before org loads!
+  (when-let ((d (seq-find #'file-exists-p '(;; "~/Library/Mobile Documents/com~apple~CloudDocs/org/"
+                                            "~/org/"))))
+    (setopt org-directory d)
+    (setopt org-roam-directory d))
+
+  (dolist (face '(org-block-begin-line 
+                  org-block-end-line 
+                  org-block
+                  org-drawer
+                  org-property-value
+                  org-verbatim))
+    (set-face-attribute face nil :inherit 'fixed-pitch))
+
+  (add-hook 'org-mode-hook #'variable-pitch-mode))
+
+(with-eval-after-load 'markdown-mode
+  (dolist (face '(markdown-markup-face
+                  markdown-table-face
+                  markdown-inline-code-face
+                  markdown-language-keyword-face
+                  markdown-language-info-face))
+    (set-face-attribute face nil :inherit 'fixed-pitch)))
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
@@ -348,10 +367,10 @@ OS-level focus; we only need to update Emacs's internal state."
                          (font-spec :family "Iosevka Term SS08" :weight 'medium
                                     :size (if is-retina 12.0 14.0))))
              (goodvarfonts (list
-                            (font-spec :family "Helvetica Neue" :weight 'medium
-                                       :size (if is-retina 12.0 14.0))
-                            (font-spec :family "Helvetica Neue" :weight 'medium
-                                       :size (if is-retina 12.0 14.0))))
+                            (font-spec :family "Helvetica Neue" :weight 'light
+                                       :size (if is-retina 13.0 14.0))
+                            (font-spec :family "Helvetica Neue" :weight 'light
+                                       :size (if is-retina 13.0 14.0))))
              (ffl (font-family-list))
              (matching-font (seq-find
                              #'(lambda (f) (member (symbol-name (font-get f :family))
@@ -614,6 +633,18 @@ OS-level focus; we only need to update Emacs's internal state."
    :desc "Ellama"
    :n "l l" #'ellama-transient-main-menu)
   (ellama-context-header-line-global-mode +1))
+
+(use-package! agent-shell
+  :config
+  ;; TODO: this doesn't pick up project env vars, of course
+  ;; (setopt agent-shell-anthropic-claude-environment
+  ;;         nil
+  ;;         (agent-shell-make-environment-variables :inherit-env t))
+  (setopt agent-shell-display-action
+          '((display-buffer-in-side-window)
+            (side . right)
+            (slot . 1)
+            (window-width . 101))))
 
 (use-package! norns)
 (use-package! combobulate
@@ -1330,6 +1361,9 @@ end of the workspace list."
   ;; don't clobber gj/gk, argh
   (evil-markdown-set-key-theme (remove 'navigation evil-markdown-key-theme)))
 
+(with-eval-after-load 'markdown-mode
+  (setopt markdown-regex-italic "\\b\\(?:^\\|[^\\]\\)\\(?1:\\(?2:[*_]\\)\\(?3:[^ \n	\\]\\|[^ \n	*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(?4:\\2\\)\\)"))
+
 (after! evil-textobj-tree-sitter
   (define-key evil-outer-text-objects-map "f" `("function" . ,(evil-textobj-tree-sitter-get-textobj "function.outer")))
   (define-key evil-inner-text-objects-map "f" `("function" . ,(evil-textobj-tree-sitter-get-textobj "function.inner")))
@@ -1764,11 +1798,19 @@ If ARG (universal argument), open selection in other-window."
                                                             b)))
                                                      (project-root p))))))
                               b))
-                 (wmatchp (b) (matchp (car b))))
+                 (wmatchp (b) (matchp (car b)))
+                 (wmatchanyp (bb) (let ((b (car bb)))
+                                    (when (buffer-match-p '(derived-mode . gterm-mode) b)
+                                      b))))
         (when-let* ((buf (or (when-let* ((l (seq-find #'wmatchp
                                                       (reverse (window-prev-buffers)))))
                                (car l)) 
                              (when-let* ((l (seq-find #'wmatchp (window-next-buffers))))
+                               (car l))
+                             (when-let* ((l (seq-find #'wmatchanyp
+                                                      (reverse (window-prev-buffers)))))
+                               (car l))
+                             (when-let* ((l (seq-find #'wmatchanyp (window-next-buffers))))
                                (car l))
                              (seq-find #'matchp (buffer-list (selected-frame))))))
           (pop-to-buffer-same-window buf)))))
@@ -1792,7 +1834,10 @@ If ARG (universal argument), open selection in other-window."
   (defun my/project-gterm-named (&optional arg)
     "Open a gterm in the current project with a particular name."
     (interactive "MTerminal name: ")
-    (gterm :project (project-current) :name arg))
+    (gterm :project (or
+                     (buffer-local-value 'gterm-project (current-buffer))
+                     (project-current))
+           :name arg))
 
   (defun my/rename-gterm-buffer (arg)
     "Rename a gterm buffer to a nice pattern"
@@ -2686,6 +2731,14 @@ revisions (i.e., use a \"...\" range)."
    :desc "debug single test"
    :leader
    :n "m t d" #'my/go-test-debug-single))
+
+(use-package! buffer-terminator
+  :custom
+  (buffer-terminator-inactivity-timeout (* (* 60 60) 8)) ; 8 hours
+
+  :config
+  (buffer-terminator-mode 1))
+  
 
 (use-package! pgmacs
   :disabled

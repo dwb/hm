@@ -5,7 +5,7 @@
 ;;; Atlassian
 
 (bourdet-register-tool-result-formatter
- "mcp__atlassian__searchAtlassian"
+ "mcp__claude_ai_Atlassian__searchAtlassian"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Error: %s" result-text) 'face 'error)
@@ -47,7 +47,7 @@
        (error nil)))))
 
 (bourdet-register-tool-result-formatter
- "mcp__atlassian__getConfluencePage"
+ "mcp__claude_ai_Atlassian__getConfluencePage"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Error: %s" result-text) 'face 'error)
@@ -116,7 +116,7 @@
        (error nil)))))
 
 (bourdet-register-tool-result-formatter
- "mcp__atlassian__searchJiraIssuesUsingJql"
+ "mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Jira search error:\n%s" result-text)
@@ -183,7 +183,7 @@
        (error nil)))))
 
 (bourdet-register-tool-result-formatter
- "mcp__atlassian__searchConfluenceUsingCql"
+ "mcp__claude_ai_Atlassian__searchConfluenceUsingCql"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Error: %s" result-text) 'face 'error)
@@ -241,7 +241,7 @@
 ;;; Linear
 
 (bourdet-register-tool-result-formatter
- "mcp__linear-server__get_project"
+ "mcp__claude_ai_Linear__get_project"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Error: %s" result-text) 'face 'error)
@@ -363,7 +363,7 @@
        (error nil)))))
 
 (bourdet-register-tool-result-formatter
- "mcp__linear-server__list_issues"
+ "mcp__claude_ai_Linear__list_issues"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Error: %s" result-text) 'face 'error)
@@ -431,7 +431,7 @@
        (error nil)))))
 
 (bourdet-register-tool-result-formatter
- "mcp__linear-server__get_issue"
+ "mcp__claude_ai_Linear__get_issue"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Error: %s" result-text) 'face 'error)
@@ -522,7 +522,7 @@
        (error nil)))))
 
 (bourdet-register-tool-formatter
- "mcp__linear-server__save_issue"
+ "mcp__claude_ai_Linear__save_issue"
  (lambda (_tool-name input &optional _session)
    (let* ((known-keys '(title team project priority description
                         state assignee labels estimate dueDate
@@ -581,7 +581,7 @@
        (string-join (nreverse parts) "\n")))))
 
 (bourdet-register-tool-summary
- "mcp__linear-server__save_issue"
+ "mcp__claude_ai_Linear__save_issue"
  (lambda (_tool-name input)
    (let* ((title (alist-get 'title input))
           (team (alist-get 'team input))
@@ -595,7 +595,7 @@
      (cons summary nil))))
 
 (bourdet-register-tool-result-formatter
- "mcp__linear-server__save_issue"
+ "mcp__claude_ai_Linear__save_issue"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Save failed: %s" result-text)
@@ -619,7 +619,7 @@
        (error nil)))))
 
 (bourdet-register-tool-result-formatter
- "mcp__linear-server__get_document"
+ "mcp__claude_ai_Linear__get_document"
  (lambda (_tool-name result-text is-error)
    (if is-error
        (propertize (format "✗ Error: %s" result-text) 'face 'error)
@@ -693,7 +693,7 @@
        (error nil)))))
 
 (bourdet-register-tool-formatter
- "mcp__linear-server__create_document"
+ "mcp__claude_ai_Linear__create_document"
  (lambda (tool-name input &optional _session)
    (let* ((title (alist-get 'title input))
           (project (alist-get 'project input))
@@ -720,7 +720,7 @@
        (string-join (nreverse parts) "\n")))))
 
 (bourdet-register-tool-summary
- "mcp__linear-server__create_document"
+ "mcp__claude_ai_Linear__create_document"
  (lambda (_tool-name input)
    (let ((title (alist-get 'title input))
          (project (alist-get 'project input)))
@@ -730,7 +730,7 @@
            nil))))
 
 (bourdet-register-tool-formatter
- "mcp__linear-server__update_document"
+ "mcp__claude_ai_Linear__update_document"
  (lambda (tool-name input &optional _session)
    (let* ((id (alist-get 'id input))
           (title (alist-get 'title input))
@@ -757,7 +757,7 @@
        (string-join (nreverse parts) "\n")))))
 
 (bourdet-register-tool-summary
- "mcp__linear-server__update_document"
+ "mcp__claude_ai_Linear__update_document"
  (lambda (_tool-name input)
    (let ((id (alist-get 'id input))
          (title (alist-get 'title input)))

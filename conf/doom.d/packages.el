@@ -172,3 +172,10 @@
 
 ;; non-gnu elpa
 (package! zig-mode)
+
+;; melpa
+;; auto-closes buffers
+(package! buffer-terminator)
+
+;; melpa
+(package! agent-shell)

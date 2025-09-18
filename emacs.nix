@@ -21,6 +21,10 @@ in
 
   home.sessionPath = [ "~/${configDir}/bin" ];
 
+  home.packages = [
+    pkgsUnstable.claude-agent-acp
+  ];
+
   home.file.".emacs.d/.local/cache/debug-adapters/js-debug" =
     let
       version = "1.100.1";

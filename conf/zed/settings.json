@@ -31,7 +31,7 @@
   },
   "agent": {
     "dock": "left",
-    "play_sound_when_agent_done": false,
+    "play_sound_when_agent_done": "never",
     "model_parameters": []
   },
   "tab_bar": {
