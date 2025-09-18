@@ -366,7 +366,7 @@ in
 
         # (heads of) my branches (even ahead of bookmarks)
         mb = ["log" "--reversed" "-r" "visible_heads() & mine()::"];
-        pre-commit = ["util" "exec" "--" "bash" "-c" ''
+        pre-commit = ["util" "exec" "--" "${pkgs.bash}/bin/bash" "-c" ''
           set -euo pipefail
 
           EMPTY=$(jj log --no-graph -r @ -T 'empty')
@@ -383,7 +383,10 @@ in
             export GIT_WORK_TREE="$ROOT"
           fi
 
-          pre-commit run --from="$FROM" --to="$TO" "$@"
+          jj diff --from "$FROM" --to "$TO" -T 'path ++ "\0"' |
+            readarray -d "" PATHS
+
+          exec pre-commit run --from="$FROM" --to="$TO" "$@" --files "''${PATHS[@]}"
         '' "jj-pre-commit"];
         # rebase on trunk
         retrunk = ["rebase" "-d" "trunk()"];
