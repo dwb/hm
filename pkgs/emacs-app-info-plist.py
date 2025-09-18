@@ -1,7 +1,10 @@
 """Copy Emacs.app's Info.plist, adding the emacsWithPackages environment.
 
 Used by emacs-app-wrapper.nix. Reads $deps and $out from the build environment;
-takes the source and destination plist paths as arguments.
+takes the source and destination plist paths, then the partial Info.plist
+actool emitted for the replacement app icon (see ../prebuild-emacs-icon.nu), as
+arguments. The partial plist supplies CFBundleIconName, which is what makes
+macOS read the Icon Composer rendering out of Resources/Assets.car.
 
 LSEnvironment cannot merge with an inherited value the way the upstream wrapper
 script does, but a LaunchServices-launched app inherits no EMACSLOADPATH, so
@@ -18,11 +21,14 @@ import os
 import plistlib
 import sys
 
-src, dst = sys.argv[1:3]
+src, dst, icon = sys.argv[1:4]
 deps, out = os.environ["deps"], os.environ["out"]
 
 with open(src, "rb") as f:
     plist = plistlib.load(f)
+
+with open(icon, "rb") as f:
+    plist.update(plistlib.load(f))
 
 plist["LSEnvironment"] = {
     "EMACSLOADPATH": deps + "/share/emacs/site-lisp:",

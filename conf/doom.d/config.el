@@ -80,6 +80,35 @@
                   markdown-language-info-face))
     (set-face-attribute face nil :inherit 'fixed-pitch)))
 
+(condition-case-unless-debug nil
+    (use-package markdown-ts-mode
+      :ensure nil
+      :mode ("\\.md\\'" "\\.mdx\\'" "\\.markdown\\'")
+      :config
+      (require 'markdown-ts-mode-x)
+      (add-hook 'markdown-ts-mode-hook #'variable-pitch-mode)
+      (set-face-attribute 'markdown-ts-code-block nil :inherit 'fixed-pitch)
+      (set-face-attribute 'markdown-ts-code-block-markup-hidden nil :inherit 'fixed-pitch)
+
+      (with-eval-after-load 'evil
+        (defvar-local my/markdown-ts-markup-was-hidden nil)
+
+        (defun my/markdown-ts-show-markup-on-insert ()
+          (setq my/markdown-ts-markup-was-hidden markdown-ts-hide-markup)
+          (setq markdown-ts-hide-markup nil)
+          (markdown-ts--set-hide-markup markdown-ts-hide-markup))
+
+        (defun my/markdown-ts-hide-markup-after-insert ()
+          (setq markdown-ts-hide-markup my/markdown-ts-markup-was-hidden)
+          (markdown-ts--set-hide-markup markdown-ts-hide-markup))
+
+        (defun my/markdown-ts-setup ()
+          (add-hook 'evil-insert-state-entry-hook #'my/markdown-ts-show-markup-on-insert nil t)
+          (add-hook 'evil-insert-state-exit-hook #'my/markdown-ts-hide-markup-after-insert nil t))
+      
+        (add-hook 'markdown-ts-mode-hook #'my/markdown-ts-setup)))
+  (error nil))
+
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
 (setq display-line-numbers-type t)
@@ -542,17 +571,6 @@ OS-level focus; we only need to update Emacs's internal state."
   :mode ("\\.ly$" . lilypond-mode)
   :commands (lilypond-mode))
 
-(use-package! treesit-auto
-  ;; i think this is now done by my nix setup
-  :disabled
-  :custom
-  (treesit-auto-install 'prompt)
-  :config
-  ;; https://github.com/renzmann/treesit-auto/issues/127
-  (delete 'glsl treesit-auto-langs)
-  (treesit-auto-add-to-auto-mode-alist 'all)
-  (global-treesit-auto-mode))
-
 ;; gptai
 (if-let ((user  "d@dani.cool")
          (entry (car (auth-source-search :max 1
@@ -801,11 +819,33 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
 
   (advice-add 'vc-jj-diff :around #'my/vc-jj-diff-fix-merge-commits)
 
+  ;; FIXME: Upstream bug in vc-jj--deduce-state-from-diff-types (vc-jj 0.5).
+  ;; https://codeberg.org/emacs-jj-vc/vc-jj.el
+  ;;
+  ;; Its cond has no clause for a "jj diff --types" string whose before
+  ;; character is "C", so a conflict resolved in the working copy ("CF",
+  ;; "CL", "CG") signals an error instead of returning a state. vc-jj-state
+  ;; has no condition-case, so this breaks find-file in any repo holding a
+  ;; resolved conflict - including any megamerge where two parents touched
+  ;; the same file and the merge was resolved in @.
+  (defun my/vc-jj-resolved-conflict-state (diff-types)
+    "Return `edited' if DIFF-TYPES shows a conflict resolved in the working copy.
+DIFF-TYPES is the two-character type string from \"jj diff --types\".
+Return nil for every other input so the advised function handles it."
+    (declare (side-effect-free t))
+    (and diff-types
+         (eq ?C (aref diff-types 0))
+         (memq (aref diff-types 1) '(?F ?L ?G))
+         'edited))
+
+  (advice-add 'vc-jj--deduce-state-from-diff-types :before-until
+              #'my/vc-jj-resolved-conflict-state)
+
   (defun my/vc-jj-revision-completion-table/with-limit (files)
     "Return a completion table for existing revisions of FILES."
     (let* ((log
-            (apply #'vc-jj--process-lines "log" "-r" "mine() & trunk()..@" "--no-graph"
-                   "-T" "pad_end(6, self.change_id().shortest(3)) ++ \"\\0\" ++ self.description().first_line() ++ \"\\n\"" "--" files))
+            (vc-jj--process-lines files "log" "-r" "mine() & trunk()..@" "--no-graph"
+                   "-T" "pad_end(6, self.change_id().shortest(3)) ++ \"\\0\" ++ self.description().first_line() ++ \"\\n\"" "--"))
            (revision-descriptions (make-hash-table :test 'equal))
            (revision-ids '()))
 

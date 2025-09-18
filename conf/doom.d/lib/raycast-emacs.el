@@ -37,10 +37,6 @@ Each entry is a plist accepting the same keys as
 (defvar raycast-emacs--command-order nil
   "Command ids in registration order (most recent first).")
 
-(defvar raycast-emacs--frame-counter 0
-  "Monotonic counter used to assign stable per-frame ids.")
-
-
 ;;; Registry
 
 (cl-defun raycast-emacs-register-command (&key id title subtitle icon handler)
@@ -194,13 +190,6 @@ base64-encoded JSON envelope."
 
 ;;; Frames
 
-(defun raycast-emacs--frame-id (frame)
-  "Return a stable id for FRAME, assigning one if needed."
-  (or (frame-parameter frame 'raycast-emacs-id)
-      (let ((id (format "f%d" (cl-incf raycast-emacs--frame-counter))))
-        (set-frame-parameter frame 'raycast-emacs-id id)
-        id)))
-
 (defun raycast-emacs--frame-title (frame)
   "Return a display title for FRAME."
   (let ((name (frame-parameter frame 'name)))
@@ -216,7 +205,7 @@ base64-encoded JSON envelope."
 
 (defun raycast-emacs--visible-frame-p (frame)
   "Return non-nil when FRAME is a normal, visible, top-level frame."
-  (and (eq (frame-visible-p frame) t)
+  (and (frame-visible-p frame)
        (not (frame-parameter frame 'parent-frame))))
 
 (defun raycast-emacs--frames-json ()
@@ -226,27 +215,29 @@ base64-encoded JSON envelope."
                (mapcar
                 (lambda (frame)
                   (when (raycast-emacs--visible-frame-p frame)
-                    (list :id (raycast-emacs--frame-id frame)
+                    (list :id (frame-id frame)
                           :title (raycast-emacs--frame-title frame)
                           :subtitle (raycast-emacs--frame-project frame))))
-                (frame-list)))))
+                (let* ((fl (frame-list-z-order))
+                       (sf (selected-frame)))
+                  (if sf
+                      (append (cdr fl) (list sf))
+                    fl))))))
 
 (defun raycast-emacs--select-frame (id)
   "Raise and focus the frame with the given ID."
-  (let ((frame (cl-find id (frame-list)
-                        :key (lambda (f) (frame-parameter f 'raycast-emacs-id))
-                        :test #'equal)))
-    (unless frame (error "No such frame: %s" id))
-    (select-frame-set-input-focus frame)
-    (raise-frame frame)
-    t))
+  (if-let* ((frame (frame-by-id id)))
+      (prog1 t
+          (select-frame-set-input-focus frame))
+    (error "No such frame: %s" id)))
 
 
 ;;; Built-in commands (also serve as registration examples)
 
-(raycast-emacs-register-command
- :id "new-frame" :title "New Frame" :icon "PlusCircle"
- :handler (lambda (&optional _args) (select-frame (make-frame))))
+(with-eval-after-load 'bourdet
+  (raycast-emacs-register-command
+   :id "bourdet-next-notification" :title "Next Bourdet notification" :icon "Heartbeat"
+   :handler (lambda (&optional _args) (bourdet-next-notification))))
 
 (raycast-emacs-register-command
  :id "save-all-buffers" :title "Save All Buffers" :icon "SaveDocument"

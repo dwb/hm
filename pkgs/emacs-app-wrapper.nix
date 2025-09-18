@@ -26,6 +26,9 @@
   `LSEnvironment` only applies to LaunchServices launches, which is exactly the
   GUI case. Terminal use goes through `$out/bin/*`, which keep upstream's
   wrapper script and its EMACSLOADPATH merge semantics.
+
+  The bundle also carries a replacement icon, built from `./Emacs.icon` by
+  `../prebuild-emacs-icon.nu`.
 */
 
 {
@@ -35,6 +38,8 @@
   path,
   python3,
   runCommand,
+  # Compiled form of ./Emacs.icon; see ../prebuild-emacs-icon.nu.
+  appIcon ? ../prebuilt/emacs-icon,
 }:
 self:
 let
@@ -243,6 +248,9 @@ runCommand (lib.appendToName "with-packages" emacs).name
       mkdir -p "$app/Contents/MacOS"
       cp "$src/Contents/PkgInfo" "$app/Contents/PkgInfo"
       cp -R "$src/Contents/Resources" "$app/Contents/Resources"
+      # cp -R carries the store's read-only modes over, so the icon replacement
+      # below cannot write into the directory without this.
+      chmod -R u+w "$app/Contents/Resources"
       # A copy, not a symlink: codesign rewrites the executable in place.
       cp "$src/Contents/MacOS/Emacs" "$app/Contents/MacOS/Emacs"
       # Deliberately not recreating upstream's Contents/native-lisp symlink: it
@@ -250,8 +258,14 @@ runCommand (lib.appendToName "with-packages" emacs).name
       # with "invalid destination for symbolic link in bundle". eln files are
       # found via EMACSNATIVELOADPATH below and Emacs' compiled-in paths.
 
-      python3 ${./emacs-app-lsenvironment.py} \
-        "$src/Contents/Info.plist" "$app/Contents/Info.plist"
+      # Replace the stock icon. Assets.car holds the Icon Composer rendering
+      # macOS 26 uses; the .icns beside it is actool's raster fallback, named to
+      # overwrite the one Emacs ships.
+      cp -f ${appIcon}/Resources/* "$app/Contents/Resources/"
+
+      python3 ${./emacs-app-info-plist.py} \
+        "$src/Contents/Info.plist" "$app/Contents/Info.plist" \
+        ${appIcon}/Info.plist
     fi
 
     mkdir -p $out/share
