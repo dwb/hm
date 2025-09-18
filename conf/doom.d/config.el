@@ -465,6 +465,8 @@
 (use-package unison-ts-mode)
 (use-package unison-daemon)
 
+(use-package! vc-jj)
+
 ;;;
 ;;; BETTER WINDOW SIZE PRESERVATION
 ;;;
@@ -876,6 +878,7 @@ end of the workspace list."
 
   (defun my/scroll-up-a-bit ()
     (interactive)
+    (evil-force-normal-state)
     (evil-scroll-line-up 20))
 
   (defun my/scroll-down-a-bit ()
@@ -1351,6 +1354,9 @@ If ARG (universal argument), open selection in other-window."
    :i "C-w" 'evil-window-map
 
    :i "<escape>" #'my/eat-send-escape
+
+   :i "<prior>" #'my/scroll-up-a-bit
+   :i "<next>" #'my/scroll-down-a-bit
 
    :desc "Normal state"
    "C-c <escape>" #'evil-force-normal-state

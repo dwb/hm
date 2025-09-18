@@ -4,8 +4,16 @@ export def e [fn: path] {
   ^$env.EDITOR $fn
 }
 
+export def project-root [] {
+  try {
+    do -c { git rev-parse --show-toplevel err> /dev/null }
+  } catch {
+    do -c { jj workspace root }
+  }
+}
+
 export def gcd-subpath-completer [context: string] {
-  let root = (do -c { git rev-parse --show-toplevel })
+  let root = (project-root)
   let dir = ($context | split words | get -o 1)
   glob --no-file ($root | path join $"($dir)*") |
     each { path relative-to $root }
@@ -13,7 +21,7 @@ export def gcd-subpath-completer [context: string] {
 
 # chdir to directory relative to git repository root
 export def --env gcd [subpath?: string@gcd-subpath-completer] {
-  let root = (do -c { git rev-parse --show-toplevel })
+  let root = (project-root)
   cd (if $subpath == null {
     $root
   } else {

@@ -167,3 +167,6 @@
 (package! monet
   :pin "aad7462e476313c913e01f72ec00756edae68801"
   :recipe (:type git :host github :repo "stevemolitor/monet"))
+
+;; from elpa
+(package! vc-jj)
