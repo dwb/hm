@@ -434,7 +434,7 @@
    "C-c o e" #'combobulate-envelop))
 
 (use-package! copilot
-  ;; :disabled
+  :disabled
   :config
   (setf copilot-idle-delay 0)
   :bind (:map copilot-completion-map

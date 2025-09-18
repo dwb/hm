@@ -106,9 +106,6 @@
 
 (package! norns :pin "022b433334cd1db4f83e77f055cd89e9f857076d")
 
-(package! copilot
-  :recipe (:host github :repo "copilot-emacs/copilot.el" :files ("*.el" "dist")))
-
 (package! evil-textobj-tree-sitter)
 
 (package! gotest)
