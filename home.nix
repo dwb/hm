@@ -683,6 +683,10 @@ in
       bind-key -T copy-mode-vi Escape send-keys -X cancel
 
       bind-key R respawn-pane
+
+      # Active pane border
+      set -g pane-border-style fg=colour255,bg=colour255
+      set -g pane-active-border-style fg=colour70,bg=colour70
     ''
     + (lib.optionalString stdenv.hostPlatform.isDarwin (
       let

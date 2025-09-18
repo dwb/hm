@@ -5,6 +5,7 @@
     "BASH_DEFAULT_TIMEOUT_MS": "180000",
     "PLAN_REMINDER_PERCENT": "20"
   },
+  "includeGitInstructions": false,
   "permissions": {
     "allow": [
       "Skill(jj)",

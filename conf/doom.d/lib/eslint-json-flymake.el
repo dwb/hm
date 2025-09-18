@@ -151,20 +151,22 @@ Returns a list of Flymake diagnostics."
   (save-mark-and-excursion
     (with-current-buffer eslint-buffer
       (widen)
-      (goto-char (point-min))
-      (condition-case err
-          (let ((json-array-type 'list)
-                (json-object-type 'alist)
-                (json-key-type 'symbol))
-            (thread-last
-              (json-read)
-              (seq-find #'(lambda (r) (thread-last r (alist-get 'filePath) (equal filename))))
-              (alist-get 'messages)
-              (seq-map
-               (apply-partially #'eslint-json-flymake--diagnostic-for-message source-buffer))
-              (seq-filter #'flymake--diag-p)))
-        (prog1 nil
-          (error (flymake-log :error "Failed to parse ESLint JSON output: %s" err)))))))
+      (when (> (point-max) (point-min))
+        (goto-char (point-min))
+        (condition-case err
+            (let ((json-array-type 'list)
+                  (json-object-type 'alist)
+                  (json-key-type 'symbol))
+              (thread-last
+                (json-read)
+                (seq-find #'(lambda (r) (thread-last r (alist-get 'filePath) (equal filename))))
+                (alist-get 'messages)
+                (seq-map
+                 (apply-partially #'eslint-json-flymake--diagnostic-for-message source-buffer))
+                (seq-filter #'flymake--diag-p)))
+          (error
+           (flymake-log :error "Failed to parse ESLint JSON output: %S" err)
+           (signal (car err) (cdr err))))))))
 
 (defun eslint-json-flymake--format-error-message (exit-code stderr-output)
   "Format an error message from ESLint process EXIT-CODE and STDERR-OUTPUT."
@@ -257,6 +259,38 @@ Calls REPORT-FN with a list of diagnostics or error information."
 (defun eslint-json-flymake-setup ()
   "Set up ESLint backend for Flymake in the current buffer."
   (add-hook 'flymake-diagnostic-functions #'eslint-json-flymake-backend nil t))
+
+;;;###autoload
+(defun eslint-json-flymake-fix ()
+  (interactive)
+  (when-let* ((srcbuf (current-buffer))
+              ((buffer-live-p srcbuf))
+              (filename (buffer-file-name srcbuf))
+              (dstbuf (generate-new-buffer " *eslint-json-flymake-fix*"))
+              (errbuf (generate-new-buffer " *eslint-json-flymake-fix-error*")))
+    (message "eslint is fixing %s ..." filename)
+    (setq proc
+          (make-process
+           :name "eslint-json-flymake-fix"
+           :noquery t
+           :connection-type 'pipe
+           :buffer dstbuf
+           :stderr errbuf
+           :command (append (eslint-json-flymake--build-command filename)
+                            '("--fix-to-stdout"))
+           :sentinel
+           #'(lambda (proc _event)
+               (when (memq (process-status proc) '(signal exit))
+                 (unwind-protect
+                     (if (eq 0 (process-exit-status proc))
+                         (with-current-buffer srcbuf
+                           (replace-buffer-contents dstbuf 10)
+                           (message "eslint has fixed %s" filename))
+                       (error "eslint errors remain; fix them first"))
+                   (kill-buffer dstbuf)
+                   (kill-buffer errbuf))))))
+    (process-send-region proc (point-min) (point-max))
+    (process-send-eof proc)))
 
 ;; For backward compatibility
 (define-obsolete-function-alias 'eslint-json-flymake-setup-backend

@@ -105,17 +105,16 @@
     (:before-while (&optional _arg) my/no-scrolling-past-end-of-buffer)
   (let ((end (window-end)))
     (with-current-buffer (window-buffer)
-      (if (or (null end)
-              (< end (point-max)))
-          t
-        (prog1 nil
-          (recenter (- (+ 1 (count-screen-lines (point) (point-max))))))))))
+      (or (null end)
+          (< end (point-max))
+          (prog1 nil
+            (recenter (- (+ 1 (count-screen-lines (point) (point-max))))))))))
 
 (after! imenu
   ;; default is 60, way too small
   (setopt imenu-max-item-length 250))
 
-(after! diff-mode
+(with-eval-after-load 'diff-mode
   (defun my/diff-mode-imenu-create-index ()
     (require 'rx)
     (goto-char (point-min))
@@ -1597,6 +1596,7 @@ If ARG (universal argument), open selection in other-window."
      :i "C-c ," #'my/consult-term-buffer)))
 
 (with-eval-after-load 'gterm
+
   (defun my/gterm-send-C-w ()
     (interactive)
     (when-let* (((and gterm--terminal gterm--process gterm--alive))
@@ -1619,22 +1619,17 @@ If ARG (universal argument), open selection in other-window."
       (let* ((default-directory (getenv "HOME")))
         (my/project-gterm-named)))))
 
-  (defun my/gterm-buffer-name (project &optional name)
-    (let* ((suffix (if (and name (length> name 0)) (format " %s" name) ""))
-           (pn (doom-project-name (project-root project))))
-      (format "*gterm %s%s*" pn suffix)))
-
   (defun my/project-gterm-named (&optional arg)
     "Open a gterm in the current project with a particular name."
     (interactive "MTerminal name: ")
-    (gterm :buffer-name (my/gterm-buffer-name (project-current) arg)))
+    (gterm :project (project-current) :name arg))
 
   (defun my/rename-gterm-buffer (arg)
     "Rename a gterm buffer to a nice pattern"
     (interactive "MNew name: ")
     (when (not (eq major-mode 'gterm-mode)) (error "not a gterm buffer"))
-    (let ((name arg))
-      (rename-buffer (my/gterm-buffer-name (project-current) name))))
+    (setf gterm-custom-name arg)
+    (gterm-update-title))
 
   (defun my/set-gterm-width ()
     (interactive)
@@ -1661,7 +1656,7 @@ If ARG (universal argument), open selection in other-window."
    :en "C-c n" #'my/project-gterm-named
 
    :desc "Rename buffer"
-   :eni "C-c r" #'my/rename-gterm-buffer
+   :eni "C-c r" #'gterm-set-custom-name
 
    :desc "Find URL"
    :en "C-c l" #'link-hint-open-link)

@@ -161,5 +161,14 @@
   :recipe (:repo "git@github.com:dwb/bourdet"
            :branch "main"))
 
+(package! gterm
+  :recipe (:repo "git@github.com:dwb/gterm"
+           :branch "main"
+           :pre-build ("make")
+           :files (:defaults
+                   "lib/*"
+                   ("terminfo/67" "terminfo/67/*")
+                   ("terminfo/78" "terminfo/78/*"))))
+
 ;; non-gnu elpa
 (package! zig-mode)
