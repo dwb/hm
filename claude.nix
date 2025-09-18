@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, pkgsUnstable, ... }:
 
 let
   ast-grep-skills = pkgs.fetchFromGitHub {
@@ -17,6 +17,6 @@ in {
   };
 
   home.packages = [
-    pkgs.ast-grep
+    pkgsUnstable.ast-grep
   ];
 }
