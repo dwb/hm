@@ -57,7 +57,8 @@ This is used for special buffers like *Help*, *Messages*, etc.")
 
 (defun frame-project-dedicate--get-project-frames ()
   "Return list of frames that are dedicated to projects."
-  (filtered-frame-list #'frame-project-dedicate--get-frame-project-root))
+  (seq-filter #'frame-project-dedicate--get-frame-project-root
+              (or (frame-list-z-order) (frame-list))))
 
 (defun frame-project-dedicate--find-project-frame (project)
   "Find existing frame dedicated to PROJECT, if any."
@@ -74,26 +75,58 @@ This is used for special buffers like *Help*, *Messages*, etc.")
                          project-root)
     (frame-project-dedicate-ensure-installed-in-frame frame)))
 
-(defun frame-project-dedicate--set-frame-name (&optional frame)
-  (let* ((frame (or frame (selected-frame)))
-         (project (frame-project-dedicate--get-frame-project frame))
+(defun frame-project-dedicate--set-frame-name (frame)
+  (let* ((project (frame-project-dedicate--get-frame-project frame))
          (name (format "project: %s" (project-name project))))
     (unless project (user-error "not a project-dedicated frame"))
     (set-frame-name name)))
 
+(defun frame-project-dedicate--project-placeholder-buffer (project)
+  (let* ((name (format "*project %s*" (project-name project)))
+         (buffer (get-buffer name)))
+    (or buffer
+        (with-current-buffer (get-buffer-create name)
+            (prog1 (current-buffer)
+              (insert "yay, ")
+              (insert (project-name project))
+              (setq-local default-directory (project-root project))
+              (read-only-mode))))))
+
+(defvar frame-project-dedicate--called-recursively nil)
+(defvar frame-project-dedicate--project-buffers-cache nil)
+
+(defmacro frame-project-dedicate--with-project-buffers-cache (&rest body)
+  `(let* ((frame-project-dedicate--project-buffers-cache
+          (or frame-project-dedicate--project-buffers-cache
+              (make-hash-table :test #'equal))))
+     ,@body))
+
+(defun frame-project-dedicate--get-project-buffers (project)
+  (when (null frame-project-dedicate--project-buffers-cache)
+    (error "frame-project-dedicate--get-project-buffers: not called within frame-project-dedicate--with-project-buffers-cache"))
+  (if-let* ((cache frame-project-dedicate--project-buffers-cache)
+            (buffers (gethash project cache)))
+      buffers
+    (puthash project (project-buffers project) cache)))
+
 (defun frame-project-dedicate--buffer-allowed-p (project buffer)
   "Return t if BUFFER should be allowed in a frame dedicated to PROJECT."
-  (let ((project-root (project-root project)))
-    (or
-     ;; Buffer has honorary project that matches
-     ;; TODO - prob use buffer-local-value
-     ;; (and frame-project-dedicate--honorary-project
-     ;;      (string= frame-project-dedicate--honorary-project project-root))
-     ;; Buffer belongs to the project (using project.el functionality)
-     (when-let* ((buffer-project (frame-project-dedicate-project-of-buffer buffer)))
-       (string= project-root (project-root buffer-project)))
-     ;; Special buffers without files that should always be allowed
-     (frame-project-dedicate--special-buffer-p buffer))))
+  (when frame-project-dedicate--called-recursively
+    (setq my/fpdbt (backtrace-get-frames 'backtrace-get-frames))
+    (error "OH NO"))
+
+  (let ((frame-project-dedicate--called-recursively t))
+    (when (buffer-live-p buffer)
+      (frame-project-dedicate--with-project-buffers-cache
+       (or
+        ;; Buffer has honorary project that matches
+        ;; TODO - prob use buffer-local-value
+        ;; (and frame-project-dedicate--honorary-project
+        ;;      (string= frame-project-dedicate--honorary-project project-root))
+        ;; Buffer belongs to the project (using project.el functionality)
+        (seq-contains-p (frame-project-dedicate--get-project-buffers project) buffer)
+        ;; Special buffers without files that should always be allowed
+        (frame-project-dedicate--special-buffer-p buffer))))))
 
 (defun frame-project-dedicate--special-buffer-p (buffer)
   "Return t if BUFFER is a special buffer that should be allowed in any frame."
@@ -104,23 +137,23 @@ This is used for special buffers like *Help*, *Messages*, etc.")
 
 (defun frame-project-dedicate--get-project-frame-alist ()
   "Return alist of (project-name . frame) for all project-dedicated frames."
-  (mapcar (lambda (frame)
-            (let* ((project-root (frame-project-dedicate--get-frame-project-root frame))
-                   (project-name (file-name-nondirectory 
-                                 (directory-file-name project-root))))
-              (cons project-name frame)))
-          (frame-project-dedicate--get-project-frames)))
+  (seq-map (lambda (frame)
+             (let* ((project-root (frame-project-dedicate--get-frame-project-root frame))
+                    (project-name (file-name-nondirectory
+                                   (directory-file-name project-root))))
+               (cons project-name frame)))
+           (frame-project-dedicate--get-project-frames)))
+
+(defvar frame-project-dedicate--select-project-frame-history)
 
 (defun frame-project-dedicate--select-project-frame ()
   "Interactively select a project frame and return the frame."
-  (let* ((frame-alist (seq-sort-by
-                       (lambda (e) (if (eq (cdr e) (selected-frame)) 1 0))
-                       #'<
-                       (frame-project-dedicate--get-project-frame-alist)))
+  (let* ((frame-alist-unsorted (frame-project-dedicate--get-project-frame-alist))
+         (frame-alist (append (cdr frame-alist-unsorted) (list (car frame-alist-unsorted))))
          (project-names (seq-map #'car frame-alist)))
     (if (null project-names)
         (user-error "No project-dedicated frames exist")
-      (let* ((selected-name (completing-read "Switch to project frame: " frame-alist nil t))
+      (let* ((selected-name (completing-read "Switch to project frame: " frame-alist nil t nil 'frame-project-dedicate--select-project-frame-history (caar frame-alist)))
              (selected-frame (cdr (assoc selected-name frame-alist #'string=))))
         selected-frame))))
 
@@ -133,17 +166,22 @@ This is used for special buffers like *Help*, *Messages*, etc.")
     (if-let* ((existing-frame (frame-project-dedicate--find-project-frame project)))
         (prog1 existing-frame
           (select-frame existing-frame)
+          (raise-frame existing-frame)
           (message "Switched to existing frame for project: %s" 
-                   (file-name-nondirectory (directory-file-name (project-root project)))))
+                   (project-root project)))
       ;; Create new dedicated frame
       (let ((frame (make-frame)))
         (prog1 frame
           (frame-project-dedicate--set-frame-project frame project)
           (select-frame frame)
-          ;; Open the project root in dired as a starting point
-          (if initial-buffer
-              (switch-to-buffer initial-buffer)
-            (dired (project-root project))))))))
+          (let* ((buffer (frame-project-dedicate--project-placeholder-buffer project)))
+            (set-window-buffer nil buffer)
+            (set-buffer buffer))
+          (set-window-prev-buffers (selected-window) nil)
+          (raise-frame frame)
+          (cond ((eq t initial-buffer)) ;; caller will deal with initial buffer
+                (initial-buffer (switch-to-buffer initial-buffer))
+                (t (project-find-file))))))))
 
 (defun frame-project-dedicate-project-of-buffer (buffer)
   (let* ((subproject-inhibit-find t))
@@ -183,58 +221,8 @@ the existing frame or create a new one."
   (if arg
       (frame-project-dedicate--select-project-and-switch-or-create)
     (let ((frame (frame-project-dedicate--select-project-frame)))
-      (raise-frame frame)
-      (select-frame frame))))
-
-;; Obsolete commands - kept for backward compatibility
-;;;###autoload
-(defun frame-project-dedicate-new-frame (dir)
-  "Create a new frame dedicated to project in DIR.
-If called interactively, prompt for a project.
-Reuse existing frame if one is already dedicated to this project.
-
-This command is obsolete. Use `frame-project-dedicate-switch' with prefix arg instead."
-  (interactive (list (funcall project-prompter)))
-  (let ((project (project-current t dir)))
-    (project-remember-project project)
-    ;; Check for existing frame first
-    (if-let* ((existing-frame (frame-project-dedicate--find-project-frame project)))
-        (progn
-          (select-frame existing-frame)
-          (message "Switched to existing frame for project: %s" 
-                   (file-name-nondirectory (directory-file-name (project-root project)))))
-      ;; Create new dedicated frame
-      (let ((frame (make-frame)))
-        (frame-project-dedicate--set-frame-project frame project)
-        (select-frame frame)
-        ;; Open the project root in dired as a starting point
-        (dired (project-root project))))))
-
-;;;###autoload
-(defun frame-project-dedicate-find-file (dir)
-  "Find file from project in DIR in a frame dedicated to that project.
-Create the dedicated frame if it doesn't exist.
-Reuse existing frame if one is already dedicated to this project.
-
-This command is obsolete. Use `frame-project-dedicate-switch' with prefix arg instead."
-  (interactive (list (funcall project-prompter)))
-  (let* ((project (project-current t dir))
-         (filename (let ((default-directory (project-root project)))
-                     (project-find-file))))
-    (project-remember-project project)
-    ;; Look for existing frame dedicated to this project
-    (if-let* ((existing-frame (frame-project-dedicate--find-project-frame project)))
-        (progn
-          (select-frame existing-frame)
-          (find-file filename))
-      ;; Create new dedicated frame
-      (let ((frame (make-frame)))
-        (frame-project-dedicate--set-frame-project frame project)
-        (select-frame frame)
-        (find-file filename)))))
-
-(make-obsolete 'frame-project-dedicate-new-frame 'frame-project-dedicate-switch "1.0")
-(make-obsolete 'frame-project-dedicate-find-file 'frame-project-dedicate-switch "1.0")
+      (select-frame frame)
+      (raise-frame frame))))
 
 ;;;###autoload
 (defun frame-project-dedicate-set-honorary-project (dir)
@@ -274,8 +262,9 @@ indirectly called by the latter."
                  (string= project-root
                           (frame-project-dedicate--get-frame-project-root frame))))
               (frame (or (seq-find predicate (frame-list))
-                         (frame-project-dedicate--select-project-and-switch-or-create project)))
-              (window (get-lru-window
+                         (frame-project-dedicate--select-project-and-switch-or-create
+                          project t)))
+              (window (get-largest-window
                        frame nil (cdr (assq 'inhibit-same-window alist)))))
     (prog1 (window--display-buffer buffer window 'reuse alist)
       (unless (cdr (assq 'inhibit-switch-frame alist))
@@ -295,5 +284,9 @@ indirectly called by the latter."
                          (car orig))))
       (setf display-buffer-base-action
             (cons newfns (cdr orig))))))
+
+(defun frame-project-dedicate-unload-function ()
+  (prog1 nil
+    (frame-project-dedicate-mode -1)))
 
 (provide 'frame-project-dedicate)

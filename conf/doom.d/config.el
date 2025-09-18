@@ -193,6 +193,9 @@
  :desc "Switch buffer"
  "," #'switch-to-buffer
 
+ :desc "Pop to buffer"
+ "k" #'pop-to-buffer
+
  :desc "Rename visited file"
  "f R" #'rename-visited-file)
 
@@ -1746,6 +1749,22 @@ revisions (i.e., use a \"...\" range)."
    :textobj "M-w" #'evil-a-little-word #'evil-inner-little-word))
 
 (after! consult
+  (defun my/consult-buffer-display (buffer norecord)
+    (pop-to-buffer buffer nil norecord))
+
+  (setf consult--buffer-display #'my/consult-buffer-display)
+
+  (defun my/consult-project-buffer ()
+    (interactive)
+    (consult-buffer '(consult--source-project-buffer
+                      consult--source-project-recent-file)))
+
+  (map!
+   :leader
+
+   :desc "Switch to project buffer"
+   "k" #'my/consult-project-buffer)
+
   (defun consult--buffer-preview ()
     "Buffer preview function."
     (let ((orig-buf (current-buffer)) (win-prev-bufs 'unset) other-win)
@@ -2125,9 +2144,6 @@ revisions (i.e., use a \"...\" range)."
    "s-;" #'frame-project-dedicate-switch
 
    :leader
-
-   :desc "Pop to buffer"
-   "k" #'pop-to-buffer
 
    :desc "Switch project frame"
    ";" #'frame-project-dedicate-switch))

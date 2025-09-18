@@ -25,10 +25,10 @@
   "Write a backtrace to DIRECTORY with NAME and timestamp, with PROBABILITY.
 DIRECTORY is the target directory path.
 NAME is a string used in the filename.
-PROBABILITY is a float between 0.0 and 1.0 indicating the chance of writing.
+PROBABILITY is an integer
 
 Returns the filepath if backtrace was written, nil otherwise."
-  (when (<= (random 1.0) probability)
+  (when (eq 0 (random probability))
     (let* ((timestamp (format-time-string "%Y%m%d-%H%M%S"))
            (filename (format "%s-%s.trace" name timestamp))
            (filepath (expand-file-name filename directory))
