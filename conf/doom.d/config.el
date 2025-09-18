@@ -735,7 +735,39 @@ Other values of PRESERVE are reserved for future use."
       (seq-filter #'buffer-live-p)
       (seq-do #'kill-buffer))))
 
+(defun my/kill-project-buffers (project &optional interactive)
+  "Kill buffers for the specified PROJECT."
+  (interactive
+   (list (if-let* ((open-projects (doom-open-projects)))
+             (completing-read
+              "Kill buffers for project: " open-projects
+              nil t nil nil
+              (if-let* ((project-root (doom-project-root))
+                        (project-root (abbreviate-file-name project-root))
+                        ((member project-root open-projects)))
+                  project-root))
+           (message "No projects are open!")
+           nil)
+         t))
+  (when project
+    (let ((buffer-list (doom-project-buffer-list project)))
+      (require 'dash)
+      (setq buffer-list
+            (seq-filter #'(lambda (b)
+                            (and (buffer-file-name b)
+                                 (not (get-buffer-window b))))
+                        buffer-list))
+      (doom-kill-buffers-fixup-windows buffer-list)
+      (doom--message-or-count
+       interactive "Killed %d project buffers"
+       (- (length buffer-list)
+          (length (cl-remove-if-not #'buffer-live-p buffer-list)))))))
 
+(map!
+ :leader
+ (:prefix "p"
+  :desc "Kill project buffers"
+  "k" #'my/kill-project-buffers))
 
 (defun my/select-main-window ()
   (interactive)
@@ -1889,11 +1921,12 @@ revisions (i.e., use a \"...\" range)."
                            (tp (project-per-tab-project-of-tab)))
                   (equal bp tp)))))
 
-  (map!
-   :leader
-   (:prefix "b"
-    :desc "Reset workspace"
-    "K" #'my/reset-workspace)))
+  ;; (map!
+  ;;  :leader
+  ;;  (:prefix "b"
+  ;;   :desc "Reset workspace"
+  ;;   "K" #'my/reset-workspace))
+  )
 
 
 (after! dired
