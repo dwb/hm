@@ -11,5 +11,5 @@ export def --env "awsprofile clear" [] {
 }
 
 export def "aws ssox list-accounts" [--region: string] {
-  aws sso list-accounts --access-token (ls ~/.aws/sso/cache | sort-by -r modified | get 0.name | fopen $in | get accessToken) --region $region | from json | get accountList
+  aws sso list-accounts --access-token (ls ~/.aws/sso/cache | sort-by -r modified | get 0.name | open $in | get accessToken) --region $region | from json | get accountList
 }

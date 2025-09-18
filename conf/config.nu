@@ -87,15 +87,6 @@ $env.config.cursor_shape = {
 $env.config.datetime_format.normal = "%F %T%.f %Z"
 $env.config.datetime_format.table = "%F %T%.f %Z"
 
-alias ee = explore
-alias eep = explore --peek
-alias fj = from json
-alias gg = g
-alias g = git
-alias priv = nu --no-history
-alias fopen = open # clashes with macOS's `open`
-alias open = ^open
-
 # doesn't work with alias because
 # https://github.com/nushell/nushell/issues/8471
 source contrib/custom-completions/git/git-completions.nu
@@ -115,8 +106,19 @@ use my/my-nix.nu *
 use my/new.nu *
 use my/nix.nu *
 use my/utils.nu *
+use my/vcd.nu
 
 use new
 
 use std *
 use std iter *
+
+# put these last so they don't clash!
+alias ee = explore
+alias eep = explore --peek
+alias fj = from json
+alias gg = g
+alias g = git
+alias priv = nu --no-history
+alias fopen = open # clashes with macOS's `open`
+alias open = ^open
