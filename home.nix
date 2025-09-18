@@ -24,7 +24,7 @@ let
       if (( width >= 156 )); then
         display=side-by-side
       fi
-      
+
       exec difft --display "$display" "$@"
     '';
   };
@@ -347,6 +347,7 @@ in
         add-parent = ["util" "exec" "--" "${pkgs.python3}/bin/python"
                       ./jj-commands/add-parent.py];
         ap = ["add-parent"];
+        apt = ["add-parent" "trunk()"];
         rm-parent = ["util" "exec" "--" "${pkgs.python3}/bin/python"
                       ./jj-commands/rm-parent.py];
         rp = ["rm-parent"];
@@ -356,6 +357,10 @@ in
         dt = ["diff" "-r" "trunk()..@"];
         # log to trunk
         lt = ["log" "--reversed" "-r" "fork_point(trunk() | ancestors(@, 2))::@"];
+
+        gf = ["git" "fetch"];
+        gp = ["git" "push"];
+        gpnb = ["git" "push" "--allow-new" "--bookmark"];
 
         log-status = ["util" "exec" "--" "sh" "-c" ''
           set -e
