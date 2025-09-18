@@ -83,15 +83,20 @@ This is used for special buffers like *Help*, *Messages*, etc.")
     (modify-frame-parameters frame (list (cons 'name name)))))
 
 (defun frame-project-dedicate--project-placeholder-buffer (project)
-  (let* ((name (format "*project %s*" (project-name project)))
-         (buffer (get-buffer name)))
-    (or buffer
-        (with-current-buffer (get-buffer-create name)
-            (prog1 (current-buffer)
-              (insert "yay, ")
-              (insert (project-name project))
-              (setq-local default-directory (project-root project))
-              (read-only-mode))))))
+  (or (when-let* ((root (file-name-as-directory (project-root project)))
+                  (fns (seq-map #'(lambda (fn) (concat root fn))
+                                '("README.md" "README.org" "README.txt" "README")))
+                  (fn (seq-find #'file-exists-p fns)))
+        (find-file-noselect fn t))
+      (let* ((name (format "*project %s*" (project-name project)))
+             (buffer (get-buffer name)))
+        (or buffer
+            (with-current-buffer (get-buffer-create name)
+              (prog1 (current-buffer)
+                (insert "yay, ")
+                (insert (project-name project))
+                (setq-local default-directory (project-root project))
+                (read-only-mode)))))))
 
 (defvar frame-project-dedicate--called-recursively nil)
 (defvar frame-project-dedicate--project-buffers-cache nil)
@@ -165,7 +170,7 @@ frames, avoiding `project-current' which is expensive and side-effectful."
              (selected-frame (cdr (assoc selected-name frame-alist #'string=))))
         selected-frame))))
 
-(defun frame-project-dedicate--select-project-and-switch-or-create (&optional project initial-buffer)
+(defun frame-project-dedicate--select-project-and-switch-or-create (&optional project)
   "Select a project and switch to its frame (creating if needed)."
   (let* ((project (or project
                       (project-current t (funcall project-prompter)))))
@@ -182,14 +187,11 @@ frames, avoiding `project-current' which is expensive and side-effectful."
         (prog1 frame
           (frame-project-dedicate--set-frame-project frame project)
           (select-frame frame)
-          (let* ((buffer (frame-project-dedicate--project-placeholder-buffer project)))
-            (set-window-buffer nil buffer)
-            (set-buffer buffer))
-          (set-window-prev-buffers (selected-window) nil)
-          (raise-frame frame)
-          (cond ((eq t initial-buffer)) ;; caller will deal with initial buffer
-                (initial-buffer (switch-to-buffer initial-buffer))
-                (t (project-find-file))))))))
+          (let* ((win (car (window-list frame)))
+                 (buffer (frame-project-dedicate--project-placeholder-buffer project)))
+            (set-window-buffer win buffer)
+            (set-window-prev-buffers win nil))
+          (raise-frame frame))))))
 
 (defun frame-project-dedicate-project-of-buffer (buffer)
   (project-current nil (buffer-local-value 'default-directory buffer)))
@@ -285,7 +287,7 @@ indirectly called by the latter."
                         (frame-project-dedicate--get-frame-project-root frame))))
             (frame (or (seq-find predicate (frame-list))
                        (frame-project-dedicate--select-project-and-switch-or-create
-                        project t)))
+                        project)))
             (window (window-main-window frame)))
       (prog1 (window--display-buffer buffer window 'reuse alist)
         (unless (cdr (assq 'inhibit-switch-frame alist))

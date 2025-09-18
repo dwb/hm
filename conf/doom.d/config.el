@@ -846,7 +846,16 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
   (advice-add 'vc-diff :around #'my/vc-jj-diff-revision-advice)
   (advice-add 'vc-root-diff :around #'my/vc-jj-root-diff-revision-advice))
 
+(use-package! majutsu
+  :commands (majutsu majutsu-log)
+  :config
+  (map!
+   :leader
+   :desc "Jujutsu status"
+   "g j" #'majutsu))
+
 (use-package! jj-mode
+  :disabled
   :bind
   (:map jj-mode-map
         ("k" . #'jj-goto-prev-changeset)
@@ -2383,8 +2392,10 @@ revisions (i.e., use a \"...\" range)."
     "C-h" #'my/resize-window-left
     "C-l" #'my/resize-window-right)))
 
-(after! rustic
-  (setq rustic-format-on-save t))
+(with-eval-after-load 'rustic
+  ;; let eglot do it
+  (setopt rustic-format-on-save nil)
+  (setopt rustic-format-trigger nil))
 
 
 (after! literate-calc-mode

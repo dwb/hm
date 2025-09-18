@@ -157,6 +157,12 @@
   :pin "20b7b516f9a1bcb96fc1fedbc0a43138f9fe8765"
   :recipe (:host github :repo "bolivier/jj-mode.el"))
 
+(package! majutsu
+  ;; checked safe
+  :pin "a3758463aa8ad453c8fde4548704cebfece7ed43"
+  :recipe (:host github :repo "0WD0/majutsu"))
+
+
 (package! bourdet
   :recipe (:repo "git@github.com:dwb/bourdet"
            :branch "main"))
