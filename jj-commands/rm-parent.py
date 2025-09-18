@@ -16,5 +16,5 @@ args = parser.parse_args()
 
 subprocess.run([
     'jj', 'rebase', '-s', args.revision,
-    '-d', f'all:{args.revision}- ~ {args.parent}',
+    '-d', f'{args.revision}- ~ {args.parent}',
 ], check=True)
