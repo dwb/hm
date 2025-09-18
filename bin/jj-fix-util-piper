@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Generic stdin/stdout tool chainer for jj fix.
+#
+# Usage: jj-fix-util-piper [-C <marker>] <filepath> <cmd...> [-- <cmd...>]...
+#
+# Pipes stdin through each command in sequence.
+# __FILE__ in arguments is replaced with <filepath>.
+#
+# If the first arg of a command is --ignore-output, the command runs
+# (and can fail or emit stderr) but its stdout is discarded; the
+# pipeline continues with the previous data.
+#
+# -C <marker>  Before running commands, walk up from the file's parent
+#              directory to find the nearest ancestor containing <marker>
+#              (e.g. package.json), and cd there. Stops at the repo root
+#              (where .jj/ lives). If no match, stays in the repo root.
+#              Without -C, changes to the file's parent directory.
+#
+# If any command fails, the script exits non-zero and
+# jj fix preserves the original file content.
+set -euo pipefail
+
+marker=""
+if [[ "${1:-}" == "-C" ]]; then
+    marker="$2"
+    shift 2
+fi
+
+filepath="$1"
+shift
+repo_root="$(jj root)"
+[[ "$filepath" != /* ]] && filepath="$repo_root/$filepath"
+
+if [[ -n "$marker" ]]; then
+    dir=$(dirname "$filepath")
+    while [[ "$dir" != "$repo_root" ]]; do
+        if [[ -e "$dir/$marker" ]]; then
+            break
+        fi
+        dir=$(dirname "$dir")
+    done
+    cd "$dir"
+else
+    cd "$(dirname "$filepath")"
+fi
+
+filepath=$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1]))" "$filepath")
+
+data=$(</dev/stdin)
+
+cmd=()
+run_cmd() {
+    if (( ${#cmd[@]} == 0 )); then
+        return
+    fi
+    if [[ "${cmd[0]}" == "--ignore-output" ]]; then
+        cmd=("${cmd[@]:1}")
+        <<< "$data" "${cmd[@]}" >&2
+    else
+        data=$(<<< "$data" "${cmd[@]}")
+    fi
+    cmd=()
+}
+
+for arg in "$@"; do
+    if [[ "$arg" == "--" ]]; then
+        run_cmd
+    else
+        cmd+=("${arg//__FILE__/$filepath}")
+    fi
+done
+run_cmd
+
+printf '%s\n' "$data"

@@ -285,6 +285,22 @@ jj split -A develop -B @ -m "commit message" path/to/file1 path/to/file2
 
 **IMPORTANT: File paths are relative to your current working directory**, not the repo root. Check `jj st` output for the correct relative paths. If `jj st` shows `../test/file.js`, use that path, not `workspace/@causal/test/file.js`.
 
+### Recovering from `workspace update-stale` Divergence
+
+When `jj workspace update-stale` reconciles divergent operations, it may create a new empty working copy while the version with actual work becomes an orphaned divergent copy. Symptoms: `@` is empty, change ID shows as `<id>/2` (divergent).
+
+**Diagnosis:**
+```bash
+jj log -r 'change_id(<change_id>)'  # List all divergent versions
+```
+
+**Recovery:** The simplest fix is to `jj edit` to the version that has the work:
+```bash
+jj edit <change_id>/0              # Edit the version with actual content
+```
+
+**Do NOT reach for `jj op restore`** — it's overkill when the work is right there in a divergent copy. `op restore` rewinds the entire operation history; `jj edit` just points the working copy at the right version.
+
 ### Cross-Workspace
 ```bash
 jj workspace list               # See all workspaces

@@ -125,8 +125,14 @@ in
         ]
       ))
       uv
+      watchman # for jj status
       wget
       zstd
+
+      (writeShellApplication {
+        name = "jj-fix-util-piper";
+        text = builtins.readFile ./bin/jj-fix-util-piper;
+      })
     ])
     ++ (with pkgsUnstable; [
       # aider-chat # dependency kvazaar fails tests rn and i dont use it
@@ -370,6 +376,7 @@ in
           name = userName;
           email = userEmail;
         };
+        fsmonitor.backend = "watchman";
         ui = {
           bookmark-list-sort-keys = [ "committer-date" ];
           default-command = [ "log-status" ];
