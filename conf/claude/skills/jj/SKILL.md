@@ -99,7 +99,9 @@ jj diff --from <rev1> --to <rev2> --git  # Diff between revisions
 - "All changes on a branch vs trunk/develop?" → `jj diff --from trunk() --to <branch_tip> --git`
 - "Cumulative diff of a branch?" → `jj diff --from <base> --to <tip> --git` (NOT `-r`)
 
-**Common mistake:** Using `-r <branch_tip>` when you want the cumulative branch diff. This only shows that single commit's changes, not all commits since the branch diverged.
+**Common mistakes:**
+- Using `-r <branch_tip>` when you want the cumulative branch diff. This only shows that single commit's changes, not all commits since the branch diverged.
+- Using `-r <complex_revset>` with a revset that has gaps. `jj diff -r` requires a contiguous range. If you get "Cannot diff revsets with gaps in", use `--from`/`--to` instead.
 
 ### Exploring History
 ```bash

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+        "model": "opus",
+  "env": {
+    "MAX_MCP_OUTPUT_TOKENS": "50000",
+    "BASH_DEFAULT_TIMEOUT_MS": "180000"
+  },
+  "permissions": {
+    "allow": [
+      "Skill(jj)",
+      "Bash(jj st:*)",
+      "Bash(jj status:*)",
+      "Bash(jj diff:*)",
+      "Bash(jj dt:*)",
+      "Bash(jj log:*)",
+      "Bash(jj lt:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
+    ],
+  },
+  "spinnerTipsEnabled": false,
+  "alwaysThinkingEnabled": true,
+  "feedbackSurveyState": {
+    "lastShownTime": 1754299769863
+  }
+}
