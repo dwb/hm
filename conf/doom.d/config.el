@@ -56,6 +56,10 @@
                   org-table))
     (set-face-attribute face nil :inherit 'fixed-pitch))
 
+  (map!
+   :mode org-agenda-mode
+   :g "s-r" #'org-agenda-redo)
+
   ;; This was causing variable-pitch flickering just like the line number flickering :(
   (add-hook 'org-mode-hook #'variable-pitch-mode)
 
@@ -520,9 +524,12 @@ OS-level focus; we only need to update Emacs's internal state."
 ;; core emacs remaps
 (map!
  :g "s-o" #'find-file
+ :g "s-r" #'revert-buffer
 
  :n "g t" #'+lookup/type-definition
  :n "g T" #'+lookup/type-definition
+
+ :g "<f11>" #'repeat
 
  :leader
 
@@ -1185,7 +1192,16 @@ Other values of PRESERVE are reserved for future use."
         (prog1
             (select-window w)
           (evil-force-normal-state)))
-    (user-error! "No candidate windows")))
+    (user-error "No candidate windows")))
+
+(defun my/reveal-in-finder ()
+  "Reveal the file visited by the current buffer in the macOS Finder."
+  (interactive)
+  (if-let* ((file (buffer-file-name)))
+      (if (file-remote-p file)
+          (user-error "Cannot reveal a remote file in Finder")
+        (call-process "open" nil 0 nil "-R" file))
+    (user-error "Buffer is not visiting a file")))
 
 (defun my/shorten-absolute-paths-in-buffer (&optional from-pos to-pos)
   "Shorten displayed absolute file paths in the current buffer.
@@ -1228,7 +1244,9 @@ The actual buffer content (the absolute path) remains unchanged."
  :g "C-<escape>" #'my/select-main-window
 
  (:when (featurep :system 'macos)
-   :g "s-k" #'kill-current-buffer)
+   :g "s-k" #'kill-current-buffer
+   (:leader
+    :desc "Reveal in Finder" "f v" #'my/reveal-in-finder))
 
  :map evil-window-map
  ("<f6>" #'my/select-main-window))

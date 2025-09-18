@@ -133,9 +133,11 @@ in
       run $RSYNC -rlp --delete --chmod=+w --exclude=/.local/ $VERBOSE_ARG ${doomemacs}/ ~/${configDir}/
       run $RSYNC -rlp --delete --chmod=+w $VERBOSE_ARG ${doomemacs-modules}/ ~/${configDir}/sources/doom+
 
-      if [[ -n $checkout ]] && [[ ! -d ~/.doom.d ]]; then
+      if [[ -n $checkout ]] && ([[ ! -d ~/.doom.d ]] || [[ -L ~/.doom.d ]]); then
+        echo "*** linking ~/.doom.d"
         ln -snf "$checkout" ~/.doom.d
       else
+        echo "*** blatting ~/.doom.d"
         run $RSYNC -r --delete $VERBOSE_ARG ${src}/ ~/.doom.d
       fi
     '';
