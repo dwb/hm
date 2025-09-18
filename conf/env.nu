@@ -1,3 +1,6 @@
+$env.XDG_CONFIG_HOME = $nu.home-dir | path join .config
+$env.XDG_STATE_HOME = $nu.home-dir | path join local .state
+
 def xdg-config-home [for?: string] {
   let default = ($nu.home-dir | path join .config)
   mut out = (try { $env.XDG_CONFIG_HOME } catch { $default })

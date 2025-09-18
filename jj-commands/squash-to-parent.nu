@@ -1,8 +1,11 @@
 def --wrapped main [...args] {
-  let change = (jj log -r '@-' --no-graph -T
+  let result = (jj log -r 'trunk()..@-' --no-graph -T
     'separate(" ", change_id.short(), description.first_line(), if(bookmarks, "(" ++ bookmarks.join(", ") ++ ")")) ++ "\n"' |
     lines |
-    gum filter ...$in | split words | get 0)
+    input list --fuzzy)
             
-  exec jj squash -kut $change ...$args
+  if $result != null {
+    let change = ($result | split words | get 0)
+    exec jj squash -kut $change ...$args
+  }
 }

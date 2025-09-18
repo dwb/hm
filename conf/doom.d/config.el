@@ -51,6 +51,8 @@
   (setq mac-right-option-modifier 'none))
 
 (defun my/switch-to-prev-buffer-skip (window buffer bury-or-kill)
+  "Unused; kept so mode/project-based filtering can be revived by
+binding `switch-to-prev-buffer-skip' to this function."
   (with-current-buffer buffer
     (or
      (and (not (eq major-mode
@@ -63,7 +65,66 @@
           (buffer-file-name buffer)
           (frame-project-dedicate-switch-to-prev-buffer-skip
            window buffer bury-or-kill)))))
-(setopt switch-to-prev-buffer-skip #'my/switch-to-prev-buffer-skip)
+
+(defun my/switch-to-prev-buffer--skip-p (window buffer bury-or-kill)
+  "Honour `switch-to-prev-buffer-skip' in any of its supported value forms."
+  (let ((skip switch-to-prev-buffer-skip))
+    (cond
+     ((null skip) nil)
+     ((functionp skip) (funcall skip window buffer bury-or-kill))
+     ((eq skip 'this) (eq buffer (window-buffer (selected-window))))
+     ((eq skip 'visible) (and (get-buffer-window buffer 'visible) t))
+     ((eq skip 'other) (and (get-buffer-window buffer t) t))
+     (t nil))))
+
+(defun my/switch-to-prev-buffer-pick (window bury-or-kill)
+  "First viable entry from WINDOW's `window-prev-buffers', or nil."
+  (seq-find
+   (lambda (entry)
+     (let ((buf (car entry)))
+       (and (buffer-live-p buf)
+            (not (eq buf (window-buffer window)))
+            (not (my/switch-to-prev-buffer--skip-p window buf bury-or-kill)))))
+   (window-prev-buffers window)))
+
+(defun my/switch-to-prev-buffer-fallback (window)
+  "Fallback when WINDOW has no viable prev-buffer on kill/bury.
+Delete side windows; otherwise show the frame's project placeholder
+buffer, or `*scratch*'."
+  (if (window-parameter window 'window-side)
+      (progn (delete-window window) nil)
+    (let ((buffer
+           (or (and-let* (((fboundp 'frame-project-dedicate--get-frame-project))
+                          ((fboundp 'frame-project-dedicate--project-placeholder-buffer))
+                          (project (frame-project-dedicate--get-frame-project
+                                    (window-frame window))))
+                 (frame-project-dedicate--project-placeholder-buffer project))
+               (get-scratch-buffer-create))))
+      (set-window-buffer window buffer)
+      buffer)))
+
+(define-advice switch-to-prev-buffer
+    (:around (orig-fn &optional window bury-or-kill)
+             my/from-prev-buffers-only)
+  "Restrict candidates to WINDOW's `window-prev-buffers'.
+On kill/bury with no viable candidate, delete side windows or show the
+frame's project placeholder (else `*scratch*'). For plain navigation,
+defer to the original implementation so `next-buffers' and the frame
+buffer list remain reachable."
+  (when (window-live-p window)
+    (let* ((window (window-normalize-window window t))
+           (entry (my/switch-to-prev-buffer-pick window bury-or-kill)))
+      (cond
+       (entry
+        (set-window-buffer-start-and-point
+         window (nth 0 entry) (nth 1 entry) (nth 2 entry))
+        (nth 0 entry))
+       (bury-or-kill
+        (my/switch-to-prev-buffer-fallback window))
+       (t
+        ;; Note that this means previous-buffer can still pull in "wrong"
+        ;; buffers; if that gets annoying then remove this branch.
+        (funcall orig-fn window bury-or-kill))))))
 
 (setq window-sides-vertical t)
 
@@ -105,6 +166,16 @@
   (interactive)
   (other-window -1))
 (keymap-global-set "C-M-`" #'my/select-previous-window)
+
+(when (fboundp 'iconify-frame)
+  (defun my/iconfiy-other-frames ()
+    (interactive)
+    (when-let* ((sf (selected-frame)))
+      (setq f (next-frame sf))
+      (while (not (eq f sf))
+        (iconify-frame f)
+        (setq f (next-frame f)))))
+  (keymap-global-set "M-s-m" #'my/iconfiy-other-frames))
 
 (define-advice scroll-up
     (:before-while (&optional _arg) my/no-scrolling-past-end-of-buffer)
@@ -179,6 +250,10 @@ OS-level focus; we only need to update Emacs's internal state."
         (when (length= newly-focused 1)
           (select-frame (car newly-focused))))))
 
+  (defvar my/after-focus-change-function-orig
+    after-focus-change-function)
+  (setq after-focus-change-function
+        my/after-focus-change-function-orig)
   (add-function :after after-focus-change-function #'my/ns-focus-fix))
 
 (setopt desktop-load-locked-desktop 'check-pid)
@@ -664,7 +739,7 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
   (defun my/vc-jj-revision-completion-table/with-limit (files)
     "Return a completion table for existing revisions of FILES."
     (let* ((log
-            (apply #'vc-jj--process-lines "log" "-r" "mine() & @-:: ~ ::trunk()" "--no-graph"
+            (apply #'vc-jj--process-lines "log" "-r" "mine() & trunk()..@" "--no-graph"
                    "-T" "self.change_id() ++ \"\\0\" ++ self.description().first_line() ++ \"\\n\"" "--" files))
            (revision-descriptions (make-hash-table :test 'equal))
            (revision-ids '()))
@@ -1459,6 +1534,9 @@ If ARG (universal argument), open selection in other-window."
   (setf projectile-enable-caching t)
   (setf projectile-file-exists-local-cache-expire (* 5 60))
 
+  (setf projectile-project-root-files-bottom-up
+        '(".git" ".hg" ".fslckout" "_FOSSIL_" ".bzr" "_darcs" ".pijul" ".sl" ".jj"))
+
   (after! subproject
     (add-to-list 'project-find-functions #'subproject-find))
   (add-to-list 'projectile-ignored-projects "~/"))
@@ -2068,11 +2146,10 @@ revisions (i.e., use a \"...\" range)."
   (setf eglot-autoshutdown nil)
 
   (defun my/eglot-format-buffer-unless-prettier ()
-    (cond
-     ((and (eglot-managed-p) (bound-and-true-p prettier-mode))
-      (prettier-prettify)))
-    (when (and (eglot-managed-p) (bound-and-true-p prettier-mode))
-      (eglot-format-buffer)))
+    (when (eglot-managed-p)
+      (if (bound-and-true-p prettier-mode)
+          (prettier-prettify)
+        (eglot-format-buffer))))
 
   (add-hook 'before-save-hook #'my/eglot-format-buffer-unless-prettier)
 
@@ -2188,10 +2265,13 @@ revisions (i.e., use a \"...\" range)."
   (setopt prettier-pre-warm 'none)
   (setf prettier-mode-ignore-buffer-function #'my/prettier-ignore-buffer)
 
-  (global-prettier-mode 1)
-
-
   (add-to-list 'prettier-major-mode-parsers '(typescript-tsx-mode typescript babel-ts)))
+
+;; Outside `after! prettier' so it runs at startup, triggers the autoload
+;; (which in turn runs the `after!' body above), and then activates the
+;; globalized mode in existing and future buffers.
+(when (fboundp 'global-prettier-mode)
+  (global-prettier-mode 1))
 
 (after! ace-window
   (setf aw-dispatch-always t))
@@ -2814,6 +2894,7 @@ revisions (i.e., use a \"...\" range)."
        (derived-mode . vterm-mode)
        (derived-mode . gterm-mode)
        (derived-mode . compilation-mode)
+       (derived-mode . cider-repl-mode)
        ,(rx bol "*vterm"))
       (display-buffer-in-side-window)
       (side . right)
@@ -2921,70 +3002,201 @@ revisions (i.e., use a \"...\" range)."
 ;;; DIAGNOSTICS
 ;;;
 
-;; Hypothesis for line-number margin flickering in special buffers on focus regain:
+;; Line-number flicker investigation.
 ;;
-;; Doom enables `display-line-numbers-mode' only for prog/text/conf-mode buffers,
-;; via mode hooks.  When the mode activates, it sets `display-line-numbers'
-;; buffer-locally.  Special buffers (magit, help, dashboard, etc.) never run those
-;; hooks, so they have no buffer-local binding and inherit the variable's default
-;; value, which is normally nil.
+;; Observation: during a flicker the numbers shown are correct for the buffer,
+;; so `display-line-numbers' really does evaluate to truthy in that buffer at
+;; that moment — this is a real state change, not a redisplay artifact.
 ;;
-;; Two plausible causes of the flicker:
+;; The previous `display-warning'-based watcher was too easy to miss: warnings
+;; can be dismissed, buried, or suppressed, and a two-event flicker (on → off
+;; within one command) can flash through without a surviving log.  The version
+;; below writes every event directly to `my/line-numbers-log-file' so traces
+;; are lossless and tailable from another terminal:
 ;;
-;; A) Something transiently sets the *default* value of `display-line-numbers' to
-;;    non-nil (e.g. via `setq-default' or `set-default'), causing the margin to
-;;    appear in every buffer without a local binding, then restores it to nil.
+;;     tail -f ~/dln-trace.log
 ;;
-;; B) The opposite: those buffers somehow already have `display-line-numbers' set
-;;    to non-nil (either as a local binding or via the default), and something on
-;;    focus regain or keypress sets it to nil — producing a flicker that reads as
-;;    "on briefly, then off".
-;;
-;; The watcher below catches both directions (nil and non-nil) for non-code buffers
-;; and for all default-value changes, to distinguish these cases.
+;; Enable with `M-x my/watch-line-numbers-mode'.  It is enabled at the bottom
+;; of this block by default; toggle off when finished.
 
-(defun my/line-numbers-watcher (_sym val op where)
-  "Log all changes to `display-line-numbers' in non-code buffers or to the default.
-WHERE is nil when the default value is changed, or a buffer for local sets."
+(defvar my/line-numbers-log-file
+  (expand-file-name "dln-trace.log" "~")
+  "Path to the line-numbers diagnostic log file.")
+
+(defun my/line-numbers--log (fmt &rest args)
+  "Append a timestamped line to `my/line-numbers-log-file'."
+  (condition-case err
+      (write-region
+       (concat (format-time-string "%FT%T.%3N ")
+               (apply #'format fmt args)
+               "\n")
+       nil my/line-numbers-log-file t 0)
+    (error (message "my/line-numbers log error: %S" err))))
+
+(defun my/line-numbers--buffer-context ()
+  "Return a short string describing the current buffer's dln state."
+  (format "buf=%S mode=%S dln=%S type=%S local-dln=%S local-type=%S mode-on=%S"
+          (buffer-name)
+          major-mode
+          (bound-and-true-p display-line-numbers)
+          (bound-and-true-p display-line-numbers-type)
+          (local-variable-p 'display-line-numbers)
+          (local-variable-p 'display-line-numbers-type)
+          (bound-and-true-p display-line-numbers-mode)))
+
+(defun my/line-numbers--variable-watcher (sym val op where)
+  "Log every set of a watched display-line-numbers variable.
+SYM is the variable symbol, VAL the new value, OP the operation,
+WHERE the buffer for buffer-local sets or nil for default sets."
   (when (eq op 'set)
-    (cond
-     ;; Default value changed (nil or non-nil) — affects all buffers without a local binding.
-     ((null where)
-      (display-warning
-       'my/line-numbers
-       (format "display-line-numbers DEFAULT set to %s\n%s"
-               val (backtrace-to-string))
-       :warning))
-     ;; Buffer-local set (either direction) in a non-code buffer.
-     ((and (buffer-live-p where)
-           (with-current-buffer where
-             (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode))))
-      (with-current-buffer where
-        (display-warning
-         'my/line-numbers
-         (format "display-line-numbers set to %s in %s (%s)\n%s"
-                 val (buffer-name) major-mode (backtrace-to-string))
-         :warning))))))
+    (let ((ctx (cond
+                ((null where) "DEFAULT")
+                ((buffer-live-p where)
+                 (with-current-buffer where
+                   (format "local buf=%S mode=%S" (buffer-name) major-mode)))
+                (t (format "%S" where)))))
+      (my/line-numbers--log "VAR %s <- %S (%s)\n%s"
+                            sym val ctx (backtrace-to-string)))))
 
-(defun my/line-numbers-mode-advice (&optional arg)
-  "Log when `display-line-numbers-mode' is toggled in a non-code buffer."
-  (when (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode))
-    (display-warning
-     'my/line-numbers
-     (format "display-line-numbers-mode called with arg=%s in %s (%s)\n%s"
-             arg (buffer-name) major-mode (backtrace-to-string))
-     :warning)))
+(defun my/line-numbers--mode-before (&optional arg)
+  "Log entry to `display-line-numbers-mode' with ARG."
+  (my/line-numbers--log "MODE-BEFORE arg=%S %s"
+                        arg (my/line-numbers--buffer-context)))
+
+(defun my/line-numbers--mode-after (&rest _)
+  "Log exit from `display-line-numbers-mode'."
+  (my/line-numbers--log "MODE-AFTER  %s"
+                        (my/line-numbers--buffer-context)))
+
+(defun my/line-numbers--turn-on-before (&rest _)
+  "Log entry to `display-line-numbers--turn-on'."
+  (my/line-numbers--log "TURN-ON-BEFORE %s"
+                        (my/line-numbers--buffer-context)))
+
+(defun my/line-numbers--turn-on-after (&rest _)
+  "Log exit from `display-line-numbers--turn-on'."
+  (my/line-numbers--log "TURN-ON-AFTER  %s"
+                        (my/line-numbers--buffer-context)))
+
+(defun my/line-numbers--post-command-scan ()
+  "Log any displayed non-code buffer whose `display-line-numbers' is truthy."
+  (dolist (w (window-list-1 nil nil t))
+    (when-let* ((buf (window-buffer w))
+                ((buffer-live-p buf)))
+      (with-current-buffer buf
+        (when (and (bound-and-true-p display-line-numbers)
+                   (not (derived-mode-p 'prog-mode 'text-mode 'conf-mode)))
+          (my/line-numbers--log "POST-CMD non-code buffer shows dln: cmd=%S %s"
+                                this-command (my/line-numbers--buffer-context)))))))
+
+(defun my/line-numbers--focus-change ()
+  "Log focus state transitions and the selected buffer's dln state."
+  (my/line-numbers--log "FOCUS state=%S %s"
+                        (frame-focus-state)
+                        (my/line-numbers--buffer-context)))
+
+(defun my/line-numbers--set-window-margins-advice (window &rest args)
+  "Log calls to `set-window-margins' with WINDOW and ARGS."
+  (when (window-live-p window)
+    (let ((buf (window-buffer window)))
+      (my/line-numbers--log "SET-MARGINS win=%S buf=%S args=%S\n%s"
+                            window (buffer-name buf) args
+                            (backtrace-to-string)))))
+
+(defun my/line-numbers--set-window-buffer-advice (window buffer &rest _)
+  "Log calls to `set-window-buffer' with WINDOW and BUFFER."
+  (my/line-numbers--log "SET-WIN-BUFFER win=%S buf=%S\n%s"
+                        window
+                        (if (bufferp buffer) (buffer-name buffer) buffer)
+                        (backtrace-to-string)))
+
+(defun my/line-numbers--window-conf-change ()
+  "Log window-configuration-change events."
+  (my/line-numbers--log "WINDOW-CONF-CHANGE frame=%S windows=%S"
+                        (selected-frame)
+                        (mapcar (lambda (w)
+                                  (list (buffer-name (window-buffer w))
+                                        (window-margins w)))
+                                (window-list-1 nil nil t))))
+
+(defvar my/line-numbers--poll-timer nil
+  "Handle for the poll timer used by the watcher.")
+
+(defvar my/line-numbers--last-poll-state nil
+  "Last recorded window state from the poll timer, for change detection.")
+
+(defun my/line-numbers--poll ()
+  "Scan every window; log any transition in dln-truthiness or margins."
+  (let ((now (mapcar (lambda (w)
+                       (let ((buf (window-buffer w)))
+                         (list w
+                               (buffer-name buf)
+                               (with-current-buffer buf
+                                 (bound-and-true-p display-line-numbers))
+                               (window-margins w))))
+                     (window-list-1 nil nil t))))
+    (unless (equal now my/line-numbers--last-poll-state)
+      (my/line-numbers--log "POLL-CHANGE prev=%S now=%S"
+                            my/line-numbers--last-poll-state now)
+      (setq my/line-numbers--last-poll-state now))))
 
 (define-minor-mode my/watch-line-numbers-mode
-  "Watch for unexpected `display-line-numbers-mode' activation."
+  "Write line-number state changes to `my/line-numbers-log-file'."
   :global t
   :lighter " WatchLN"
-  (if my/watch-line-numbers-mode
-      (progn
-        (add-variable-watcher 'display-line-numbers #'my/line-numbers-watcher)
-        (advice-add 'display-line-numbers-mode :before #'my/line-numbers-mode-advice))
-    (remove-variable-watcher 'display-line-numbers #'my/line-numbers-watcher)
-    (advice-remove 'display-line-numbers-mode #'my/line-numbers-mode-advice)))
+  (cond
+   (my/watch-line-numbers-mode
+    (my/line-numbers--log "=== watcher ENABLED ===")
+    (add-variable-watcher 'display-line-numbers
+                          #'my/line-numbers--variable-watcher)
+    (add-variable-watcher 'display-line-numbers-type
+                          #'my/line-numbers--variable-watcher)
+    (advice-add 'display-line-numbers-mode :before
+                #'my/line-numbers--mode-before)
+    (advice-add 'display-line-numbers-mode :after
+                #'my/line-numbers--mode-after)
+    (when (fboundp 'display-line-numbers--turn-on)
+      (advice-add 'display-line-numbers--turn-on :before
+                  #'my/line-numbers--turn-on-before)
+      (advice-add 'display-line-numbers--turn-on :after
+                  #'my/line-numbers--turn-on-after))
+    (add-hook 'post-command-hook #'my/line-numbers--post-command-scan)
+    (add-function :after after-focus-change-function
+                  #'my/line-numbers--focus-change)
+    (advice-add 'set-window-margins :before
+                #'my/line-numbers--set-window-margins-advice)
+    (advice-add 'set-window-buffer :before
+                #'my/line-numbers--set-window-buffer-advice)
+    (add-hook 'window-configuration-change-hook
+              #'my/line-numbers--window-conf-change)
+    (setq my/line-numbers--last-poll-state nil)
+    (setq my/line-numbers--poll-timer
+          (run-with-timer 0 0.02 #'my/line-numbers--poll)))
+   (t
+    (my/line-numbers--log "=== watcher DISABLED ===")
+    (remove-variable-watcher 'display-line-numbers
+                             #'my/line-numbers--variable-watcher)
+    (remove-variable-watcher 'display-line-numbers-type
+                             #'my/line-numbers--variable-watcher)
+    (advice-remove 'display-line-numbers-mode #'my/line-numbers--mode-before)
+    (advice-remove 'display-line-numbers-mode #'my/line-numbers--mode-after)
+    (when (fboundp 'display-line-numbers--turn-on)
+      (advice-remove 'display-line-numbers--turn-on
+                     #'my/line-numbers--turn-on-before)
+      (advice-remove 'display-line-numbers--turn-on
+                     #'my/line-numbers--turn-on-after))
+    (remove-hook 'post-command-hook #'my/line-numbers--post-command-scan)
+    (remove-function after-focus-change-function
+                     #'my/line-numbers--focus-change)
+    (advice-remove 'set-window-margins
+                   #'my/line-numbers--set-window-margins-advice)
+    (advice-remove 'set-window-buffer
+                   #'my/line-numbers--set-window-buffer-advice)
+    (remove-hook 'window-configuration-change-hook
+                 #'my/line-numbers--window-conf-change)
+    (when (timerp my/line-numbers--poll-timer)
+      (cancel-timer my/line-numbers--poll-timer))
+    (setq my/line-numbers--poll-timer nil))))
 
 (defun my/force-line-numbers-off ()
   (interactive)
@@ -2993,11 +3205,42 @@ WHERE is nil when the default value is changed, or a buffer for local sets."
               (unless (derived-mode-p 'prog-mode 'text-mode 'conf-mode)
                 (display-line-numbers-mode -1)))))
 
-;; This is not actually showing up the problem
-;; (my/watch-line-numbers-mode 1)
 ;; (my/watch-line-numbers-mode 1)
 
 ;; END DIAGNOSTICS
+
+;;;
+;;; LINE-NUMBERS FLICKER WORKAROUND
+;;;
+
+;; Targets a redisplay bug on macOS NS where a non-code buffer renders a
+;; line-number margin whose state appears to leak from another visible
+;; code-buffer window.  The lisp variables stay nil throughout; the bad
+;; state persists across non-command redisplay passes (`force-window-update',
+;; `redisplay', idle timers) and only clears when the next command-driven
+;; redisplay runs.
+;;
+;; The diagnostic watcher above fully suppresses it.  Its dominant
+;; between-flicker effect is a `post-command-hook' that walks every live
+;; window and momentarily selects each one's buffer.  That is apparently
+;; enough to keep the per-window display state from going stale.  This
+;; mitigation is the same action, stripped of the watcher's logging,
+;; advice, and timers.
+
+(defun my/line-numbers--null-watcher (&rest _)
+  "No-op variable watcher."
+  nil)
+
+(define-minor-mode my/line-numbers-flicker-workaround-mode
+  "Mitigate the line-number margin flicker via a null variable watcher."
+  :global t
+  (if my/line-numbers-flicker-workaround-mode
+      (add-variable-watcher 'display-line-numbers
+                            #'my/line-numbers--null-watcher)
+    (remove-variable-watcher 'display-line-numbers
+                             #'my/line-numbers--null-watcher)))
+
+;; (my/line-numbers-flicker-workaround-mode 1)
 
 (load (concat doom-user-dir "config-local.el") t)
 

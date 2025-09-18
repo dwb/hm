@@ -76,7 +76,7 @@ $env.config.history = {
 }
 
 $env.config.table.index_mode = 'auto'
-$env.config.table.mode = 'compact'
+$env.config.table.mode = 'frameless'
 
 $env.config.cursor_shape = {
     emacs: 'blink_line' # block, underscore, line, blink_block, blink_underscore, blink_line, inherit to skip setting cursor shape (line is the default)
@@ -95,7 +95,7 @@ source contrib/custom-completions/make/make-completions.nu
 source contrib/custom-completions/man/man-completions.nu
 source contrib/custom-completions/nix/nix-completions.nu
 source contrib/custom-completions/pnpm/pnpm-completions.nu
-source contrib/custom-completions/yarn/yarn-v4-completions.nu
+source contrib/custom-completions/yarn/yarn-completions.nu
 
 use my/archivebox.nu
 use my/aws.nu *

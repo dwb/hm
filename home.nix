@@ -24,6 +24,39 @@ let
     vendorHash = "sha256-ABppEG8uIXKbEq51hlUVbCsmt1cAgJex4S25fBb37os=";
   });
 
+  nushellPatched =
+    let overlay = final: prev: {
+          version = "0.112.2";
+          
+          src = pkgsUnstable.fetchFromGitHub {
+            owner = "nushell";
+            repo = "nushell";
+            tag = final.version;
+            hash = "sha256-wc7mfbwkJO5gq9mwsiTVx74+btqU6Ox8tPhnXkfmXRU=";
+          };
+
+          cargoPatches = [ ./nushell-crossterm-fix.patch ];
+          cargoHash = "sha256-osWYPJ8/zKcEbakk9vXXKGMl7sbl5S1vfNYpiQ0HDeQ=";
+
+          doCheck = false;
+        };
+    in pkgsUnstable.nushell.override (old: {
+      rustPlatform = old.rustPlatform // {
+        buildRustPackage = args: old.rustPlatform.buildRustPackage (lib.extends overlay args);
+      };
+    });
+
+  # nushellLocal = pkgsUnstable.nushell.overrideAttrs (old: {
+  #   patches = [ ./nushell-crossterm-fix.patch ];
+  #   doCheck = false;
+  #   cargoDeps = old.cargoDeps.overrideAttrs (lib.const {
+  #     inherit (old) src;
+  #     patches = [ ./nushell-crossterm-fix.patch ];
+  #     name = "${old.pname}-vendor";
+  #     hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+  #   });
+  # });
+
   userName = "Dani Brown";
   userEmail = "d@dani.cool";
 
@@ -103,7 +136,6 @@ in
       git-absorb
       git-extras
       graphviz
-      gum # shell UI bits https://github.com/charmbracelet/gum
       home-manager
       htop
       (prebuiltPkg "iosevkaDWB")
@@ -126,7 +158,6 @@ in
         ]
       ))
       uv
-      watchman # for jj status
       wget
       zstd
 
@@ -148,12 +179,15 @@ in
       (symlinkJoin {
         name = "gotools";
         paths = [ gotools ];
-        # clashes with ruby bundler!
+        # bundle clashes with ruby bundler!
+        # modernize is also provided by gopls!
         postBuild = ''
           mv $out/bin/bundle $out/bin/gobundle
+          rm $out/bin/modernize
         '';
       })
       jjui
+      watchman # for jj status
     ])
     ++ lib.optionals stdenv.hostPlatform.isDarwin (
       (with pkgs; [
@@ -187,6 +221,16 @@ in
       bind -v
     '';
   };
+
+  # this is great but how to merge it with the one already there?
+  # home.file.".npmrc" = {
+  #   text = ''
+  #     ignore-scripts=true
+  #     min-release-age=7
+  #     save-exact=true
+  #     engine-strict=true
+  #   '';
+  # };
 
   home.file.".config/ghostty/config" = {
     text = ''
@@ -371,7 +415,6 @@ in
     package = pkgsUnstable.jujutsu;
     settings =
       let
-        gum = "${pkgs.gum}/bin/gum";
         privateCommits = "description(glob:'wip:*') | description(glob:'private:*')";
       in
       {
@@ -382,6 +425,7 @@ in
         fsmonitor.backend = "watchman";
         ui = {
           bookmark-list-sort-keys = [ "committer-date" ];
+          conflict-marker-style = "git";
           default-command = [ "log-status" ];
           diff-editor = ":builtin";
           diff-formatter = ":git";
@@ -525,18 +569,22 @@ in
             "jj-pre-commit"
           ];
           # rebase on trunk
-          retrunk = [
-            "util"
-            "exec"
-            "--"
-            "${pkgs.bash}/bin/bash"
-            "-c"
-            ''
-              from="''${1:-@}"
-              exec jj rebase -b "roots(trunk()..''${from}) & mine() & mutable()" -A 'trunk()'
-            ''
-            "jj retrunk"
-          ];
+          # rethink: i don't use this
+          # retrunk = [
+          #   "util"
+          #   "exec"
+          #   "--"
+          #   "${pkgs.bash}/bin/bash"
+          #   "-c"
+          #   ''
+          #     from="''${1:-@}"
+          #     exec jj rebase -b "roots(trunk()..''${from}) & mine() & mutable()" -A 'trunk()'
+          #   ''
+          #   "jj retrunk"
+          # ];
+
+          # rebase on trunk (all new, simpler)
+          rot = [ "rebase" "-o" "trunk()" ];
           # split before private (commits)
           sbp = [
             "split"
@@ -555,7 +603,7 @@ in
             "util"
             "exec"
             "--"
-            "${pkgsUnstable.nushell}/bin/nu"
+            "${nushellPatched}/bin/nu"
             ./jj-commands/split-to-parent.nu
           ];
           # squash to parent
@@ -563,7 +611,7 @@ in
             "util"
             "exec"
             "--"
-            "${pkgsUnstable.nushell}/bin/nu"
+            "${nushellPatched}/bin/nu"
             ./jj-commands/squash-to-parent.nu
           ];
           tug = [
@@ -574,11 +622,16 @@ in
             "--to"
             "closest_public_nonempty(@)"
           ];
+          wup = [ "workspace" "update-stale" ];
+        };
+        revsets = {
+          bookmark-advance-from = "exactly(heads(::to & bookmarks()), 1)";
+          bookmark-advance-to = "closest_public_nonempty(@)";
         };
         revset-aliases = {
           "closest_bookmark(to)" = "heads(first_ancestors(to) & bookmarks())";
-          "closest_nonempty(to)" = "heads(::to ~ empty())";
-          "closest_public_nonempty(to)" = "closest_nonempty(to) ~ private_commits()";
+          "closest_nonempty(to)" = "heads(::to ~ empty() ~ description(\"\"))";
+          "closest_public_nonempty(to)" = "heads(::to ~ private_commits() ~ empty() ~ description(\"\"))";
           # "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
           "immutable_heads()" = "builtin_immutable_heads() | (trunk().. & ~mine())";
           "private_commits()" = privateCommits;
@@ -593,14 +646,15 @@ in
 
   programs.nushell = {
     enable = true;
-    package = pkgsUnstable.nushell;
+    package = nushellPatched;
     plugins = with pkgsUnstable.nushellPlugins; [
       # broken for 0.108
       # (pkgsUnstable.callPackage (import ./pkgs/nushell-plugins-nupsql.nix) {})
 
       formats
       polars
-      ## broken in unstable:
+
+      ## broken in unstable
       # highlight
       # net
       # units

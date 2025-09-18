@@ -46,6 +46,9 @@
           config = {
             allowUnfree = true;
             packageOverrides = pkgs: {
+              direnv = pkgs.direnv.overrideAttrs {
+                doCheck = false;
+              };
               jre = pkgs.jre_headless;
             };
           };

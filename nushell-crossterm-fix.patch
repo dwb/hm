@@ -1,0 +1,26 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index b8e54c62dd..35c8f28dda 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -1492,8 +1492,7 @@
+ [[package]]
+ name = "crossterm"
+ version = "0.29.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "d8b9f2e4c67f833b660cdb0a3523065869fb35570177239812ed4c905aeff87b"
++source = "git+https://github.com/dwb/crossterm.git?rev=858026557ad39604154ca3768af3460006ac0cc5#858026557ad39604154ca3768af3460006ac0cc5"
+ dependencies = [
+  "bitflags 2.11.0",
+  "crossterm_winapi",
+diff --git a/Cargo.toml b/Cargo.toml
+index cb825614a6..1d3a970445 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -404,6 +404,7 @@
+ # To use a development version of a dependency please use a global override here
+ # changing versions in each sub-crate of the workspace is tedious
+ [patch.crates-io]
++crossterm = { git = "https://github.com/dwb/crossterm.git", rev = "858026557ad39604154ca3768af3460006ac0cc5" }
+ # reedline = { git = "https://github.com/nushell/reedline", branch = "main" }
+ # nu-ansi-term = { git = "https://github.com/nushell/nu-ansi-term.git", branch = "main" }
+ 
