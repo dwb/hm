@@ -9,6 +9,7 @@
   {
     "context": "Workspace",
     "bindings": {
+      "cmd-;": ["projects::OpenRecent", { "create_new_window": true }],
       "ctrl-escape": ["workspace::ActivatePane", 0],
       "ctrl-w h": "workspace::ActivatePaneLeft",
       "ctrl-w l": "workspace::ActivatePaneRight",
@@ -18,9 +19,16 @@
     }
   },
   {
+    "context": "Editor",
+    "bindings": {
+      "cmd-;": ["projects::OpenRecent", { "create_new_window": true }]
+    }
+  },
+  {
     "context": "(not_editing || (Editor && vim_mode == normal)) && !menu",
     "bindings": {
       "space g j": ["task::Spawn", { "task_name": "jj", "reveal_target": "center" }],
+      "space ;": ["projects::OpenRecent", { "create_new_window": true }],
       "space .": "pane::RevealInProjectPanel",
       "space space": "file_finder::Toggle",
       "space ,": "tab_switcher::Toggle",

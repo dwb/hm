@@ -8,6 +8,10 @@
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
   "show_edit_predictions": false,
+  "active_pane_modifiers": {
+    "border_size": 0.5,
+    "inactive_opacity": 0.5
+  },
   "agent": {
     "play_sound_when_agent_done": false,
     "model_parameters": []
