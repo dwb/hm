@@ -62,22 +62,28 @@ To filter a revision's diff to specific files, use `jj diff -r <rev> --git -- <p
 ### `@-` with merges
 When `@` is a merge commit, `@-` returns ALL parents. For example, `branch_tip::@-` may give unexpected results. Be explicit: use `::branch_tip & ~::trunk()` to enumerate branch commits reliably.
 
-### evolog templates use a different type
-`jj evolog` uses `CommitEvolutionEntry`, not `Commit`. ALL commit-level fields (`commit_id`, `change_id`, `description`, `author`, `committer`, etc.) must go through `self.commit()`:
+### evolog templates: type is `CommitEvolutionEntry`, NOT `Commit`
+
+`jj evolog -T <template>` evaluates the template over `CommitEvolutionEntry`, not `Commit`. The keyword shortcut that `jj log` provides — exposing 0-argument `Commit` methods as bare keywords like `commit_id`, `description`, `author` — DOES NOT apply here. Use `self.…`.
+
+The entry has four methods:
+- `self.commit() -> Commit`
+- `self.operation() -> Operation`
+- `self.predecessors() -> List<Commit>`
+- `self.inter_diff([files]) -> TreeDiff`
 
 ```bash
-# WRONG (none of these keywords exist at the entry level):
+# WRONG — these keywords don't exist on the entry:
 jj evolog -T 'change_id.short() ...'
 jj evolog -T 'description ...'
-jj evolog -T 'author.name() ...'
 
-# CORRECT:
-jj evolog -T 'self.commit().commit_id().short() ++ " " ++ self.commit().committer().timestamp().format("%H:%M") ++ "\n"'
+# CORRECT — go through self.commit():
+jj evolog -T 'self.commit().commit_id().short() ++ " " ++ self.commit().description().first_line() ++ "\n"'
 ```
 
-Available methods on the entry: `self.commit()`, `self.operation()`, `self.predecessors()`, `self.inter_diff([files])`.
+For anything beyond this, consult the authoritative type docs: `jj help -k templates`. The `CommitEvolutionEntry` and `Commit` type sections list every method; `Signature`, `Timestamp`, `OperationId`, and `List` cover the common downstream calls.
 
-`self.predecessors()` returns a `List<Commit>`, not a single commit. A squash collapses multiple commits into one entry, so any template that assumes a single predecessor (`self.predecessors().commit_id()`) will error. Use `.join(",")` or iterate.
+`self.predecessors()` is a `List<Commit>`; a squash collapses multiple commits into one entry. Templates assuming a single predecessor will error. Use `.map(|p| p.commit_id().short()).join(",")` or iterate.
 
 ## Using `evolog` to Find Historical State
 
