@@ -1,0 +1,21 @@
+diff --git i/src/xdisp.c w/src/xdisp.c
+index eb00c510aaa..6805c02dc83 100644
+--- i/src/xdisp.c
++++ w/src/xdisp.c
+@@ -25079,6 +25079,16 @@ maybe_produce_line_number (struct it *it)
+ static bool
+ should_produce_line_number (struct it *it)
+ {
++  /* Force a fresh swap-in for `display-line-numbers' so we read its
++     value for the buffer that owns this iteration.  Some iterator
++     paths reach this gate via `set_buffer_temp' (buffer.c), which
++     switches `current_buffer' without reloading buffer-local-when-set
++     forwarded variables.  Without this, the C variable
++     `Vdisplay_line_numbers' can hold the value cached for a
++     previously-current buffer, causing line numbers to leak into
++     buffers whose buffer-local value is nil.  */
++  Fsymbol_value (Qdisplay_line_numbers);
++
+   if (NILP (Vdisplay_line_numbers))
+     return false;
+ 

@@ -65,7 +65,10 @@ in
             withNativeCompilation = true;
           }).overrideAttrs
             (old: {
-              patches = old.patches ++ [ ./emacs-window-name.patch ];
+              patches = old.patches ++ [
+                ./emacs-window-name.patch
+                ./emacs-flicker-fix.patch
+              ];
             })
         else
           emacs30-nox

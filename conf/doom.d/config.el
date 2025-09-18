@@ -79,20 +79,23 @@ binding `switch-to-prev-buffer-skip' to this function."
 
 (defun my/switch-to-prev-buffer-pick (window bury-or-kill)
   "First viable entry from WINDOW's `window-prev-buffers', or nil."
-  (seq-find
-   (lambda (entry)
-     (let ((buf (car entry)))
-       (and (buffer-live-p buf)
-            (not (eq buf (window-buffer window)))
-            (not (my/switch-to-prev-buffer--skip-p window buf bury-or-kill)))))
-   (window-prev-buffers window)))
+  (when (window-live-p window)
+    (seq-find
+     (lambda (entry)
+       (let ((buf (car entry)))
+         (and (buffer-live-p buf)
+              (not (eq buf (window-buffer window)))
+              (not (my/switch-to-prev-buffer--skip-p window buf bury-or-kill)))))
+     (window-prev-buffers window))))
 
 (defun my/switch-to-prev-buffer-fallback (window)
   "Fallback when WINDOW has no viable prev-buffer on kill/bury.
 Delete side windows; otherwise show the frame's project placeholder
 buffer, or `*scratch*'."
-  (if (window-parameter window 'window-side)
-      (progn (delete-window window) nil)
+  (unless (window-parameter window 'window-side)
+      ;; TODO: this makes replace-buffer-in-windows error for side windows
+      ;; above used to be an if, we're just not doing this now.
+      ;; (progn (delete-window window) nil)
     (let ((buffer
            (or (and-let* (((fboundp 'frame-project-dedicate--get-frame-project))
                           ((fboundp 'frame-project-dedicate--project-placeholder-buffer))
@@ -111,7 +114,7 @@ On kill/bury with no viable candidate, delete side windows or show the
 frame's project placeholder (else `*scratch*'). For plain navigation,
 defer to the original implementation so `next-buffers' and the frame
 buffer list remain reachable."
-  (when (window-live-p window)
+  (when (or (null window) (window-live-p window))
     (let* ((window (window-normalize-window window t))
            (entry (my/switch-to-prev-buffer-pick window bury-or-kill)))
       (cond
@@ -162,6 +165,8 @@ buffer list remain reachable."
 (add-to-list 'default-frame-alist '(width . 220))
 (add-to-list 'default-frame-alist '(fullscreen . fullheight))
 
+(add-to-list 'auto-mode-alist `(,(rx ".mts" (? "x") eos) . typescript-ts-mode))
+
 (defun my/select-previous-window ()
   (interactive)
   (other-window -1))
@@ -192,7 +197,6 @@ buffer list remain reachable."
 
 (with-eval-after-load 'diff-mode
   (defun my/diff-mode-imenu-create-index ()
-    (require 'rx)
     (goto-char (point-min))
     (cl-loop
      with pat = (rx line-start (group (or "---" "+++")) (+ space)

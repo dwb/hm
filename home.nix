@@ -263,6 +263,12 @@ in
     '';
   };
 
+  home.file.".rgignore" = {
+    text = ''
+      .jj/
+    '';
+  };
+
   home.file.".local/share/my-ollama-models" = {
     source = ./conf/ollama-models;
   };
@@ -422,7 +428,8 @@ in
           name = userName;
           email = userEmail;
         };
-        fsmonitor.backend = "watchman";
+        # hanging a lot on work laptop
+        # fsmonitor.backend = "watchman";
         ui = {
           bookmark-list-sort-keys = [ "committer-date" ];
           conflict-marker-style = "git";
