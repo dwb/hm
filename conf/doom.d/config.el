@@ -54,7 +54,7 @@
     (set-face-attribute face nil :inherit 'fixed-pitch))
 
   ;; This was causing variable-pitch flickering just like the line number flickering :(
-  ;; (add-hook 'org-mode-hook #'variable-pitch-mode)
+  (add-hook 'org-mode-hook #'variable-pitch-mode)
 
   (when (or (fboundp 'ns-dock-badge-set) (fboundp 'system-taskbar-badge))
     (defun my/org-open-todos-count ()
@@ -3238,46 +3238,43 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
   (setopt bourdet--sync-custom-title t)
   (setopt bourdet-model-remap nil)
 
-  (defun my/bourdet-notification-id (id)
-    (format "emacs-%d-bourdet-%d" (emacs-pid) id))
+  (when (and (fboundp 'ns-notification-usable-p) (ns-notification-usable-p))
+    
+    (setq my/bourdet-notification-ids (make-hash-table :test 'equal))
 
-  (defun my/bourdet-notify (session plist)
-    "Send a terminal-notifier notification for a bourdet event."
-    (when-let* ((type (plist-get plist :type))
-                (id (plist-get plist :id))
-                (detail (or (plist-get plist :detail) ""))
-                (group (my/bourdet-notification-id id))
-                (title (let* ((dir (plist-get plist :cwd))
-                              (project (and dir (project-current nil dir)))
-                              (project-name (and project (project-name project)))
-                              (session-name (bourdet-session-name session))
-                              (parts))
-                         (when project-name (push project-name parts))
-                         (when session-name (push session-name parts))
-                         (format "Claude%s"
-                                 (if parts
-                                     (format " [%s]" (string-join parts " : "))
-                                   ""))))
-                (message (format "%s  %s" type detail))
-                (emacsclient (executable-find "emacsclient")))
-      (start-process "bourdet-notify" nil
-                     "terminal-notifier"
-                     "-group" group
-                     "-title" title
-                     "-message" message
-                     "-execute" (format "%s -e '(bourdet-focus-notification %d)'"
-                                        emacsclient (plist-get plist :id)))))
+    (defun my/bourdet-notify (session plist)
+      "Send a notification for a bourdet event."
+      (when-let* ((type (plist-get plist :type))
+                  (session-id (plist-get plist :id))
+                  (detail (or (plist-get plist :detail) ""))
+                  (title (let* ((dir (plist-get plist :cwd))
+                                (project (and dir (project-current nil dir)))
+                                (project-name (and project (project-name project)))
+                                (session-name (bourdet-session-name session))
+                                (parts))
+                           (when project-name (push project-name parts))
+                           (when session-name (push session-name parts))
+                           (format "Claude%s"
+                                   (if parts
+                                       (format " [%s]" (string-join parts " : "))
+                                     ""))))
+                  (message (format "%s  %s" type detail)))
 
-  (defun my/bourdet-notify-clear (session plist)
-    "Remove the terminal-notifier notification for a cleared bourdet event."
-    (when-let* ((id (plist-get plist :id))
-                (group (my/bourdet-notification-id id)))
-      (start-process "bourdet-notify-clear" nil
-                     "terminal-notifier"
-                     "-remove" group)))
+        (puthash session-id
+                 (ns-notification-notify :title "Bourdet" :subtitle title
+                                         :body message
+                                         :group "emacs-bourdet"
+                                         :on-action (lambda (_id _key)
+                                                      (bourdet-focus-notification (plist-get plist :id))))
+                 my/bourdet-notification-ids)))
 
-  (if (not (executable-find "terminal-notifier"))
-      (warn "bourdet config: terminal-notifier not installed")
+    (defun my/bourdet-notify-clear (session plist)
+      "Remove the notification for a cleared bourdet event."
+      (when-let* ((session-id (plist-get plist :id))
+                  (id (gethash session-id my/bourdet-notification-ids)))
+        (ns-notification-close id)
+        (remhash session-id my/bourdet-notification-ids)))
+
     (add-hook 'bourdet-notification-functions #'my/bourdet-notify)
     (add-hook 'bourdet-notification-clear-functions #'my/bourdet-notify-clear)))
 
@@ -3303,7 +3300,8 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
        (derived-mode . compilation-mode)
        (derived-mode . cider-repl-mode)
        ,(rx bol "*vterm"))
-      (display-buffer-in-side-window)
+
+      display-buffer-in-side-window
       (side . right)
       (slot . -1)
       (window-width . 101))

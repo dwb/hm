@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   pkgsUnstable,
@@ -11,6 +12,47 @@ let
   configDir = ".emacs.d";
   # emacsPkgs = pkgsUnstable.callPackage (import "${nixpkgsUnstable}/pkgs/applications/editors/emacs");
   # emacsGuiPkg =
+
+  baseEmacs =
+    if guiEnabled then
+      (pkgsUnstable.emacs31-pgtk.override {
+        withNativeCompilation = true;
+      }).overrideAttrs
+        (old: {
+          patches = old.patches ++ [
+            ./emacs-window-name.patch
+            ./emacs-macos-notifications.patch
+            # ./emacs-flicker-fix.patch
+            # ./emacs-dock-icon.patch
+          ];
+        })
+    else
+      pkgsUnstable.emacs31-nox;
+
+  # `programs.emacs` is not used: the module wraps `package` with
+  # `emacsWithPackages` unconditionally, and a second wrap would produce a
+  # second Emacs.app that `exec`s into the first. See ./pkgs/emacs-app-wrapper.nix.
+  emacsPackages = (pkgsUnstable.emacsPackagesFor baseEmacs).overrideScope (
+    final: _prev: {
+      emacsWithPackages = pkgsUnstable.callPackage ./pkgs/emacs-app-wrapper.nix { } final;
+      withPackages = final.emacsWithPackages;
+    }
+  );
+
+  emacsPackage = emacsPackages.emacsWithPackages (
+    epkgs: with epkgs; [
+      treesit-grammars.with-all-grammars
+      vterm
+      ghostel
+      # (epkgs.callPackage (import ./pkgs/ghostel.nix) {})
+    ]
+  );
+
+  signEmacsApp = pkgs.stdenv.hostPlatform.isDarwin && guiEnabled;
+
+  lsregister =
+    "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework"
+    + "/Support/lsregister";
 in
 {
 
@@ -23,6 +65,7 @@ in
   home.sessionPath = [ "~/${configDir}/bin" ];
 
   home.packages = [
+    emacsPackage
     # pkgsUnstable.claude-agent-acp
   ];
 
@@ -61,36 +104,30 @@ in
       fi
     '';
 
-  programs.emacs = {
-    enable = true;
-    package =
-      let
-        emacsPkgs = pkgsUnstable;
-      in with emacsPkgs;
-      (emacsPackagesFor (
-        if guiEnabled then
-          (emacs31-pgtk.override {
-            withNativeCompilation = true;
-          }).overrideAttrs
-            (old: {
-              patches = old.patches ++ [
-                ./emacs-window-name.patch
-                ./emacs-macos-notifications.patch
-                # ./emacs-flicker-fix.patch
-                # ./emacs-dock-icon.patch
-              ];
-            })
-        else
-          emacs30-nox
-      )).emacsWithPackages
-        (
-          epkgs: with epkgs; [
-            treesit-grammars.with-all-grammars
-            vterm
-            ghostel
-            # (epkgs.callPackage (import ./pkgs/ghostel.nix) {})
-          ]
-        );
-  };
+  # Install a signed copy of Emacs.app at a fixed path outside the store.
+  # UNUserNotificationCenter needs a bundle that Launch Services has a record
+  # of, which means the bundle must carry a real signature (not just the
+  # linker's ad-hoc Mach-O one) — and signing needs a writable copy, which the
+  # store cannot provide. The path is fixed rather than per-generation so the
+  # notification permission grant survives rebuilds.
+  home.activation.signEmacsApp = lib.mkIf signEmacsApp (
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      dst=${lib.escapeShellArg config.home.homeDirectory}/Applications/Emacs.app
+
+      # Was a mkalias alias file before this activation existed; see linkapps.nix.
+      if [[ -e $dst && ! -d $dst ]]; then
+        run rm -f "$dst"
+      fi
+
+      run ${pkgs.rsync}/bin/rsync -rlt --delete --chmod=u+w $VERBOSE_ARG \
+        ${emacsPackage}/Applications/Emacs.app/ "$dst/"
+
+      # Ad-hoc identity: there is no code signing identity in the keychain, and
+      # a Nix build could not use one anyway. --deep is not needed, the bundle
+      # has no nested code.
+      run /usr/bin/codesign --force --sign - --identifier org.gnu.Emacs "$dst"
+      run ${lsregister} -f "$dst"
+    ''
+  );
 
 }
