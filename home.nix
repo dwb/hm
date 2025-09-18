@@ -677,6 +677,15 @@ description(\"\")" ];
             "${pkgs.nushell}/bin/nu"
             ./jj-commands/squash-to-parent.nu
           ];
+          # conflict cause: per conflicted file, the changes that cause it
+          conflict-cause = [
+            "util"
+            "exec"
+            "--"
+            "${pkgs.nushell}/bin/nu"
+            ./jj-commands/conflict-cause.nu
+          ];
+          cfc = [ "conflict-cause" ];
           tug = [
             "bookmark"
             "move"
