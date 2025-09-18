@@ -272,7 +272,7 @@ indirectly called by the latter."
                (lambda (frame)
                  (and (not (eq frame (selected-frame)))
                       (get-lru-window frame))))
-              (frame (or (car (filtered-frame-list predicate))
+              (frame (or (seq-find predicate (frame-list))
                          (frame-project-dedicate--select-project-and-switch-or-create project)))
               (window (get-lru-window
                        frame nil (cdr (assq 'inhibit-same-window alist)))))

@@ -20,3 +20,29 @@
                         (tab-index (seq-position tabs tab)))
                    (+ 1 tab-index)))))
     (format "%s" name)))
+
+(defun my/maybe-write-backtrace (directory name probability)
+  "Write a backtrace to DIRECTORY with NAME and timestamp, with PROBABILITY.
+DIRECTORY is the target directory path.
+NAME is a string used in the filename.
+PROBABILITY is a float between 0.0 and 1.0 indicating the chance of writing.
+
+Returns the filepath if backtrace was written, nil otherwise."
+  (when (<= (random 1.0) probability)
+    (let* ((timestamp (format-time-string "%Y%m%d-%H%M%S"))
+           (filename (format "%s-%s.trace" name timestamp))
+           (filepath (expand-file-name filename directory))
+           (backtrace-str (with-output-to-string (backtrace))))
+      ;; Ensure directory exists
+      (unless (file-directory-p directory)
+        (make-directory directory t))
+      ;; Write backtrace to file
+      (with-temp-file filepath
+        (insert (format "Backtrace generated at: %s\n"
+                        (format-time-string "%Y-%m-%d %H:%M:%S"))
+                "Function: " name "\n"
+                "Probability: " (number-to-string probability) "\n"
+                "===========================================\n\n"
+                backtrace-str))
+      (message "Backtrace written to %s" filepath)
+      filepath)))
