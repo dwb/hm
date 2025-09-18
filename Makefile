@@ -17,8 +17,7 @@ up:
 
 .PHONY: link
 link:
-	mkdir -p ~/.config/zed
-	for section in jjui zed; do ln -sf "$${PWD}/conf/$${section}/"* ~/.config/"$${section}/"; done
+	./link.nu
 
 .PHONY: prebuild
 prebuild:
