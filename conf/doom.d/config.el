@@ -43,42 +43,6 @@
     (setopt org-directory d)
     (setopt org-roam-directory d))
 
-  (setopt org-agenda-todo-ignore-scheduled 'future)
-
-  (dolist (face '(org-block-begin-line 
-                  org-block-end-line 
-                  org-block
-                  org-drawer
-                  org-property-value
-                  org-verbatim
-                  org-code
-                  org-meta-line
-                  org-table))
-    (set-face-attribute face nil :inherit 'fixed-pitch))
-
-  (map!
-   :mode org-agenda-mode
-   :g "s-r" #'org-agenda-redo)
-
-  ;; This was causing variable-pitch flickering just like the line number flickering :(
-  (add-hook 'org-mode-hook #'variable-pitch-mode)
-
-  (when (or (fboundp 'ns-dock-badge-set) (fboundp 'system-taskbar-badge))
-    (defun my/org-open-todos-count ()
-      (let ((count 0))
-        (org-map-entries (lambda () (incf count))
-                         "+SCHEDULED=\"\"|+SCHEDULED<=*\"<now>\"/!"
-                         'agenda)
-        count))
-
-    (defun my/org-todos-dock-update ()
-      (let* ((count (my/org-open-todos-count)))
-        (if (fboundp 'ns-dock-badge-set)
-            (ns-dock-badge-set count)
-          (system-taskbar-badge (if (eq 0 count) nil count)))))
-    
-    (run-with-idle-timer 2 t #'my/org-todos-dock-update))
-
   (setopt org-capture-templates
           '(("t" "Personal todo" entry (file+headline +org-capture-todo-file "Inbox") "* TODO %?\n%i\n%a"
              :prepend t)
@@ -98,7 +62,111 @@
             ("on" "Project notes" entry #'+org-capture-central-project-notes-file "* %U %?\n %i\n %a" :heading
              "Notes" :prepend t)
             ("oc" "Project changelog" entry #'+org-capture-central-project-changelog-file "* %U %?\n %i\n %a"
-             :heading "Changelog" :prepend t))))
+             :heading "Changelog" :prepend t)))
+
+  (setopt org-agenda-todo-ignore-scheduled 'future)
+
+  (dolist (face '(org-block-begin-line 
+                  org-block-end-line 
+                  org-block
+                  org-drawer
+                  org-property-value
+                  org-verbatim
+                  org-code
+                  org-meta-line
+                  org-table))
+    (set-face-attribute face nil :inherit 'fixed-pitch))
+  (setopt org-agenda-start-on-weekday 1)
+  (setopt org-blank-before-new-entry
+          '((heading . t) (plain-list-item . nil)))
+
+  (defun my/show-org ()
+    (interactive)
+    (if-let* ((tab-index (tab-bar--tab-index-by-name "org")))
+        (tab-bar-select-tab (1+ tab-index))
+      (projectile-switch-project-by-name "org")))
+
+  (defun my/org-mode-return ()
+    "Add new list item, heading or table row with RET."
+    (interactive)
+    (if (org-in-item-p)
+        (org-insert-item)
+      (org-return)))
+
+  (defun my/org-focus-subtree ()
+    "Fold everything except the subtree at point and the headings above it."
+    (interactive)
+    (org-overview)
+    (org-fold-reveal)
+    (save-excursion
+      (org-back-to-heading t)
+      (org-fold-show-subtree)))
+
+  (map!
+   :mode org-mode
+
+   :n "g k" #'evil-previous-visual-line
+   :n "g j" #'evil-next-visual-line
+
+   :desc "Unfold only subtree"
+   :n "C-c f" #'my/org-focus-subtree
+
+   ;; these are actually quite annoying, let's think of something else
+   ;; :n "h" #'org-up-element
+   ;; :n "j" nil
+   ;; :n "k" nil
+   ;; :n "l" #'org-down-element
+
+   :i "RET" #'my/org-mode-return
+
+   :mode org-agenda-mode
+
+   :g "s-r" #'org-agenda-redo
+
+   (defun my/set-org-line-spacing ()
+     (setopt-local line-spacing 0.1))
+   (add-hook 'org-mode-hook #'my/set-org-line-spacing))
+
+  (add-hook 'org-mode-hook #'variable-pitch-mode)
+
+  (when (or (fboundp 'ns-dock-badge-set) (fboundp 'system-taskbar-badge))
+    (defun my/org-open-todos-count ()
+      (let ((count 0))
+        (org-map-entries (lambda () (incf count))
+                         "+SCHEDULED=\"\"|+SCHEDULED<=*\"<now>\"/!"
+                         'agenda)
+        count))
+
+    (defun my/org-todos-dock-update ()
+      (let* ((count (my/org-open-todos-count)))
+        (if (fboundp 'ns-dock-badge-set)
+            (ns-dock-badge-set count)
+          (system-taskbar-badge (if (eq 0 count) nil count)))))
+    
+    (run-with-idle-timer 2 t #'my/org-todos-dock-update))
+
+  (with-eval-after-load 'evil
+    (defvar my/org-hide-emphasis-markers-states '(normal)
+      "Evil states in which `org-hide-emphasis-markers' is on in Org buffers.
+In all other states the markers are shown.")
+
+    (defun my/org-update-emphasis-markers ()
+      "Set `org-hide-emphasis-markers' locally for the current Evil state.
+Refontify the buffer when the value changes, because Org applies the
+setting only during fontification (see `org-do-emphasis-faces')."
+      (let ((hide (and (memq evil-state my/org-hide-emphasis-markers-states) t)))
+        (unless (eq hide org-hide-emphasis-markers)
+          (setq-local org-hide-emphasis-markers hide)
+          (font-lock-flush))))
+
+    (defun my/org-setup-emphasis-markers ()
+      "Make `org-hide-emphasis-markers' follow the Evil state in this buffer."
+      (dolist (state (mapcar #'car evil-state-properties))
+        (add-hook (evil-state-property state :entry-hook)
+                  #'my/org-update-emphasis-markers nil t))
+      (my/org-update-emphasis-markers))
+
+    (add-hook 'org-mode-hook #'my/org-setup-emphasis-markers)))
 
 (with-eval-after-load 'markdown-mode
   (dolist (face '(markdown-markup-face
@@ -1643,66 +1711,6 @@ for the nested (enable-theme \\='user) call, reads the face before that."
                                    (pair value: (_) @keyed)]))))))
     (define-key evil-outer-text-objects-map "k" `("keyed" . ,(evil-textobj-tree-sitter-get-textobj "keyed" query)))
     (define-key evil-inner-text-objects-map "k" `("keyed" . ,(evil-textobj-tree-sitter-get-textobj "keyed" query)))))
-
-(with-eval-after-load 'org
-  (setopt org-agenda-start-on-weekday 1)
-  (setopt org-blank-before-new-entry
-          '((heading . t) (plain-list-item . nil)))
-
-  (defun my/show-org ()
-    (interactive)
-    (if-let* ((tab-index (tab-bar--tab-index-by-name "org")))
-        (tab-bar-select-tab (1+ tab-index))
-      (projectile-switch-project-by-name "org")))
-
-  (defun my/org-mode-return ()
-    "Add new list item, heading or table row with RET."
-    (interactive)
-    (if (org-in-item-p)
-        (org-insert-item)
-      (org-return)))
-
-  (map!
-   :mode org-mode
-
-   :n "g k" #'evil-previous-visual-line
-   :n "g j" #'evil-next-visual-line
-
-   ;; these are actually quite annoying, let's think of something else
-   ;; :n "h" #'org-up-element
-   ;; :n "j" nil
-   ;; :n "k" nil
-   ;; :n "l" #'org-down-element
-
-   :i "RET" #'my/org-mode-return
-   )
-
-  (defun my/set-org-line-spacing ()
-    (setopt-local line-spacing 0.1))
-  (add-hook 'org-mode-hook #'my/set-org-line-spacing)
-
-  (with-eval-after-load 'evil
-    (defvar my/org-hide-emphasis-markers-states '(normal)
-      "Evil states in which `org-hide-emphasis-markers' is on in Org buffers.
-In all other states the markers are shown.")
-
-    (defun my/org-update-emphasis-markers ()
-      "Set `org-hide-emphasis-markers' locally for the current Evil state.
-Refontify the buffer when the value changes, because Org applies the
-setting only during fontification (see `org-do-emphasis-faces')."
-      (let ((hide (and (memq evil-state my/org-hide-emphasis-markers-states) t)))
-        (unless (eq hide org-hide-emphasis-markers)
-          (setq-local org-hide-emphasis-markers hide)
-          (font-lock-flush))))
-
-    (defun my/org-setup-emphasis-markers ()
-      "Make `org-hide-emphasis-markers' follow the Evil state in this buffer."
-      (dolist (state (mapcar #'car evil-state-properties))
-        (add-hook (evil-state-property state :entry-hook)
-                  #'my/org-update-emphasis-markers nil t))
-      (my/org-update-emphasis-markers))
-
-    (add-hook 'org-mode-hook #'my/org-setup-emphasis-markers)))
 
 (after! window-purpose
   (add-to-list 'window-persistent-parameters '(purpose-dedicated . writable))
