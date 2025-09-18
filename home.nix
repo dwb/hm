@@ -426,6 +426,7 @@ in
           '' "jj claude"];
 
           di = [ "diff" ];
+          dn = [ "diff" "--name-only" ];
           # diff from trunk
           dt = [
             "diff"
@@ -648,11 +649,12 @@ in
     keyMode = "vi";
     mouse = true;
     newSession = false;
-    shortcut = "a";
+    shortcut = "w";
 
     extraConfig = ''
-      # bind-key a send-key C-a
-      # bind-key C-a last-pane
+      bind-key w send-key C-w
+      bind-key C-w last-pane
+
       bind-key A last-window
       bind-key C clear-history
 

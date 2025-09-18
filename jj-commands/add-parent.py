@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 subprocess.run([
     'jj', 'rebase', '-s', args.revision,
-    '-o', f'{args.revision}- ~ ::trunk()', # existing non-trunk parents
-    '-o', f'latest({args.revision}- & ::trunk())', # latest trunk change
-    '-o', args.parent, # new change
+    '-o', f'parents({args.revision}) ~ ::trunk()', # existing non-trunk parents
+    '-o', f'latest((parents({args.revision}) | {args.parent}) & ::trunk())', # latest trunk change, considering new parent
+    '-o', f'{args.parent} ~ ::trunk()', # new parent, if non-trunk
 ], check=True)

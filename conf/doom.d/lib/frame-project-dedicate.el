@@ -101,6 +101,20 @@ This is used for special buffers like *Help*, *Messages*, etc.")
     (string-prefix-p root (expand-file-name
                            (buffer-local-value 'default-directory buffer)))))
 
+(defun frame-project-dedicate--buffer-homeless-p (buffer)
+  "Return t if BUFFER does not belong to any project-dedicated frame.
+Checks `default-directory' against known project roots from dedicated
+frames, avoiding `project-current' which is expensive and side-effectful."
+  (declare (side-effect-free t))
+  (let ((buf-dir (expand-file-name
+                  (buffer-local-value 'default-directory buffer))))
+    (not (seq-some
+          (lambda (root)
+            (string-prefix-p (expand-file-name (file-name-as-directory root))
+                             buf-dir))
+          (delq nil (mapcar #'frame-project-dedicate--get-frame-project-root
+                            (frame-list)))))))
+
 (defun frame-project-dedicate--buffer-allowed-p (project buffer)
   "Return t if BUFFER should be allowed in a frame dedicated to PROJECT."
   (if frame-project-dedicate--called-recursively
@@ -118,7 +132,9 @@ This is used for special buffers like *Help*, *Messages*, etc.")
        ;; Buffer belongs to the project (using project.el functionality)
        (frame-project-dedicate--buffer-in-project-p buffer project)
        ;; Special buffers without files that should always be allowed
-       (frame-project-dedicate--special-buffer-p buffer))))
+       (frame-project-dedicate--special-buffer-p buffer)
+       ;; Buffer doesn't belong to any project-dedicated frame
+       (frame-project-dedicate--buffer-homeless-p buffer))))
 
 (defun frame-project-dedicate--special-buffer-p (buffer)
   "Return t if BUFFER is a special buffer that should be allowed in any frame."
@@ -233,9 +249,12 @@ This allows special buffers to appear in project-dedicated frames."
 This is needed because `server-switch-buffer' bypasses `display-buffer'
 when `server-window' is nil, calling `switch-to-buffer' directly."
   (when (bufferp next-buffer)
-    (when-let* ((project (frame-project-dedicate-project-of-buffer next-buffer))
-                (frame (frame-project-dedicate--find-project-frame project)))
-      (select-frame-set-input-focus frame))))
+    (if-let* ((project (frame-project-dedicate-project-of-buffer next-buffer))
+              (frame (frame-project-dedicate--find-project-frame project)))
+        (select-frame-set-input-focus frame)
+      ;; No project (e.g., temp commit message): keep the topmost frame
+      (when-let* ((frame (car (or (frame-list-z-order) (frame-list)))))
+        (select-frame-set-input-focus frame)))))
 
 (defun frame-project-dedicate-display-buffer-use-dedicated-frame (buffer alist)
   "Display BUFFER in an existing frame that should be dedicated to it.
@@ -253,21 +272,27 @@ This is an action function for buffer display, see Info
 node `(elisp) Buffer Display Action Functions'.  It should be
 called only by `display-buffer' or a function directly or
 indirectly called by the latter."
-  (when-let* ((project (frame-project-dedicate-project-of-buffer buffer))
-              (project-root (project-root project))
-              (predicate
-               (lambda (frame)
-                 ;; (and (not (eq frame (selected-frame)))
-                 ;;      (get-lru-window frame))))
-                 (string= project-root
-                          (frame-project-dedicate--get-frame-project-root frame))))
-              (frame (or (seq-find predicate (frame-list))
-                         (frame-project-dedicate--select-project-and-switch-or-create
-                          project t)))
-              (window (window-main-window frame)))
-    (prog1 (window--display-buffer buffer window 'reuse alist)
-      (unless (cdr (assq 'inhibit-switch-frame alist))
-        (window--maybe-raise-frame frame)))))
+  (if-let* ((project (frame-project-dedicate-project-of-buffer buffer))
+            (project-root (project-root project))
+            (predicate
+             (lambda (frame)
+               ;; (and (not (eq frame (selected-frame)))
+               ;;      (get-lru-window frame))))
+               (string= project-root
+                        (frame-project-dedicate--get-frame-project-root frame))))
+            (frame (or (seq-find predicate (frame-list))
+                       (frame-project-dedicate--select-project-and-switch-or-create
+                        project t)))
+            (window (window-main-window frame)))
+      (prog1 (window--display-buffer buffer window 'reuse alist)
+        (unless (cdr (assq 'inhibit-switch-frame alist))
+          (window--maybe-raise-frame frame)))
+    ;; Homeless buffer: display in the selected frame to prevent
+    ;; display-buffer from sending it to an arbitrary frame.
+    (when (frame-project-dedicate--buffer-homeless-p buffer)
+      (let ((window (or (get-lru-window nil nil nil)
+                        (selected-window))))
+        (window--display-buffer buffer window 'reuse alist)))))
 
 (defun frame-project-dedicate-switch-to-prev-buffer-skip (window buffer _bury-or-kill)
   (when-let* ((frame (window-frame window))
