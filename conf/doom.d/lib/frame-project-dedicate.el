@@ -187,8 +187,7 @@ This is used for special buffers like *Help*, *Messages*, etc.")
                 (t (project-find-file))))))))
 
 (defun frame-project-dedicate-project-of-buffer (buffer)
-  (let* ((subproject-inhibit-find t))
-    (project-current nil (buffer-local-value 'default-directory buffer))))
+  (project-current nil (buffer-local-value 'default-directory buffer)))
 
 (defun frame-project-dedicate-ensure-installed-in-frame (frame)
   (when-let* ((project (frame-project-dedicate--get-frame-project frame)))

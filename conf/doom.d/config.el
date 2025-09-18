@@ -229,7 +229,6 @@
 (require 'subproject)
 ;; enabled after projectile so that subprojects are looked at first
 
-;; (require 'subprojects)
 ;; (require 'lsp-subprojects)
 ;; (require 'doom-subprojects)
 (require 'my-buffer-mgmt)
@@ -1734,6 +1733,10 @@ revisions (i.e., use a \"...\" range)."
   (add-to-list 'eglot-server-programs '(nushell-ts-mode . ("nu" "--lsp")))
   (add-to-list 'eglot-server-programs '(unison-ts-mode "127.0.0.1" 5757))
 
+  (after! subproject
+    (advice-add 'eglot--current-project
+                :around #'subproject-with-allowing-find))
+
   (setq-default eglot-workspace-configuration
                 '((:gopls .
                    ((staticcheck . t)
@@ -2255,9 +2258,6 @@ revisions (i.e., use a \"...\" range)."
   :config
   (setopt claude-code-terminal-backend 'eat)
 
-  (after! subproject
-    (advice-add 'claude-code--directory :around #'subproject-with-inhibiting-find))
-
   ;; optional IDE integration with Monet
   (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
   (monet-mode 1)
@@ -2270,10 +2270,6 @@ revisions (i.e., use a \"...\" range)."
 
   ;; TODO: somehow stop this from happening on claude-code-ide--start-session 
   ;; (local-set-key (kbd "C-<escape>") #'claude-code-ide-send-escape)
-
-  (after! subproject
-    (advice-add 'claude-code-ide--get-working-directory
-                :around #'subproject-with-inhibiting-find))
 
   (defun my/claude-code-ide--configure-vterm-buffer/set-non-shell ()
     (setq-local my/vterm-in-command-buffer nil))

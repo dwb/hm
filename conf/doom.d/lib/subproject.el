@@ -42,10 +42,17 @@
 (put 'subproject-patterns 'safe-local-variable #'subprojects-valid-dir-local-config-p)
 
 (defvar subproject-inhibit-find nil
-  "Disable finding subprojects.")
+  "Disable finding subprojects. Deprecated, does nothing now.")
+
+(defvar subproject-allow-find nil
+  "Allow finding subprojects.")
 
 (defun subproject-with-inhibiting-find (fn &rest args)
   (let ((subproject-inhibit-find t))
+    (apply fn args)))
+
+(defun subproject-with-allowing-find (fn &rest args)
+  (let ((subproject-allow-find t))
     (apply fn args)))
 
 (defun subproject-project-p (project)
@@ -83,7 +90,7 @@ Return a list representing the subproject if the current file is
 under a path matching a list of patterns in `subproject-patterns'. The
 list representing the subproject should look like
 `(subproject \"project/local/path\" (parent . PARENT-PROJECT))'."
-  (unless subproject-inhibit-find
+  (when (and subproject-allow-find (not subproject-inhibit-find))
     (when-let* ((subproject-inhibit-find 'subproject-find)
                 (parent-project (project-current nil dir))
                 (root (project-root parent-project))
