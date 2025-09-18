@@ -31,6 +31,10 @@ shift
 repo_root="$(jj root)"
 [[ "$filepath" != /* ]] && filepath="$repo_root/$filepath"
 
+if [[ -r ${repo_root}/.envrc ]]; then
+    eval "$(direnv export bash)"
+fi
+
 if [[ -n "$marker" ]]; then
     dir=$(dirname "$filepath")
     while [[ "$dir" != "$repo_root" ]]; do
@@ -45,6 +49,8 @@ else
 fi
 
 filepath=$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1]))" "$filepath")
+echo "processing: $filepath" >&2
+echo "in: $PWD" >&2
 
 data=$(</dev/stdin)
 
@@ -55,8 +61,16 @@ run_cmd() {
     fi
     if [[ "${cmd[0]}" == "--ignore-output" ]]; then
         cmd=("${cmd[@]:1}")
+        printf "running ignoring output: " >&2
+        printf "cd '%s'; < '%s' " "$PWD" "$filepath" >&2
+        printf '%s ' "${cmd[@]}" >&2
+        echo >&2
         <<< "$data" "${cmd[@]}" >&2
     else
+        printf "running: " >&2
+        printf "cd '%s'; < '%s' " "$PWD" "$filepath" >&2
+        printf '%s ' "${cmd[@]}" >&2
+        echo >&2
         data=$(<<< "$data" "${cmd[@]}")
     fi
     cmd=()
@@ -71,4 +85,4 @@ for arg in "$@"; do
 done
 run_cmd
 
-printf '%s\n' "$data"
+printf '%s' "$data"

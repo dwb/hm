@@ -157,7 +157,6 @@ in
       ])
       ++ (with pkgsUnstable; [
         container # https://github.com/apple/container
-        ghostty-bin
       ])
     );
 
@@ -437,11 +436,20 @@ in
             "util"
             "exec"
             "--"
-            "sh"
+            "bash"
             "-c"
             ''
-              from=''${1-@}
-              exec jj log --reversed -r "''${from}::@ | trunk()..''${from} | parents(trunk()..''${from})"
+              from=@
+              args=()
+              for arg in "$@"; do
+                if [[ -z "''${from_set-}" && "$arg" != -* ]]; then
+                  from=$arg
+                  from_set=1
+                else
+                  args+=("$arg")
+                fi
+              done
+              exec jj log --reversed -r "''${from}::@ | trunk()..''${from} | parents(trunk()..''${from})" "''${args[@]}"
             ''
             "jj-lt"
           ];
@@ -469,9 +477,9 @@ in
             "-c"
             ''
               set -e
-              jj lt --ignore-working-copy "$@"
+              jj lt "$@"
               echo
-              jj status "$@"
+              jj status --ignore-working-copy "$@"
             ''
             "jj-log-status"
           ];
@@ -516,8 +524,8 @@ in
           # rebase on trunk
           retrunk = [
             "rebase"
-            "-d"
-            "trunk()"
+            "-r" "roots(trunk()..@)"
+            "-o" "trunk()"
           ];
           # split before private (commits)
           sbp = [

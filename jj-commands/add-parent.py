@@ -15,7 +15,8 @@ parser.add_argument('parent')
 args = parser.parse_args()
 
 subprocess.run([
-    'jj', 'rebase', '-s', args.revision, '-d', f'{args.revision}-',
-    '-d', args.parent,
+    'jj', 'rebase', '-s', args.revision,
+    '-o', f'{args.revision}- ~ ::trunk()', # existing non-trunk parents
+    '-o', f'latest({args.revision}- & ::trunk())', # latest trunk change
+    '-o', args.parent, # new change
 ], check=True)
-subprocess.run(['jj', 'simplify-parents', '-r', args.revision], check=True)
