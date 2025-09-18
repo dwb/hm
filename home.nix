@@ -82,6 +82,18 @@ in
         mv $out/bin/bundle $out/bin/gobundle
       '';
     })
+    # delve
+    # go
+    # gopls
+    # (symlinkJoin {
+    #   name = "gotools";
+    #   paths = [ gotools ];
+    #   # clashes with ruby bundler!
+    #   postBuild = ''
+    #     mv $out/bin/bundle $out/bin/gobundle
+    #   '';
+    # })
+    delta # diff formatter
 
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin (with pkgs; [
     reattach-to-user-namespace
@@ -288,6 +300,8 @@ in
         bookmark-list-sort-keys = ["committer-date"];
         default-command = ["log" "--reversed"];
         diff-editor = ":builtin";
+        # do something like this https://github.com/jj-vcs/jj/discussions/4690
+        # diff-formatter = ["${pkgsUnstable.delta}/bin/delta" "--paging" "never" "$left" "$right"];
         pager = ":builtin";
         paginate = "never";
       };
@@ -298,6 +312,25 @@ in
         di = ["diff"];
         lt = ["log" "--reversed" "-r" "parents(trunk()) | trunk()..@"];
         mb = ["log" "--reversed" "-r" "visible_heads() & mine()::"];
+        pre-commit = ["util" "exec" "--" "bash" "-c" ''
+          set -euo pipefail
+
+          EMPTY=$(jj log --no-graph -r @ -T 'empty')
+          if [[ $EMPTY = "false" ]]; then echo "not on an empty revision"; exit 1; fi
+
+          FROM=$(jj log --no-graph -r "fork_point(trunk() | @)" -T "commit_id")
+          TO=$(jj log --no-graph -r "@" -T "commit_id")
+
+          ROOT=$(jj root)
+          if [[ -f $ROOT/.jj/repo ]]; then
+            # we are in a workspace
+            real_repo="$(< "$ROOT/.jj/repo")"
+            export GIT_DIR="$(realpath "$real_repo/../../.git")"
+            export GIT_WORK_TREE="$ROOT"
+          fi
+
+          pre-commit run --from="$FROM" --to="$TO" "$@"
+        ''];
         retrunk = ["rebase" "-d" "trunk()"];
       };
       revset-aliases = {
