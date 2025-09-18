@@ -90,6 +90,9 @@ jj diff -r <rev> --git          # Diff of specific revision
 jj diff --from <rev1> --to <rev2> --git  # Diff between revisions
 ```
 
+**`jj show` does NOT accept file path arguments.** To filter a revision's diff
+to specific files, use `jj diff -r <rev> --git -- <paths>`.
+
 **IMPORTANT**: `-r` and `--from`/`--to` are mutually exclusive in `jj diff`. Use one or the other:
 - `jj diff -r <rev>` — show what changed IN that revision (vs its parents)
 - `jj diff --from <A> --to <B>` — show difference BETWEEN two revisions
@@ -307,6 +310,11 @@ jj workspace list               # See all workspaces
 jj log -r 'working_copies()'    # See what all workspaces are doing
 jj diff --from 'other-workspace@' --to @ --git  # Compare workspaces
 ```
+
+## Non-Interactive Split Tool
+
+See [split-tool.md](split-tool.md) for the manifest-driven `jj-split-tool.sh`
+that enables hunk-level splits without a TUI, via `jj split --tool`.
 
 ## FORBIDDEN (Mutating Commands)
 
