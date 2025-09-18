@@ -169,5 +169,5 @@
 ;; from elpa
 (package! vc-jj)
 (package! jj-mode
-  :pin "97a66d484ad51018fd3f07815f65ace7c017e3b6"
+  :pin "6f73f91764b382e8d4974cd27c1ff8c579ed3eb6"
   :recipe (:host github :repo "bolivier/jj-mode.el"))
