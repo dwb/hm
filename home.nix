@@ -94,6 +94,7 @@ in
     ./emacs.nix
     ./nushell-vterm
     ./linkapps.nix
+    ./claude.nix
   ];
 
   home.stateVersion = "23.11"; # XXX: remember, don't change!

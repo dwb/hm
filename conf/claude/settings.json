@@ -35,6 +35,9 @@
       "Bash(jj-hunk list:*)",
       "Bash(grep:*)",
       "Bash(ast-grep:*)",
+      "Bash(ls:*)",
+      "Bash(fd:*)",
+      "Bash(rg:*)",
       "Bash(gh search:*)",
       "Bash(gh ruleset:*)",
       "Bash(gh status:*)",
@@ -77,6 +80,15 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/bash-policy.sh\""
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write|Bash",
         "hooks": [
           {
@@ -96,6 +108,15 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/hooks/bash-policy.sh\""
+          }
+        ]
+      },
       {
         "matcher": "Edit|Write|Bash",
         "hooks": [
@@ -126,7 +147,6 @@
   "alwaysThinkingEnabled": true,
   "theme": "auto",
   "editorMode": "vim",
-  "model": "opus",
   "cleanupPeriodDays": 99999,
   "feedbackSurveyState": {
     "lastShownTime": 1754299769863

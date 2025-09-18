@@ -1,0 +1,220 @@
+# ast-grep ruleset enforcing the shell rules in CLAUDE.md against proposed Bash
+# commands. Driven by hooks/bash-policy.sh, which maps severity to a decision:
+#
+#   error          PreToolUse  -> deny
+#   warning        PreToolUse  -> ask
+#   info / hint    PostToolUse -> nudge after the command has already run
+#
+# Rules are held in one multi-document file rather than an sgconfig.yml ruleDirs
+# project because link.nu symlinks files individually, and ast-grep does not
+# discover rule files through symlinks (effectiveRuleCount=0).
+#
+# "Not receiving piped input" is expressed as `inside: pipeline` plus
+# `not: nthChild: 1`, which distinguishes `head file` from `sort x | head`.
+
+id: read-file-with-cat
+language: bash
+severity: error
+message: Reading a file with cat.
+note: Use the Read tool. It needs no permission, reports line numbers, and does not truncate.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^(cat|bat)$' }
+    # regex '.' is a positive matcher; ast-grep rejects a field-only `has`.
+    - has: { field: argument, regex: '.' }
+    - not:
+        all:
+          - inside: { kind: pipeline }
+          - not: { nthChild: 1 }
+
+---
+id: read-file-with-pager
+language: bash
+severity: error
+message: Reading a file with head or tail.
+note: Use the Read tool, with offset and limit if you need part of the file.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^(head|tail)$' }
+    - not:
+        all:
+          - inside: { kind: pipeline }
+          - not: { nthChild: 1 }
+
+---
+id: pipe-from-ls
+language: bash
+severity: error
+message: Piping from ls, which mishandles unusual file names.
+note: Use a glob, the Glob tool, fd, or find with -exec.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^ls$' }
+    - inside: { kind: pipeline }
+
+---
+id: pipe-from-find
+language: bash
+severity: error
+message: Piping from find, which mishandles unusual file names.
+note: Use find -exec ... {} + instead, or prefer fd since it honours ignore files.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^find$' }
+    - inside: { kind: pipeline }
+    - nthChild: 1
+
+---
+# fd is on the permissions allowlist, so this rule is the boundary that keeps
+# -x/--exec and -X/--exec-batch from becoming auto-approved arbitrary execution.
+# -x and -X are fd's only short flags containing x or X, so matching any bundle
+# containing either is close to unambiguous. A bundle whose trailing value
+# happens to contain x, such as -Ex for --exclude=x, is a false positive; it
+# fails safe by blocking rather than allowing.
+id: fd-exec
+language: bash
+severity: error
+message: fd -x/-X runs arbitrary commands and is allowlisted, so it is not permitted here.
+note: Collect the paths first and act on them in a separate, reviewable command.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^fd$' }
+    - has:
+        field: argument
+        regex: '^(-[a-zA-Z0-9]*[xX][a-zA-Z0-9]*|--exec(-batch)?(=.*)?)$'
+
+---
+# Same reasoning as fd-exec. --pre and --hostname-bin are ripgrep's only flags
+# that execute an external command.
+id: rg-exec
+language: bash
+severity: error
+message: rg --pre/--hostname-bin runs arbitrary commands and rg is allowlisted, so it is not permitted here.
+note: Convert the input with a separate, reviewable command and search the result.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^rg$' }
+    - has:
+        field: argument
+        regex: '^(--pre|--hostname-bin)(=.*)?$'
+
+---
+id: cd-unguarded
+language: bash
+severity: warning
+message: Unguarded cd. If it fails, the following commands run in the wrong directory.
+note: Prefer absolute paths. If cd is genuinely needed, guard it with || or chain with &&.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^cd$' }
+    - not: { inside: { kind: list } }
+
+---
+id: inline-python
+language: bash
+severity: warning
+message: Ad-hoc data processing in Python.
+note: Prefer jq and the core utilities. They are easier to review and more likely to be auto-approved.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^python[0-9.]*$' }
+    - has: { field: argument, regex: '^-c$' }
+
+---
+id: truncating-pipeline-output
+language: bash
+severity: hint
+message: Capping command output with head or tail.
+note: Return the whole output. The harness buffers it, so nothing is lost, and re-running an expensive command to see the rest wastes time.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^(head|tail)$' }
+    - inside: { kind: pipeline }
+    - not: { nthChild: 1 }
+
+---
+id: truncating-search-output
+language: bash
+severity: hint
+message: Capping search results with a max-count flag.
+note: Return all matches and filter them afterwards if there are too many to read.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^(grep|egrep|rg|ast-grep)$' }
+    - has:
+        field: argument
+        regex: '^(-[a-zA-Z]*m[0-9]*|--max-count(=.*)?|--max-results(=.*)?)$'
+
+---
+id: missing-or-true
+language: bash
+severity: hint
+message: Test, lint, or build command without a trailing || true.
+note: Append || true so the harness buffers the full output even when the command exits non-zero.
+rule:
+  kind: command
+  all:
+    - has:
+        kind: command_name
+        regex: '^(make|cargo|npm|pnpm|yarn|pytest|tox|tsc|eslint|shellcheck|gradle|mvn|go|nix)$'
+    - not:
+        inside:
+          kind: list
+          stopBy: end
+          has:
+            kind: command_name
+            regex: '^true$'
+            stopBy: end
+
+---
+id: grep-for-code-search
+language: bash
+severity: hint
+message: Recursive grep over the tree.
+note: Prefer the Grep tool, or ast-grep when the pattern is structural rather than textual.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^(grep|egrep)$' }
+    - has: { field: argument, regex: '^(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)$' }
+
+---
+id: write-file-with-shell
+language: bash
+severity: hint
+message: Writing a file with a shell redirect.
+note: Use the Write tool, which shows the user a diff of what changed.
+rule:
+  kind: redirected_statement
+  all:
+    - has:
+        field: body
+        kind: command
+        has: { kind: command_name, regex: '^(echo|printf|tee)$' }
+    - has:
+        kind: file_redirect
+        has:
+          field: destination
+          not: { regex: '^/dev/' }
+
+---
+id: cd-guarded
+language: bash
+severity: hint
+message: Guarded cd. Correct, but usually avoidable.
+note: Absolute paths avoid the question of what the working directory is.
+rule:
+  kind: command
+  all:
+    - has: { kind: command_name, regex: '^cd$' }
+    - inside: { kind: list }
