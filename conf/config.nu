@@ -87,6 +87,9 @@ $env.config.cursor_shape = {
 $env.config.datetime_format.normal = "%F %T%.f %Z"
 $env.config.datetime_format.table = "%F %T%.f %Z"
 
+alias ee = explore
+alias eep = explore --peek
+alias fj = from json
 alias gg = g
 alias g = git
 alias priv = nu --no-history
