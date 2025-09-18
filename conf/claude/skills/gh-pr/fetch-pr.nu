@@ -7,18 +7,34 @@
 
 def parse-github-remote [url: string]: nothing -> record<owner: string, repo: string> {
   $url
-  | parse -r '(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)(?P<owner>[^/]+)/(?P<repo>[^/.\s]+)'
+  | parse -r '^(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)(?P<owner>[^/]+)/(?P<repo>[^/\s]+?)(?:\.git)?/?$'
   | get -o 0
   | default null
   | if $in != null {
-      { owner: $in.owner, repo: ($in.repo | str replace -r '\.git$' '') }
+      { owner: $in.owner, repo: $in.repo }
     } else {
       null
     }
 }
 
+# Lists fetch remotes as name/url pairs. Asks jj first so that repositories not colocated with Git
+# work, then falls back to Git.
+def list-remotes []: nothing -> table<name: string, url: string> {
+  let jj = (^jj git remote list | complete)
+  let output = if $jj.exit_code == 0 {
+    $jj.stdout
+  } else {
+    let git = (^git remote -v | complete)
+    if $git.exit_code != 0 {
+      error make { msg: "Not in a jj or Git repository" }
+    }
+    $git.stdout | lines | where $it =~ '\(fetch\)$' | str join "\n"
+  }
+  $output | lines | parse -r '^(?P<name>\S+)\s+(?P<url>\S+)'
+}
+
 def find-github-remote []: nothing -> record<owner: string, repo: string> {
-  let remotes = (^git remote -v | lines | parse -r '(?P<name>\S+)\s+(?P<url>\S+)\s+\(fetch\)')
+  let remotes = (list-remotes)
 
   # Try origin first
   let origin = ($remotes | where name == origin | get -o 0)
@@ -81,8 +97,24 @@ def format-location [comment: record]: nothing -> string {
   }
 }
 
-def main [pr_num: int] {
-  let remote = (find-github-remote)
+# Resolves a PR number or a PR URL such as https://github.com/<owner>/<repo>/pull/<number> to its
+# repository and number. A plain number uses the current repository's GitHub remote.
+def resolve-pr [pr: string]: nothing -> record<owner: string, repo: string, number: int> {
+  let from_url = ($pr | parse -r '^https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pull/(?P<number>\d+)' | get -o 0)
+  if $from_url != null {
+    return { owner: $from_url.owner, repo: $from_url.repo, number: ($from_url.number | into int) }
+  }
+  let number = ($pr | str trim | str replace -r '^#' '')
+  if $number !~ '^\d+$' {
+    error make { msg: $"Not a PR number or GitHub PR URL: ($pr)" }
+  }
+  (find-github-remote) | insert number ($number | into int)
+}
+
+def main [pr_ref: string] {
+  let resolved = (resolve-pr $pr_ref)
+  let remote = { owner: $resolved.owner, repo: $resolved.repo }
+  let pr_num = $resolved.number
   let base = $"/repos/($remote.owner)/($remote.repo)"
 
   let pr = (gh-api $"($base)/pulls/($pr_num)")
@@ -96,6 +128,7 @@ def main [pr_num: int] {
 
   # Header
   print $"# PR #($pr_num): ($pr.title)\n"
+  print $"**Repository:** ($remote.owner)/($remote.repo)\n"
   print $"**Branch:** ($pr.head.ref)\n"
 
   # Description

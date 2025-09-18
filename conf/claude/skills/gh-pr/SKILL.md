@@ -1,7 +1,7 @@
 ---
 name: gh-pr
 description: Fetch GitHub PR comments, identify the corresponding jj change, and assess each comment's validity.
-argument-hint: "<pr-number>"
+argument-hint: "<pr-number-or-url>"
 disable-model-invocation: true
 effort: max
 ---
@@ -12,7 +12,7 @@ Review comments on a GitHub pull request, assess their validity against the actu
 
 ## Workflow
 
-1. **Fetch PR data**: Run `nu ${CLAUDE_SKILL_DIR}/fetch-pr.nu $0` and read the output. This returns the PR title, branch name, description, and all comments (numbered, without author names).
+1. **Fetch PR data**: Run `nu ${CLAUDE_SKILL_DIR}/fetch-pr.nu '$0'` and read the output. The argument is a PR number or a full PR URL; a number is looked up in the current repository's GitHub remote. The output has the PR title, repository, branch name, description, and all comments (numbered, without author names). If a URL was given and its repository (shown as `**Repository:**`) is not the one you are working in, stop and tell the user.
 
 2. **Find the jj change**: Invoke the `jj` skill, then run `jj bookmark list` to find a bookmark matching the PR's branch name (shown as `**Branch:**` in the output). If no bookmark matches, **ASK the user** which jj change corresponds to this PR — do not guess.
 
