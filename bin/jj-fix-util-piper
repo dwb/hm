@@ -20,6 +20,8 @@
 # jj fix preserves the original file content.
 set -euo pipefail
 
+JJ_FIX_DEBUG=${JJ_FIX_DEBUG:-}
+
 marker=""
 if [[ "${1:-}" == "-C" ]]; then
     marker="$2"
@@ -87,4 +89,4 @@ for arg in "$@"; do
 done
 run_cmd
 
-printf '%s' "$data"
+printf '%s\n' "$data"
