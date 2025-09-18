@@ -70,6 +70,14 @@ expect_rules 'fd -e ts src' ''
 expect_rules 'rg --pre=cat foo' 'rg-exec'
 expect_rules 'rg --hostname-bin uname foo' 'rg-exec'
 expect_rules 'rg foo src' ''
+expect_rules '/bin/ls -la' 'command-by-path'
+expect_rules '/usr/bin/env true' 'command-by-path'
+expect_rules '../link.nu' 'command-by-path'
+expect_rules './link.nu' ''
+expect_rules 'rg foo /usr/include' ''
+expect_rules 'fd . ../other-repo' ''
+expect_rules 'ln -s target link' 'create-link'
+expect_rules 'ln a b' 'create-link'
 expect_rules 'cd /tmp' 'cd-unguarded'
 expect_rules 'cd /tmp || exit 1' 'cd-guarded'
 expect_rules 'cd /tmp && ls -la' 'cd-guarded'
@@ -91,6 +99,8 @@ expect_rules 'ast-grep run --pattern foo --lang bash .' ''
 
 expect_decision PreToolUse 'cat foo.txt' deny
 expect_decision PreToolUse 'fd -x rm' deny
+expect_decision PreToolUse '/bin/ls -la' deny
+expect_decision PreToolUse 'ln -s target link' deny
 expect_decision PreToolUse 'cd /tmp' ask
 expect_decision PreToolUse 'sort x | head -5' none
 expect_decision PreToolUse 'jj log -r @' none

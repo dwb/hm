@@ -43,7 +43,7 @@
 * STRONGLY prefer making many separate Bash tool calls rather than fewer tool calls with longer, multi-line commands. Shorter commands are easier for me and automated tools to review, and can run in parallel, speeding everything up.
     * This includes making separate tool calls where you might have used a `for` loop.
 * STRONGLY prefer ast-grep (for which, see the skills `ast-grep` and `outline`) for searching and doing bulk replacements in code.
-* When writing Bash commands, you often fail to consider the current working directory, resulting in confusing errors. Ideally you would write commands with good knowledge of the current working directory to get them right first time. If you're unsure, stick to absolute paths rather than using `cd`.
+* When writing Bash commands, you often fail to consider the current working directory, resulting in confusing errors. Ideally you would write commands with good knowledge of the current working directory to get them right first time. If you're unsure, `cd` to the project root first, and then use relative paths from that.
 * When writing Bash commands, be sure to write commands that would pass Shellcheck and that give you enough information to proceed. In particular, quote everything properly (including arguments you think are safe), and ensure file names are always handled safely.
   * Always guard `cd` commands, even if you are sure they won't fail.
   * For example, write `find . -type f -exec grep foo {} +` instead of piping the result of `find` to `grep`.

@@ -105,11 +105,35 @@ rule:
         regex: '^(--pre|--hostname-bin)(=.*)?$'
 
 ---
+# Only the command name is checked. Absolute paths as *arguments* are encouraged
+# elsewhere in CLAUDE.md, so they must keep passing.
+id: command-by-path
+language: bash
+severity: error
+message: Invoking a binary by absolute path or through a .. parent directory.
+note: Call it by name so PATH resolution and the permission allowlist both apply.
+rule:
+  kind: command
+  has:
+    kind: command_name
+    regex: '^/|(^|/)\.\.(/|$)'
+
+---
+id: create-link
+language: bash
+severity: error
+message: Creating a symlink or hard link with ln.
+note: Do not create links. STOP and report.
+rule:
+  kind: command
+  has: { kind: command_name, regex: '^ln$' }
+
+---
 id: cd-unguarded
 language: bash
 severity: warning
 message: Unguarded cd. If it fails, the following commands run in the wrong directory.
-note: Prefer absolute paths. If cd is genuinely needed, guard it with || or chain with &&.
+note: Prefer project-root-relative paths. If cd is genuinely needed, guard it with || or chain with &&.
 rule:
   kind: command
   all:
