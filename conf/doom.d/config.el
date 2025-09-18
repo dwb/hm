@@ -68,7 +68,7 @@
       (let* ((count (my/org-open-todos-count)))
         (if (fboundp 'ns-dock-badge-set)
             (ns-dock-badge-set count)
-          (system-taskbar-badge count))))
+          (system-taskbar-badge (if (eq 0 count) nil count)))))
     
     (run-with-idle-timer 2 t #'my/org-todos-dock-update)))
 
