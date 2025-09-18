@@ -9,6 +9,7 @@
     * Throwing errors for extremely rare corner cases might be an acceptable compromise.
     * Leaving a dependency on an old version and making do is often an acceptable compromise.
     * Changing large amounts of code in order to comply with the current task (unless the current task is inherently about changing large amounts of code) is almost always an unacceptable compromise: always ask before doing so.
+* When investigating something, stay focussed at all times. Don't spiral off. Prefer to STOP and REPORT than try and solve something all yourself, especially if it seems like you should be able to do something and you can't, or instructions are unclear, or you're missing some tooling or access, or similar.
 * When using a plan, be sure to update it as you go with the progress of the task, and any new developments and research. Remember that this is the main document to keep going after compaction.
 * When writing comments in code, remember who the audience is and what their context is. Comments are for other readers of the code, with the context of the code at that point in time. So please:
     * Always use neutral, concise, business-like language, like I asked for above. Don't use dramatic or emphatic formatting or language unless there is a serious security or correctness problem that is easy to miss.

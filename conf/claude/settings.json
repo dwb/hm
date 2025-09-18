@@ -28,41 +28,47 @@
       "Bash(git:*)"
     ]
   },
-  "hooks": {
-      "PreToolUse": [
-          {
-              "matcher": "Edit|Write",
-              "hooks": [
-                  {
-                      "type": "command",
-                      "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj status >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
-                  }
-              ]
-          }
-      ],
-      "PostToolUse": [
-          {
-              "matcher": "Edit|Write",
-              "hooks": [
-                  {
-                      "type": "command",
-                      "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj status >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
-                  }
-              ]
-          },
-          {
-              "matcher": ".*",
-              "hooks": [
-                  {
-                      "type": "command",
-                      "command": "if [ -n \"$PLAN_REMINDER_PERCENT\" ] && [ $((RANDOM % 100)) -lt \"$PLAN_REMINDER_PERCENT\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"*** IMPORTANT REMINDER (Main agent only) *** If this session has a plan, design doc, or notes file, UPDATE IT NOW with recent research and findings to preserve context across compaction. Do this before continuing with other work.\"}}\\n'; fi"
-                  }
-              ]
-          }
-      ]
-  },
   "model": "opus",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj status >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v jj >/dev/null && jj root >/dev/null 2>&1; then if ! jj status >/dev/null 2>&1; then echo 'WARNING: failed to snapshot jj repository, tell user to fix'; fi; fi"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$PLAN_REMINDER_PERCENT\" ] && [ $((RANDOM % 100)) -lt \"$PLAN_REMINDER_PERCENT\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"*** IMPORTANT REMINDER (Main agent only) *** If this session has a plan, design doc, or notes file, UPDATE IT NOW with recent research and findings to preserve context across compaction. Do this before continuing with other work.\"}}\\n'; fi"
+          }
+        ]
+      }
+    ]
+  },
   "spinnerTipsEnabled": false,
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Inferring"
+    ]
+  },
   "alwaysThinkingEnabled": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754299769863
