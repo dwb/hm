@@ -25,7 +25,12 @@ def xdg-state-home [for?: string] {
 $env.PROMPT_COMMAND_DEFUALT = $env.PROMPT_COMMAND
 
 def my_create_left_prompt [] {
-    let hostname = (sys host | get hostname | str replace --regex `\..*` '')
+    let hostname = (
+      try {
+        open --raw ~/.config/hostname-override | str trim
+      } catch {
+        sys host | get hostname | str replace --regex `\..*` ''
+      })
     let user = whoami
 
     [
