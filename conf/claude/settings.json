@@ -34,6 +34,7 @@
       "Bash(jj operation log:*)",
       "Bash(jj-hunk list:*)",
       "Bash(grep:*)",
+      "Bash(ast-grep:*)",
       "Bash(gh search:*)",
       "Bash(gh ruleset:*)",
       "Bash(gh status:*)",
@@ -65,18 +66,18 @@
   "hooks": {
     "SessionStart": [
       {
-          "matcher": "*",
-          "hooks": [              
-              {
-                  "type": "command",
-                  "command": "if [ -d \"$CLAUDE_PROJECT_DIR/.jj\" ]; then echo 'CRITICAL: I use jujutsu (`jj`), not git. Do not run any git commands. Always invoke the `jj` skill before running ANY jj commands. On every change you make, a hook creates a new jj snapshot. So you can look at the history of changes, both yours and mine, with, for example, `jj evolog -p -n 5`.'; fi"
-              }
-          ]
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -d \"$CLAUDE_PROJECT_DIR/.jj\" ]; then echo 'CRITICAL: I use jujutsu (`jj`), not git. Do not run any git commands. Always invoke the `jj` skill before running ANY jj commands. On every change you make, a hook creates a new jj snapshot. So you can look at the history of changes, both yours and mine, with, for example, `jj evolog -p -n 5`.'; fi"
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|Bash",
         "hooks": [
           {
             "type": "command",
@@ -96,7 +97,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|Bash",
         "hooks": [
           {
             "type": "command",
