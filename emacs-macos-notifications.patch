@@ -1,0 +1,2412 @@
+diff --git c/configure.ac i/configure.ac
+index ed431906cb4..3babc6fdfdc 100644
+--- c/configure.ac
++++ i/configure.ac
+@@ -2890,6 +2890,19 @@ AC_DEFUN
+                  ]])], [emacs_cv_macosx_12_0=no],
+                  [emacs_cv_macosx_12_0=yes]))
+ 
++  dnl UserNotifications, which nsnotify.m needs, first shipped in macOS
++  dnl 10.14.  As above, the bare sentence below is a syntax error, so
++  dnl compilation succeeding means the version is too old.
++  AC_CACHE_CHECK([for Mac OS X 10.14 or later],
++                 [emacs_cv_macosx_10_14],
++                 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
++#include <AvailabilityMacros.h>
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
++Mac OS X 10.14 or later.
++#endif
++                 ]])], [emacs_cv_macosx_10_14=no],
++                 [emacs_cv_macosx_10_14=yes]))
++
+   if test "${with_native_image_api}" = yes; then
+      AC_DEFINE([HAVE_NATIVE_IMAGE_API], [1],
+        [Define to use native OS APIs for images.])
+@@ -2935,7 +2948,8 @@ AC_DEFUN
+      INSTALL_ARCH_INDEP_EXTRA=
+   fi
+ 
+-  NS_OBJC_OBJ="nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o $ns_fontfile"
++  NS_OBJC_OBJ="nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o nsnotify.o \
++    $ns_fontfile"
+ fi
+ CFLAGS="$tmp_CFLAGS"
+ CPPFLAGS="$tmp_CPPFLAGS"
+@@ -7488,6 +7502,14 @@ AC_DEFUN
+         if test "$emacs_cv_macosx_12_0" = "yes"; then
+ 	  libs_nsgui="$libs_nsgui -framework UniformTypeIdentifiers"
+ 	fi
++	dnl Weakly, because MAC_OS_X_VERSION_MIN_REQUIRED may be lower than
++	dnl the SDK version: an Emacs built here can still be asked to run
++	dnl on a system predating UserNotifications, where the symbols must
++	dnl come out nil rather than stop the executable from loading.
++	dnl ns-notification-available-p is the run-time test.
++	if test "$emacs_cv_macosx_10_14" = "yes"; then
++	  libs_nsgui="$libs_nsgui -weak_framework UserNotifications"
++	fi
+      fi
+    else
+      libs_nsgui=
+diff --git c/lisp/erc/erc-desktop-notifications.el i/lisp/erc/erc-desktop-notifications.el
+index e4a62c614a4..912a3f7b1b4 100644
+--- c/lisp/erc/erc-desktop-notifications.el
++++ i/lisp/erc/erc-desktop-notifications.el
+@@ -56,6 +56,8 @@ dbus-debug
+ 
+ (declare-function haiku-notifications-notify "haikuselect.c")
+ (declare-function android-notifications-notify "androidselect.c")
++(declare-function ns-notification-usable-p "ns-notifications" ())
++(declare-function ns-notifications-notify "ns-notifications" (&rest params))
+ 
+ (defun erc-notifications-notify (nick msg &optional privp)
+   "Notify that NICK send some MSG, where PRIVP should be non-nil for PRIVMSGs.
+@@ -74,6 +76,12 @@ erc-notifications-notify
+                             #'android-notifications-notify)
+                            ((featurep 'haiku)
+                             #'haiku-notifications-notify)
++                           ;; Not `featurep': a macOS Emacs can only
++                           ;; notify when running from an application
++                           ;; bundle.
++                           ((and (fboundp 'ns-notification-usable-p)
++                                 (ns-notification-usable-p))
++                            #'ns-notifications-notify)
+                            (t #'notifications-notify))
+                      :bus erc-notifications-bus
+                      :title title
+diff --git c/lisp/gnus/gnus-notifications.el i/lisp/gnus/gnus-notifications.el
+index ff21ed170d1..2b64253d4da 100644
+--- c/lisp/gnus/gnus-notifications.el
++++ i/lisp/gnus/gnus-notifications.el
+@@ -97,33 +97,49 @@ gnus-notifications-close
+ (defun gnus-notifications-notify (from subject photo-file)
+   "Send a notification about a new mail.
+ Return a notification id if any, or t on success."
+-  (if (featurep 'android)
+-      (gnus-funcall-no-warning
+-       'android-notifications-notify
+-       :title from
+-       :body subject
+-       :actions '("read" "Read" "mark-read" "Mark As Read")
+-       :on-action 'gnus-notifications-action
+-       :on-close 'gnus-notifications-close
+-       :group "Email arrivals"
+-       :timeout gnus-notifications-timeout)
+-    (if (fboundp 'notifications-notify)
+-        (gnus-funcall-no-warning
+-         'notifications-notify
+-         :title from
+-         :body subject
+-         :actions '("read" "Read" "mark-read" "Mark As Read")
+-         :on-action 'gnus-notifications-action
+-         :on-close 'gnus-notifications-close
+-         :app-icon (gnus-funcall-no-warning
+-                    'image-search-load-path "gnus/gnus.png")
+-         :image-path photo-file
+-         :app-name "Gnus"
+-         :category "email.arrived"
+-         :timeout gnus-notifications-timeout)
+-      (message "New message from %s: %s" from subject)
+-      ;; Don't return an id
+-      t)))
++  (cond
++   ((featurep 'android)
++    (gnus-funcall-no-warning
++     'android-notifications-notify
++     :title from
++     :body subject
++     :actions '("read" "Read" "mark-read" "Mark As Read")
++     :on-action 'gnus-notifications-action
++     :on-close 'gnus-notifications-close
++     :group "Email arrivals"
++     :timeout gnus-notifications-timeout))
++   ;; Not `featurep': a macOS Emacs can only notify when running from an
++   ;; application bundle.
++   ((and (fboundp 'ns-notification-usable-p)
++         (gnus-funcall-no-warning 'ns-notification-usable-p))
++    (gnus-funcall-no-warning
++     'ns-notification-notify
++     :title from
++     :body subject
++     :actions '("read" "Read" "mark-read" "Mark As Read")
++     :on-action 'gnus-notifications-action
++     :on-close 'gnus-notifications-close
++     :attachments (and photo-file (list (list :file photo-file)))
++     :group "Email arrivals"
++     :timeout gnus-notifications-timeout))
++   ((fboundp 'notifications-notify)
++    (gnus-funcall-no-warning
++     'notifications-notify
++     :title from
++     :body subject
++     :actions '("read" "Read" "mark-read" "Mark As Read")
++     :on-action 'gnus-notifications-action
++     :on-close 'gnus-notifications-close
++     :app-icon (gnus-funcall-no-warning
++                'image-search-load-path "gnus/gnus.png")
++     :image-path photo-file
++     :app-name "Gnus"
++     :category "email.arrived"
++     :timeout gnus-notifications-timeout))
++   (t
++    (message "New message from %s: %s" from subject)
++    ;; Don't return an id
++    t)))
+ 
+ (declare-function gravatar-retrieve-synchronously "gravatar.el"
+ 		  (mail-address))
+diff --git c/lisp/loadup.el i/lisp/loadup.el
+index efc9e7ebb40..c7a6a6d3c7f 100644
+--- c/lisp/loadup.el
++++ i/lisp/loadup.el
+@@ -353,7 +353,12 @@
+       (when (featurep 'charprop)
+         (load "international/mule-util")
+         (load "international/ucs-normalize")
+-        (load "term/ns-win"))))
++        (load "term/ns-win"))
++      ;; UNUserNotificationCenter is a Cocoa interface with no GNUstep
++      ;; counterpart, so the primitives this needs exist only in some
++      ;; NS builds.
++      (when (fboundp 'ns-notification-available-p)
++        (load "term/ns-notifications"))))
+ (if (featurep 'pgtk)
+     (progn
+       (load "pgtk-dnd")
+diff --git c/lisp/org/org-clock.el i/lisp/org/org-clock.el
+index b803d0fe874..200570bdcdc 100644
+--- c/lisp/org/org-clock.el
++++ i/lisp/org/org-clock.el
+@@ -57,6 +57,8 @@ org-element-use-cache
+ (declare-function dbus-get-property "dbus" (bus service path interface property))
+ (declare-function haiku-notifications-notify "haikuselect.c")
+ (declare-function android-notifications-notify "androidselect.c")
++(declare-function ns-notification-usable-p "ns-notifications" ())
++(declare-function ns-notification-notify "ns-notifications" (&rest args))
+ 
+ (defvar org-frame-title-format-backup nil)
+ (defvar org-state)
+@@ -955,10 +957,15 @@ org-show-notification
+ 	    org-show-notification-timeout
+ 	    nil
+ 	    (lambda () (w32-notification-close id)))))
+-        ((fboundp 'ns-do-applescript)
+-         (ns-do-applescript
+-          (format "display notification \"%s\" with title \"Org mode notification\""
+-                  (replace-regexp-in-string "\"" "#" notification))))
++        ;; Not `fboundp': the macOS notification functions are defined
++        ;; whenever Emacs was built for it, but only work when Emacs is
++        ;; running from an application bundle.
++        ((and (fboundp 'ns-notification-usable-p) (ns-notification-usable-p))
++         (ns-notification-notify
++          :title "Org mode message"
++          :body notification
++          :timeout (* org-show-notification-timeout 1000)
++          :urgency 'low))
+ 	((fboundp 'notifications-notify)
+ 	 (notifications-notify
+ 	  :title "Org mode message"
+diff --git c/lisp/term/ns-notifications.el i/lisp/term/ns-notifications.el
+new file mode 100644
+index 00000000000..e72ea96b3e9
+--- /dev/null
++++ i/lisp/term/ns-notifications.el
+@@ -0,0 +1,457 @@
++;;; ns-notifications.el --- macOS desktop notifications  -*- lexical-binding: t -*-
++
++;; Copyright (C) 2026 Free Software Foundation, Inc.
++
++;; Keywords: terminals
++
++;; This file is part of GNU Emacs.
++
++;; GNU Emacs is free software: you can redistribute it and/or modify
++;; it under the terms of the GNU General Public License as published by
++;; the Free Software Foundation, either version 3 of the License, or
++;; (at your option) any later version.
++
++;; GNU Emacs is distributed in the hope that it will be useful,
++;; but WITHOUT ANY WARRANTY; without even the implied warranty of
++;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++;; GNU General Public License for more details.
++
++;; You should have received a copy of the GNU General Public License
++;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
++
++;;; Commentary:
++
++;; The Lisp half of the interface to macOS's UNUserNotificationCenter.
++;; The primitives it builds on live in src/nsnotify.m and stay close to
++;; the framework; this file supplies the parts that are pleasanter to
++;; write in Lisp: keyword handling, the registry pairing a notification
++;; with the functions to call when the user acts on it, a category
++;; registry, and `ns-notifications-notify', which accepts the arguments
++;; `notifications-notify' does.
++
++;; Two things about the framework are worth knowing before using this.
++
++;; Buttons cannot be attached to a single notification.  They belong to a
++;; category, which is registered once and named by any number of
++;; notifications.  `ns-notification-notify' hides that when given
++;; `:actions', by defining a category behind the scenes, but a category
++;; defined with `ns-notification-define-category' can do considerably
++;; more, including replies typed into the notification itself.
++
++;; There is no callback for a notification expiring.  A banner hides
++;; itself after a few seconds but the notification stays in Notification
++;; Center until something removes it, and `:on-close' runs only when the
++;; user dismisses it deliberately.
++
++;;; Code:
++
++(declare-function ns-notification-available-p "nsnotify.m" ())
++(declare-function ns-notification-add "nsnotify.m" (plist))
++(declare-function ns-notification-remove "nsnotify.m" (ids &optional pending))
++(declare-function ns-notification-remove-all "nsnotify.m" (&optional pending))
++(declare-function ns-notification-set-categories "nsnotify.m" (categories))
++(declare-function ns-notification-request-authorization "nsnotify.m"
++                  (&optional options handler))
++
++(defvar ns-notification-foreground-presentation)
++
++;;; Customization
++
++(defgroup ns-notifications nil
++  "Desktop notifications on macOS."
++  :group 'ns
++  :version "31.1")
++
++(defcustom ns-notification-request-authorization-on-first-use t
++  "Whether to ask the system for permission before the first notification.
++
++macOS refuses to display notifications from an application that has not
++asked for permission, and prompts the user the first time one asks.  When
++this is non-nil Emacs asks as late as possible, when it has an actual
++notification to show, so that the prompt arrives with some context rather
++than during startup.
++
++Set this to nil to take charge yourself with
++`ns-notification-request-authorization'."
++  :type 'boolean
++  :group 'ns-notifications)
++
++(defcustom ns-notification-default-sound nil
++  "Sound for notifications that do not specify one.
++
++The value t means the system default sound, a string names a sound in
++~/Library/Sounds or /System/Library/Sounds, and nil means silence."
++  :type '(choice (const :tag "Silent" nil)
++                 (const :tag "System default" t)
++                 (string :tag "Named sound"))
++  :group 'ns-notifications)
++
++(defcustom ns-notification-response-functions nil
++  "Functions to call when the user acts on any notification.
++
++Each function receives one argument, the property list describing the
++response, as documented in `ns-notification-handle-response'.  They run
++in addition to the per-notification handlers given to
++`ns-notification-notify'.
++
++Unlike those handlers, these run even for a notification posted by an
++earlier Emacs session, which macOS may keep on screen across a restart
++and about which this session knows nothing."
++  :type 'hook
++  :group 'ns-notifications)
++
++;;; State
++
++(defvar ns-notification--handlers (make-hash-table :test #'equal)
++  "Handlers for notifications posted by this Emacs session.
++Maps a notification identifier to the property list it was posted with.")
++
++(defvar ns-notification-categories nil
++  "Categories registered with the system, as an alist.
++
++Keys are category identifier strings and values are the property lists
++described by `ns-notification-set-categories'.  Use
++`ns-notification-define-category' to add to this rather than setting it
++directly, since the system must be told about the whole set at once.")
++
++(defvar ns-notification--authorization-requested nil
++  "Whether permission has been asked for in this session.")
++
++;;; Availability
++
++(defun ns-notification-usable-p ()
++  "Return non-nil if notifications can be posted right now.
++
++This is `ns-notification-available-p' with a check that the function
++exists at all, so that it is safe to call on any Emacs.  Code choosing
++between notification backends should use this."
++  (and (fboundp 'ns-notification-available-p)
++       (ns-notification-available-p)))
++
++(defun ns-notification--ensure-authorization ()
++  "Ask the system for permission to notify, at most once per session."
++  (when (and ns-notification-request-authorization-on-first-use
++             (not ns-notification--authorization-requested))
++    (setq ns-notification--authorization-requested t)
++    (ns-notification-request-authorization '(alert sound badge) nil)))
++
++;;; Categories
++
++(defun ns-notification--push-categories ()
++  "Tell the system about every category in `ns-notification-categories'.
++The framework replaces its whole set on each call, so this sends all of
++them even when only one has changed."
++  (ns-notification-set-categories (mapcar #'cdr ns-notification-categories)))
++
++(defun ns-notification-define-category (id &rest args)
++  "Define notification category ID, a string, and register it.
++
++ARGS is a property list accepting `:actions', `:intents' and `:options',
++each as described in `ns-notification-set-categories'.  Defining a
++category whose ID is already known replaces it.
++
++Categories persist for the session, so a package can define its
++categories once when it loads and thereafter refer to them by ID."
++  (let ((category (append (list :id id) args)))
++    (setq ns-notification-categories
++          (cons (cons id category)
++                (assoc-delete-all id ns-notification-categories)))
++    (ns-notification--push-categories)
++    id))
++
++(defun ns-notification-undefine-category (id)
++  "Remove notification category ID and tell the system."
++  (setq ns-notification-categories
++        (assoc-delete-all id ns-notification-categories))
++  (ns-notification--push-categories)
++  nil)
++
++(defun ns-notification--actions-to-category (actions on-close)
++  "Return the id of a category offering ACTIONS, defining it if needed.
++
++ACTIONS is a flat list of strings, (KEY TITLE KEY TITLE ...), in the form
++`notifications-notify' accepts.  The key \"default\" is implicit on macOS
++\(clicking the notification body) and is dropped if present.
++
++ON-CLOSE non-nil adds the option that makes the system report deliberate
++dismissals, without which `:on-close' would never run.
++
++The category is named after a hash of its own contents, so that repeated
++calls with the same actions reuse one category rather than accumulating
++near-duplicates."
++  (let (specs)
++    (while actions
++      (let ((key (pop actions))
++            (title (pop actions)))
++        ;; A "default" action needs no button: the notification body
++        ;; already acts as one.
++        (unless (equal key "default")
++          (push (list :id key :title title) specs))))
++    (setq specs (nreverse specs))
++    (let* ((options (and on-close '(custom-dismiss)))
++           (id (concat "emacs-auto-"
++                       (secure-hash 'sha1 (prin1-to-string
++                                           (list specs options))))))
++      (unless (assoc id ns-notification-categories)
++        (ns-notification-define-category id :actions specs :options options))
++      id)))
++
++;;; Posting
++
++(defconst ns-notification--urgency-levels
++  '((low . passive) (normal . active) (critical . time-sensitive))
++  "Mapping from `notifications-notify' urgencies to interruption levels.
++
++macOS has no exact counterpart of `critical': a genuinely critical alert,
++which can pierce Do Not Disturb, needs an entitlement granted by Apple
++that Emacs does not have.  `time-sensitive' is the closest thing
++available.")
++
++(defun ns-notification--interruption-level (urgency)
++  "Return the interruption level corresponding to URGENCY."
++  (declare (side-effect-free t))
++  (or (cdr (assq urgency ns-notification--urgency-levels))
++      (error "Invalid urgency: %s" urgency)))
++
++(defun ns-notification-notify (&rest args)
++  "Post a desktop notification and return its identifier, a string.
++
++Posting a notification whose identifier matches one already posted
++replaces it, which is how a notification is updated in place.
++
++ARGS is a property list.  Describing what is shown:
++
++  :title       String shown as the heading.
++  :subtitle    String shown under the title.
++  :body        String of body text.
++  :id          String identifying this notification.  One is generated
++               if omitted.  `:replaces-id' is accepted as a synonym.
++  :group       String grouping related notifications in Notification
++               Center.
++  :sound       t for the system sound, a string naming a sound in
++               ~/Library/Sounds or /System/Library/Sounds, or nil for
++               silence.  Defaults to `ns-notification-default-sound'.
++  :badge       Integer to show on the Dock icon.
++  :attachments List of property lists, each with at least a `:file'.
++               The file is copied into the system's store, so a
++               temporary file may be deleted afterwards.
++  :urgency     One of `low', `normal' or `critical'.
++  :interruption-level
++               Set the level directly, as `passive', `active',
++               `time-sensitive' or `critical'.  Overrides `:urgency'.
++  :relevance-score
++               Float from 0.0 to 1.0 ordering notifications in a group.
++  :user-info   Any printable Lisp object, handed back to the handlers
++               below.  It is stored by the system alongside the
++               notification, so it is the only thing that survives into
++               a later Emacs session.
++
++Choosing when it appears:
++
++  :after       Show it this many seconds from now instead of at once.
++  :at          Show it at a matching time, given as a property list of
++               `:year', `:month', `:day', `:hour', `:minute', `:second'
++               and `:weekday'.
++  :repeat      Repeat it.  With `:after' the interval must be at least
++               60 seconds.
++  :timeout     Withdraw it after this many milliseconds.  macOS has no
++               notion of expiry, so this is an Emacs timer that calls
++               `ns-notification-close'.
++
++Reacting to the user:
++
++  :actions     Flat list of strings (KEY TITLE KEY TITLE ...) naming
++               buttons, as in `notifications-notify'.  For more than
++               plain buttons, including replies typed into the
++               notification, define a category with
++               `ns-notification-define-category' and name it with
++               `:category' instead.
++  :category    Identifier of a category supplying the buttons.
++  :on-action   Function called with the identifier and the key of the
++               button chosen.  The key is \"default\" when the user
++               clicked the notification itself.
++  :on-reply    Function called with the identifier, the key, and the
++               text, when the user replies to a text-input action.
++               Falls back to `:on-action' if not given.
++  :on-close    Function called with the identifier and the symbol
++               `dismissed' when the user dismisses the notification.
++               Only deliberate dismissal is reported, and only when the
++               category allows it, which `:actions' arranges for you.
++  :handler     Function called with the whole response property list,
++               as described in `ns-notification-handle-response'.
++  :resident    Keep the handlers registered after an action fires,
++               instead of forgetting the notification.
++
++Signal an error if notifications are unavailable; see
++`ns-notification-available-p'.  Note that macOS hides notifications from
++whichever application is frontmost unless asked otherwise, which
++`ns-notification-foreground-presentation' does by default."
++  (unless (ns-notification-available-p)
++    (error "Notifications are unavailable; Emacs must run from an %s"
++           "application bundle registered with Launch Services"))
++  (ns-notification--ensure-authorization)
++  (let* ((on-close (plist-get args :on-close))
++         (actions (plist-get args :actions))
++         (category (or (plist-get args :category)
++                       (and (or actions on-close)
++                            (ns-notification--actions-to-category
++                             actions on-close))))
++         (urgency (plist-get args :urgency))
++         (id (ns-notification-add
++              (ns-notification--build-request args category urgency)))
++         (timeout (plist-get args :timeout)))
++    (puthash id args ns-notification--handlers)
++    (when (and (natnump timeout) (> timeout 0))
++      (run-with-timer (/ timeout 1000.0) nil #'ns-notification-close id))
++    id))
++
++(defun ns-notification--build-request (args category urgency)
++  "Return the property list to hand to `ns-notification-add'.
++ARGS is as given to `ns-notification-notify'.  CATEGORY is the category
++identifier to use, or nil.  URGENCY is its `:urgency', or nil."
++  (let ((request nil))
++    ;; Copy across everything the primitive understands unchanged.
++    (dolist (key '(:title :subtitle :body :group :badge :attachments
++                   :user-info :relevance-score :after :at :repeat))
++      (when-let* ((value (plist-get args key)))
++        (setq request (plist-put request key value))))
++    (when-let* ((id (or (plist-get args :id) (plist-get args :replaces-id))))
++      (setq request (plist-put request :id (ns-notification--id-string id))))
++    (when category
++      (setq request (plist-put request :category category)))
++    (setq request
++          (plist-put request :sound
++                     (if (plist-member args :sound)
++                         (plist-get args :sound)
++                       ns-notification-default-sound)))
++    (when-let* ((level (or (plist-get args :interruption-level)
++                           (and urgency
++                                (ns-notification--interruption-level
++                                 urgency)))))
++      (setq request (plist-put request :interruption-level level)))
++    request))
++
++(defun ns-notification--id-string (id)
++  "Return ID as a notification identifier string.
++Integers are accepted because `notifications-notify' hands out integer
++identifiers and callers pass them straight back as `:replaces-id'."
++  (declare (side-effect-free t))
++  (if (stringp id) id (format "%s" id)))
++
++(defun ns-notification-close (id)
++  "Withdraw the notification identified by ID and forget its handlers."
++  (remhash id ns-notification--handlers)
++  (when (ns-notification-available-p)
++    (ns-notification-remove (list id))))
++
++(defun ns-notification-close-all (&optional pending)
++  "Withdraw every notification Emacs has delivered.
++With PENDING non-nil, cancel the ones scheduled but not yet delivered."
++  (unless pending
++    (clrhash ns-notification--handlers))
++  (when (ns-notification-available-p)
++    (ns-notification-remove-all pending)))
++
++;;; Responses
++
++(defun ns-notification-handle-response (response)
++  "Dispatch RESPONSE, a notification the user acted on.
++
++This is called from the command loop by src/nsnotify.m and is not meant
++to be called from Lisp.
++
++RESPONSE is a property list with these keys:
++
++  :id          Identifier of the notification.
++  :action      Key of the button chosen, \"default\" if the user clicked
++               the notification itself, or \"dismiss\" if it was
++               dismissed.
++  :text        Text the user typed, for a reply action, else nil.
++  :title, :subtitle, :body, :category, :group
++               The content of the notification.
++  :user-info   The `:user-info' it was posted with.
++  :date        Time of delivery, as seconds since the epoch.
++
++The handlers registered for the notification run first, then
++`ns-notification-response-functions'.  A notification posted by an
++earlier Emacs session has no registered handlers, so only the latter
++run."
++  (let* ((id (plist-get response :id))
++         (args (gethash id ns-notification--handlers)))
++    (when args
++      (ns-notification--run-handlers response id args)
++      (unless (plist-get args :resident)
++        (remhash id ns-notification--handlers)))
++    (run-hook-with-args 'ns-notification-response-functions response)))
++
++(defun ns-notification--run-handlers (response id args)
++  "Call the handlers in ARGS that apply to RESPONSE for notification ID."
++  (let ((action (plist-get response :action))
++        (text (plist-get response :text)))
++    (when-let* ((handler (plist-get args :handler)))
++      (funcall handler response))
++    (cond
++     ((equal action "dismiss")
++      (when-let* ((handler (plist-get args :on-close)))
++        (funcall handler id 'dismissed)))
++     (text
++      (if-let* ((handler (plist-get args :on-reply)))
++          (funcall handler id action text)
++        (when-let* ((handler (plist-get args :on-action)))
++          (funcall handler id action))))
++     (t
++      (when-let* ((handler (plist-get args :on-action)))
++        (funcall handler id action))))))
++
++;;; Compatibility with notifications.el
++
++(defun ns-notifications-notify (&rest params)
++  "Post a notification, accepting the arguments `notifications-notify' does.
++
++This is a restricted pastiche of the D-Bus desktop notification
++interface, in the manner of `w32-notification-notify' and
++`android-notifications-notify', provided so that code written against
++`notifications-notify' works unchanged on macOS.  New code should prefer
++`ns-notification-notify', which reaches the whole of what macOS offers.
++
++These parameters have the same meaning as they do in
++`notifications-notify': `:title', `:body', `:replaces-id', `:actions',
++`:timeout', `:urgency', `:resident', `:on-action' and `:on-close'.
++`:sound-name' and `:sound-file' both choose a sound, and
++`:suppress-sound' silences the notification.
++
++The value is a string, not an integer as on other systems, because macOS
++identifies notifications by name.  It can be passed back as
++`:replaces-id' in the usual way.
++
++The remaining parameters of `notifications-notify' are accepted and
++ignored, having no counterpart here.  In particular macOS shows the
++icon of the sending application and offers no way to override it, so
++`:app-name' and `:app-icon' do nothing; use the `:attachments' parameter
++of `ns-notification-notify' to show an image."
++  (let ((args (ns-notification--compat-sound params))
++        (tail params))
++    (while tail
++      (let ((key (car tail))
++            (value (cadr tail)))
++        (when (memq key '(:title :body :replaces-id :actions :timeout
++                          :urgency :resident :on-action :on-close))
++          (setq args (append args (list key value)))))
++      (setq tail (cddr tail)))
++    (apply #'ns-notification-notify args)))
++
++(defun ns-notification--compat-sound (params)
++  "Return the `:sound' argument implied by PARAMS, as a property list."
++  (cond
++   ((plist-get params :suppress-sound) '(:sound nil))
++   ((plist-get params :sound-name) (list :sound (plist-get params :sound-name)))
++   ((when-let* ((file (plist-get params :sound-file)))
++      ;; macOS resolves sounds by name from a handful of directories and
++      ;; cannot be pointed at an arbitrary file, so the best that can be
++      ;; done is to try the file's name.
++      (list :sound (file-name-base file))))
++   (t nil)))
++
++(provide 'ns-notifications)
++
++;;; ns-notifications.el ends here
+diff --git c/src/Makefile.in i/src/Makefile.in
+index 111f94fb0ba..62ed144efe3 100644
+--- c/src/Makefile.in
++++ i/src/Makefile.in
+@@ -309,7 +309,8 @@ MSDOS_OBJ =
+ MSDOS_X_OBJ =
+ 
+ NS_OBJ=@NS_OBJ@
+-## nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o ns_fontfile if HAVE_NS.
++## nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o nsnotify.o ns_fontfile
++## if HAVE_NS.
+ NS_OBJC_OBJ=@NS_OBJC_OBJ@
+ ## Used only for GNUstep.
+ GNU_OBJC_CFLAGS=$(patsubst -specs=%-hardened-cc1,,@GNU_OBJC_CFLAGS@)
+@@ -477,8 +478,8 @@ obj =
+ SOME_MACHINE_OBJECTS = dosfns.o msdos.o \
+   xterm.o xfns.o xmenu.o xselect.o xrdb.o xsmfns.o fringe.o image.o \
+   fontset.o dbusbind.o cygw32.o \
+-  nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o nsfont.o macfont.o \
+-  nsxwidget.o \
++  nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o nsnotify.o nsfont.o \
++  macfont.o nsxwidget.o \
+   w32.o w32console.o w32cygwinx.o w32fns.o w32heap.o w32inevt.o w32notify.o \
+   w32menu.o w32proc.o w32reg.o w32select.o w32term.o w32xfns.o \
+   w16select.o widget.o xfont.o ftfont.o xftfont.o gtkutil.o \
+diff --git c/src/deps.mk i/src/deps.mk
+index 741ec6fa76d..509268d2c01 100644
+--- c/src/deps.mk
++++ i/src/deps.mk
+@@ -155,6 +155,8 @@ nsfns.o:
+    atimer.h systime.h epaths.h termhooks.h coding.h systime.h lisp.h $(config_h)
+ nsfont.o: nsterm.h dispextern.h frame.h lisp.h lisp.h $(config_h)
+ nsimage.o: nsimage.m nsterm.h lisp.h $(config_h)
++nsnotify.o: nsnotify.m nsterm.h nsgui.h blockinput.h atimer.h systime.h \
++   coding.h keyboard.h termhooks.h lisp.h $(config_h)
+ nsmenu.o: nsmenu.m termhooks.h frame.h window.h dispextern.h \
+    nsgui.h keyboard.h blockinput.h atimer.h systime.h buffer.h \
+    nsterm.h lisp.h $(config_h)
+diff --git c/src/emacs.c i/src/emacs.c
+index 11fe567737a..72212d3a6fc 100644
+--- c/src/emacs.c
++++ i/src/emacs.c
+@@ -2423,6 +2423,7 @@ android_emacs_init (int argc, char **argv, char *dump_file)
+       syms_of_nsfns ();
+       syms_of_nsmenu ();
+       syms_of_nsselect ();
++      syms_of_nsnotify ();
+       syms_of_fontset ();
+ #endif /* HAVE_NS */
+ 
+diff --git c/src/keyboard.c i/src/keyboard.c
+index b1d14ef1a25..479d6ae6ee4 100644
+--- c/src/keyboard.c
++++ i/src/keyboard.c
+@@ -4266,7 +4266,7 @@ kbd_buffer_get_event (KBOARD **kbp,
+ 	  break;
+ 	}
+ 
+-#ifdef HAVE_ANDROID
++#if defined HAVE_ANDROID || defined HAVE_NS
+       case NOTIFICATION_EVENT:
+         {
+ 	  kbd_fetch_ptr = next_kbd_event (event);
+@@ -4274,7 +4274,7 @@ kbd_buffer_get_event (KBOARD **kbp,
+ 	  CALLN (Fapply, XCAR (event->ie.arg), XCDR (event->ie.arg));
+ 	  break;
+ 	}
+-#endif /* HAVE_ANDROID */
++#endif /* HAVE_ANDROID || HAVE_NS */
+ 
+       case TOOLKIT_THEME_CHANGED_EVENT:
+ 	kbd_fetch_ptr = next_kbd_event (event);
+diff --git c/src/nsnotify.m i/src/nsnotify.m
+new file mode 100644
+index 00000000000..92fac57fffd
+--- /dev/null
++++ i/src/nsnotify.m
+@@ -0,0 +1,1593 @@
++/* Desktop notifications for the NeXT/Open/GNUstep and macOS window system.
++
++Copyright (C) 2026 Free Software Foundation, Inc.
++
++This file is part of GNU Emacs.
++
++GNU Emacs is free software: you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation, either version 3 of the License, or (at
++your option) any later version.
++
++GNU Emacs is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
++
++/* This file binds macOS's UNUserNotificationCenter.  The functions here
++   are deliberately thin: they translate between Lisp property lists and
++   the framework's objects and do nothing else.  The ergonomic interface,
++   including the `notifications-notify' compatibility shim and the
++   registry pairing notifications with their callbacks, lives in
++   lisp/term/ns-notifications.el.
++
++   Three properties of the framework shape everything below.
++
++   It is unavailable unless Emacs runs from an application bundle that
++   Launch Services knows about, so every entry point first consults
++   `ns-notification-available-p'.
++
++   Its query methods are asynchronous and call back on an arbitrary
++   queue, where touching a Lisp object would be unsafe and where a
++   captured Lisp_Object would be invisible to the garbage collector.
++   Callbacks are therefore held in a hash table keyed by an integer
++   token; a completion block captures only the token, retains its result,
++   and hands both to the main thread with performSelectorOnMainThread:.
++
++   Responses to a notification may arrive for one posted by an earlier
++   Emacs session, since macOS keeps delivered notifications across
++   restarts.  No C-side registry could survive that, so responses are
++   always dispatched to the fixed symbol `ns-notification-handle-response'
++   and Lisp decides what to do with them.  */
++
++/* This should be the first include, as it may set up #defines affecting
++   interpretation of even the system includes.  */
++#include <config.h>
++
++#include "lisp.h"
++#include "blockinput.h"
++#include "coding.h"
++#include "keyboard.h"
++#include "termhooks.h"
++#include "nsterm.h"
++
++#if NS_USE_USER_NOTIFICATIONS
++
++#import <UserNotifications/UserNotifications.h>
++
++/* UNNotificationPresentationOptionAlert was split into separate banner
++   and list options in macOS 11.  */
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 110000
++#define NS_UN_PRESENT_BANNER UNNotificationPresentationOptionBanner
++#define NS_UN_PRESENT_LIST   UNNotificationPresentationOptionList
++#else
++#define NS_UN_PRESENT_BANNER UNNotificationPresentationOptionAlert
++#define NS_UN_PRESENT_LIST   UNNotificationPresentationOptionAlert
++#endif
++
++/* Which kind of result a completion block produced, so that the
++   main-thread half knows how to convert it.  */
++
++enum ns_notify_result
++{
++  ns_notify_result_authorization,	/* @[granted, error]  */
++  ns_notify_result_settings,		/* UNNotificationSettings  */
++  ns_notify_result_categories,		/* NSSet of UNNotificationCategory  */
++  ns_notify_result_notifications,	/* NSArray of UNNotification  */
++  ns_notify_result_requests,		/* NSArray of UNNotificationRequest  */
++  ns_notify_result_error		/* NSError or nil  */
++};
++
++/* Whether a usable notification centre exists: -1 not yet determined,
++   0 no, 1 yes.  Only a determination made with NSApp present is cached,
++   since a nil NSApp merely means Emacs has not connected to the window
++   system yet.  */
++static int ns_notify_availability = -1;
++
++/* Callbacks for asynchronous queries still in flight, keyed by an
++   integer token.  Staticpro'd: a completion block cannot hold a
++   Lisp_Object safely.  */
++static Lisp_Object ns_notify_pending;
++
++/* Source of those tokens, and of automatic notification identifiers.  */
++static EMACS_INT ns_notify_counter;
++
++/* The notification centre delegate, or nil before it is installed.  */
++static id ns_notify_delegate;
++
++
++/* ==========================================================================
++
++    Availability
++
++   ========================================================================== */
++
++/* Return true if this Emacs can post notifications.
++
++   -[UNUserNotificationCenter currentNotificationCenter] raises
++   NSInternalInconsistencyException when the process has no bundle
++   identity, which is the case when src/emacs is run straight from a
++   build tree, so the call is made once behind @try and the answer
++   remembered.  */
++
++static bool
++ns_notify_available_p (void)
++{
++  if (ns_notify_availability >= 0)
++    return ns_notify_availability > 0;
++
++  /* Without a window system connection there is no run loop to deliver
++     responses on.  Do not cache this; NSApp may yet appear.  */
++  if (NSApp == nil)
++    return false;
++
++  ns_notify_availability = 0;
++
++  if ([[NSBundle mainBundle] bundleIdentifier] != nil
++      && NSClassFromString (@"UNUserNotificationCenter") != nil)
++    {
++      @try
++	{
++	  if ([UNUserNotificationCenter currentNotificationCenter] != nil)
++	    ns_notify_availability = 1;
++	}
++      @catch (NSException *exception)
++	{
++	  ns_notify_availability = 0;
++	}
++    }
++
++  return ns_notify_availability > 0;
++}
++
++/* Return the notification centre, signalling if there is none.  */
++
++static UNUserNotificationCenter *
++ns_notify_center (void)
++{
++  if (!ns_notify_available_p ())
++    error ("Notifications are unavailable; Emacs must run from an"
++	   " application bundle registered with Launch Services");
++
++  /* Normally the delegate was installed at launch, but a notification
++     centre reached before then would have nothing to forward results
++     to, so make sure of it here as well.  */
++  ns_init_notifications ();
++
++  return [UNUserNotificationCenter currentNotificationCenter];
++}
++
++
++/* ==========================================================================
++
++    Conversions from the framework to Lisp
++
++   ========================================================================== */
++
++/* Return STRING as a Lisp string, or nil.  */
++
++static Lisp_Object
++ns_notify_string (NSString *string)
++{
++  return string ? [string lispString] : Qnil;
++}
++
++/* Return DATE as a Lisp timestamp, or nil.  */
++
++static Lisp_Object
++ns_notify_date (NSDate *date)
++{
++  if (!date)
++    return Qnil;
++
++  return make_float ([date timeIntervalSince1970]);
++}
++
++/* The key under which `:user-info' is stashed in a notification's
++   userInfo dictionary.  Its value is a printed Lisp object: the
++   dictionary must survive being written to and read back from macOS's
++   own notification store, which only handles property list types.  */
++#define NS_NOTIFY_USER_INFO_KEY @"emacs-user-info"
++
++static Lisp_Object
++ns_notify_read_1 (void *ptr)
++{
++  return Fcar (Fread_from_string (*(Lisp_Object *) ptr, Qnil, Qnil));
++}
++
++static Lisp_Object
++ns_notify_read_2 (enum nonlocal_exit exit, Lisp_Object error)
++{
++  return Qnil;
++}
++
++/* Return the `:user-info' carried by USER_INFO, or nil.
++
++   Reading is guarded because not everything that prints reads back: a
++   caller may have passed an object such as a buffer, whose printed form
++   is not valid input.  A `:user-info' that cannot be recovered is
++   reported as nil rather than losing the whole response.  */
++
++static Lisp_Object
++ns_notify_user_info (NSDictionary *user_info)
++{
++  NSString *printed = [user_info objectForKey: NS_NOTIFY_USER_INFO_KEY];
++  Lisp_Object string;
++
++  if (![printed isKindOfClass: [NSString class]])
++    return Qnil;
++
++  string = [printed lispString];
++
++  return internal_catch_all (ns_notify_read_1, &string, ns_notify_read_2);
++}
++
++static Lisp_Object
++ns_notify_authorization_status (UNAuthorizationStatus status)
++{
++  switch (status)
++    {
++    case UNAuthorizationStatusDenied:	   return Qdenied;
++    case UNAuthorizationStatusAuthorized:  return Qauthorized;
++    case UNAuthorizationStatusProvisional: return Qprovisional;
++    default:				   return Qnot_determined;
++    }
++}
++
++static Lisp_Object
++ns_notify_setting (UNNotificationSetting setting)
++{
++  switch (setting)
++    {
++    case UNNotificationSettingEnabled:  return Qenabled;
++    case UNNotificationSettingDisabled: return Qdisabled;
++    default:				return Qnot_supported;
++    }
++}
++
++static Lisp_Object
++ns_notify_alert_style (UNAlertStyle style)
++{
++  switch (style)
++    {
++    case UNAlertStyleBanner: return Qbanner;
++    case UNAlertStyleAlert:  return Qalert;
++    default:		     return Qnone;
++    }
++}
++
++static Lisp_Object
++ns_notify_show_previews (UNShowPreviewsSetting setting)
++{
++  switch (setting)
++    {
++    case UNShowPreviewsSettingWhenAuthenticated: return Qwhen_authenticated;
++    case UNShowPreviewsSettingNever:		 return Qnever;
++    default:					 return Qalways;
++    }
++}
++
++/* Return SETTINGS as a property list.  */
++
++static Lisp_Object
++ns_notify_lisp_from_settings (UNNotificationSettings *settings)
++{
++  Lisp_Object plist
++    = CALLN (Flist, QCauthorization_status,
++	     ns_notify_authorization_status ([settings authorizationStatus]),
++	     QCalert_setting, ns_notify_setting ([settings alertSetting]),
++	     QCsound_setting, ns_notify_setting ([settings soundSetting]),
++	     QCbadge_setting, ns_notify_setting ([settings badgeSetting]));
++
++  plist = nconc2 (plist,
++		  CALLN (Flist, QCnotification_center_setting,
++			 ns_notify_setting ([settings
++					      notificationCenterSetting]),
++			 QClock_screen_setting,
++			 ns_notify_setting ([settings lockScreenSetting]),
++			 QCalert_style,
++			 ns_notify_alert_style ([settings alertStyle]),
++			 QCshow_previews,
++			 ns_notify_show_previews ([settings
++						    showPreviewsSetting])));
++
++  /* Added in macOS 12; ask before using, since Emacs may be running on
++     something older than the SDK it was built against.  */
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 120000
++  if ([settings respondsToSelector: @selector (timeSensitiveSetting)])
++    plist = nconc2 (plist,
++		    list4 (QCtime_sensitive_setting,
++			   ns_notify_setting ([settings timeSensitiveSetting]),
++			   QCscheduled_delivery_setting,
++			   ns_notify_setting ([settings
++						scheduledDeliverySetting])));
++#endif
++
++  return plist;
++}
++
++/* Return the identifier Lisp should see for the action ACTION of a
++   response.  The framework's two built-in identifiers are opaque
++   strings; give them the names `notifications-notify' uses.  */
++
++static Lisp_Object
++ns_notify_action_name (NSString *action)
++{
++  if ([action isEqualToString: UNNotificationDefaultActionIdentifier])
++    return build_string ("default");
++  if ([action isEqualToString: UNNotificationDismissActionIdentifier])
++    return build_string ("dismiss");
++
++  return ns_notify_string (action);
++}
++
++/* Return the content of NOTIFICATION as a property list.  */
++
++static Lisp_Object
++ns_notify_lisp_from_content (UNNotificationContent *content)
++{
++  return CALLN (Flist, QCtitle, ns_notify_string ([content title]),
++		QCsubtitle, ns_notify_string ([content subtitle]),
++		QCbody, ns_notify_string ([content body]),
++		QCuser_info, ns_notify_user_info ([content userInfo]));
++}
++
++/* Return REQUEST as a property list.  */
++
++static Lisp_Object
++ns_notify_lisp_from_request (UNNotificationRequest *request)
++{
++  UNNotificationContent *content = [request content];
++
++  return nconc2 (CALLN (Flist, QCid, ns_notify_string ([request identifier]),
++			QCcategory,
++			ns_notify_string ([content categoryIdentifier]),
++			QCgroup,
++			ns_notify_string ([content threadIdentifier])),
++		 ns_notify_lisp_from_content (content));
++}
++
++/* Return NOTIFICATION, which has been delivered, as a property list.  */
++
++static Lisp_Object
++ns_notify_lisp_from_notification (UNNotification *notification)
++{
++  return nconc2 (list2 (QCdate, ns_notify_date ([notification date])),
++		 ns_notify_lisp_from_request ([notification request]));
++}
++
++/* Return ACTION as a property list.  */
++
++static Lisp_Object
++ns_notify_lisp_from_action (UNNotificationAction *action)
++{
++  UNNotificationActionOptions options = [action options];
++  Lisp_Object plist
++    = CALLN (Flist, QCid, ns_notify_string ([action identifier]),
++	     QCtitle, ns_notify_string ([action title]),
++	     QCforeground,
++	     (options & UNNotificationActionOptionForeground) ? Qt : Qnil);
++
++  plist = nconc2 (plist,
++		  list4 (QCdestructive,
++			 (options & UNNotificationActionOptionDestructive)
++			 ? Qt : Qnil,
++			 QCauthenticate,
++			 (options
++			  & UNNotificationActionOptionAuthenticationRequired)
++			 ? Qt : Qnil));
++
++  if ([action isKindOfClass: [UNTextInputNotificationAction class]])
++    {
++      UNTextInputNotificationAction *text
++	= (UNTextInputNotificationAction *) action;
++
++      plist = nconc2 (plist,
++		      CALLN (Flist, QCtext_input, Qt,
++			     QCbutton_title,
++			     ns_notify_string ([text textInputButtonTitle]),
++			     QCplaceholder,
++			     ns_notify_string ([text
++						 textInputPlaceholder])));
++    }
++
++  return plist;
++}
++
++/* Return CATEGORY as a property list.  */
++
++static Lisp_Object
++ns_notify_lisp_from_category (UNNotificationCategory *category)
++{
++  Lisp_Object actions = Qnil, intents = Qnil;
++
++  for (UNNotificationAction *action in [category actions])
++    actions = Fcons (ns_notify_lisp_from_action (action), actions);
++
++  for (NSString *intent in [category intentIdentifiers])
++    intents = Fcons (ns_notify_string (intent), intents);
++
++  return CALLN (Flist, QCid, ns_notify_string ([category identifier]),
++		QCactions, Fnreverse (actions),
++		QCintents, Fnreverse (intents));
++}
++
++
++/* ==========================================================================
++
++    Delivering results to Lisp
++
++   ========================================================================== */
++
++/* What ns_notify_deliver_1 needs to do its work.  */
++
++struct ns_notify_delivery
++{
++  /* The token of the callback to run, or 0 to dispatch a notification
++     response to `ns-notification-handle-response'.  */
++  EMACS_INT token;
++
++  /* Which sort of RESULT this is; meaningless when TOKEN is 0.  */
++  enum ns_notify_result kind;
++
++  /* The Objective C object the framework handed us, already retained.  */
++  id result;
++};
++
++/* Queue an event applying the callback identified by DATA to the Lisp
++   translation of its result.  Runs on the main thread, wrapped by
++   internal_catch_all, because converting the result can signal.  */
++
++static Lisp_Object
++ns_notify_deliver_1 (void *ptr)
++{
++  struct ns_notify_delivery *data = ptr;
++  specpdl_ref count = SPECPDL_INDEX ();
++  Lisp_Object handler, argument;
++  struct input_event ie;
++
++  specbind (Qinhibit_quit, Qt);
++
++  if (data->token == 0)
++    {
++      /* A response to a notification.  The notification may have been
++	 posted by a previous Emacs session, so there is nothing to look
++	 up: Lisp works out for itself whether it knows this one.  */
++      UNNotificationResponse *response = data->result;
++      Lisp_Object text = Qnil;
++
++      handler = Qns_notification_handle_response;
++
++      if ([response isKindOfClass: [UNTextInputNotificationResponse class]])
++	{
++	  UNTextInputNotificationResponse *input
++	    = (UNTextInputNotificationResponse *) response;
++	  text = ns_notify_string ([input userText]);
++	}
++
++      argument
++	= nconc2 (list4 (QCaction,
++			 ns_notify_action_name ([response actionIdentifier]),
++			 QCtext, text),
++		  ns_notify_lisp_from_notification ([response notification]));
++    }
++  else
++    {
++      Lisp_Object token = make_int (data->token);
++
++      handler = Fgethash (token, ns_notify_pending, Qnil);
++      Fremhash (token, ns_notify_pending);
++
++      if (NILP (handler))
++	return unbind_to (count, Qnil);
++
++      switch (data->kind)
++	{
++	case ns_notify_result_authorization:
++	  {
++	    NSArray *pair = data->result;
++	    NSError *err = [pair objectAtIndex: 1];
++
++	    argument
++	      = list2 ([[pair objectAtIndex: 0] boolValue] ? Qt : Qnil,
++		       [err isKindOfClass: [NSError class]]
++		       ? ns_notify_string ([err localizedDescription])
++		       : Qnil);
++	  }
++	  break;
++
++	case ns_notify_result_settings:
++	  argument = ns_notify_lisp_from_settings (data->result);
++	  break;
++
++	case ns_notify_result_categories:
++	  {
++	    Lisp_Object list = Qnil;
++
++	    for (UNNotificationCategory *category in (NSSet *) data->result)
++	      list = Fcons (ns_notify_lisp_from_category (category), list);
++
++	    argument = Fnreverse (list);
++	  }
++	  break;
++
++	case ns_notify_result_notifications:
++	  {
++	    Lisp_Object list = Qnil;
++
++	    for (UNNotification *note in (NSArray *) data->result)
++	      list = Fcons (ns_notify_lisp_from_notification (note), list);
++
++	    argument = Fnreverse (list);
++	  }
++	  break;
++
++	case ns_notify_result_requests:
++	  {
++	    Lisp_Object list = Qnil;
++
++	    for (UNNotificationRequest *request in (NSArray *) data->result)
++	      list = Fcons (ns_notify_lisp_from_request (request), list);
++
++	    argument = Fnreverse (list);
++	  }
++	  break;
++
++	case ns_notify_result_error:
++	default:
++	  argument = ([data->result isKindOfClass: [NSError class]]
++		      ? ns_notify_string ([(NSError *) data->result
++					    localizedDescription])
++		      : Qnil);
++	  break;
++	}
++    }
++
++  EVENT_INIT (ie);
++  ie.kind = NOTIFICATION_EVENT;
++  ie.arg = list2 (handler, argument);
++  kbd_buffer_store_event (&ie);
++
++  return unbind_to (count, Qnil);
++}
++
++/* Swallow any nonlocal exit from ns_notify_deliver_1.  Letting one
++   unwind through the Objective C frames that called us would corrupt the
++   Cocoa runtime.  */
++
++static Lisp_Object
++ns_notify_deliver_2 (enum nonlocal_exit exit, Lisp_Object error)
++{
++  return Qnil;
++}
++
++/* Hand RESULT, of kind KIND, to the callback registered under TOKEN.
++   Must be called on the main thread.  */
++
++static void
++ns_notify_deliver (EMACS_INT token, enum ns_notify_result kind, id result)
++{
++  struct ns_notify_delivery data;
++
++  data.token = token;
++  data.kind = kind;
++  data.result = result;
++
++  internal_catch_all (ns_notify_deliver_1, &data, ns_notify_deliver_2);
++
++  /* Emacs is most likely blocked in ns_select with the Cocoa run loop
++     spinning; nudge it so that the event just queued is seen now rather
++     than whenever the next unrelated event arrives.  */
++#ifdef HAVE_PTHREAD
++  ns_run_loop_break ();
++#endif
++}
++
++/* Record FUNCTION as the callback for an asynchronous query and return
++   its token.  A completion block may capture the token, which is an
++   ordinary integer, but never FUNCTION itself, which the garbage
++   collector could not see.  */
++
++static EMACS_INT
++ns_notify_register (Lisp_Object function)
++{
++  EMACS_INT token = ++ns_notify_counter;
++
++  Fputhash (make_int (token), function, ns_notify_pending);
++
++  return token;
++}
++
++
++/* ==========================================================================
++
++    The notification centre delegate
++
++   ========================================================================== */
++
++@interface EmacsNotificationDelegate : NSObject <UNUserNotificationCenterDelegate>
++- (void)deliverResult: (NSArray *)packet;
++@end
++
++@implementation EmacsNotificationDelegate
++
++/* Convert PACKET, of (token, kind, result), into Lisp.  Completion
++   blocks arrive on an arbitrary queue and forward to this method so that
++   every Lisp object is made on the main thread.  */
++
++- (void)deliverResult: (NSArray *)packet
++{
++  id result = [packet objectAtIndex: 2];
++
++  ns_notify_deliver ([[packet objectAtIndex: 0] longLongValue],
++		     (enum ns_notify_result) [[packet objectAtIndex: 1]
++					       intValue],
++		     result == [NSNull null] ? nil : result);
++}
++
++/* Decide how a notification arriving while Emacs is frontmost should be
++   presented.  Without this method macOS shows nothing at all in that
++   case, which is the common one for a notification Emacs sent itself.  */
++
++- (void)userNotificationCenter: (UNUserNotificationCenter *)center
++       willPresentNotification: (UNNotification *)notification
++	 withCompletionHandler: (void (^)(UNNotificationPresentationOptions))
++				  completionHandler
++{
++  UNNotificationPresentationOptions options = 0;
++  Lisp_Object tail = Vns_notification_foreground_presentation;
++
++  /* Reading a list allocates nothing and runs no Lisp, so it is safe
++     here even though Emacs is inside its own event loop.  */
++  FOR_EACH_TAIL_SAFE (tail)
++    {
++      Lisp_Object option = XCAR (tail);
++
++      if (EQ (option, Qbanner))
++	options |= NS_UN_PRESENT_BANNER;
++      else if (EQ (option, Qlist))
++	options |= NS_UN_PRESENT_LIST;
++      else if (EQ (option, Qsound))
++	options |= UNNotificationPresentationOptionSound;
++      else if (EQ (option, Qbadge))
++	options |= UNNotificationPresentationOptionBadge;
++    }
++
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 110000
++  /* Before macOS 11 there was one combined alert option.  */
++  if (options & (NS_UN_PRESENT_BANNER | NS_UN_PRESENT_LIST))
++    options |= UNNotificationPresentationOptionAlert;
++#endif
++
++  completionHandler (options);
++}
++
++/* Report that the user acted on a notification.  */
++
++- (void)userNotificationCenter: (UNUserNotificationCenter *)center
++didReceiveNotificationResponse: (UNNotificationResponse *)response
++	 withCompletionHandler: (void (^)(void))completionHandler
++{
++  ns_notify_deliver (0, ns_notify_result_error, response);
++  completionHandler ();
++}
++
++@end
++
++/* Hand PACKET to the delegate on the main thread.  Called from
++   completion blocks, on whatever queue the framework chose.  */
++
++static void
++ns_notify_forward (EMACS_INT token, enum ns_notify_result kind, id result)
++{
++  NSArray *packet = @[[NSNumber numberWithLongLong: token],
++		      [NSNumber numberWithInt: (int) kind],
++		      result ? result : (id) [NSNull null]];
++
++  [ns_notify_delegate performSelectorOnMainThread: @selector (deliverResult:)
++				       withObject: packet
++				    waitUntilDone: NO];
++}
++
++void
++ns_init_notifications (void)
++{
++  if (ns_notify_delegate != nil || !ns_notify_available_p ())
++    return;
++
++  @try
++    {
++      ns_notify_delegate = [[EmacsNotificationDelegate alloc] init];
++      [[UNUserNotificationCenter currentNotificationCenter]
++	setDelegate: ns_notify_delegate];
++    }
++  @catch (NSException *exception)
++    {
++      [ns_notify_delegate release];
++      ns_notify_delegate = nil;
++      ns_notify_availability = 0;
++    }
++}
++
++
++/* ==========================================================================
++
++    Building requests
++
++   ========================================================================== */
++
++/* Return VALUE as an NSString, signalling unless it is a string.  KEY
++   names it, for the error message.  */
++
++static NSString *
++ns_notify_required_string (Lisp_Object value, const char *key)
++{
++  if (!STRINGP (value))
++    error ("Value of %s must be a string", key);
++
++  return [NSString stringWithLispString: value];
++}
++
++/* Return the sound described by VALUE: t or `default' for the system
++   default, a string for a sound of that name, nil for silence.  */
++
++static UNNotificationSound *
++ns_notify_sound (Lisp_Object value)
++{
++  if (NILP (value))
++    return nil;
++
++  if (EQ (value, Qt) || EQ (value, Qdefault))
++    return [UNNotificationSound defaultSound];
++
++  return [UNNotificationSound
++	   soundNamed: ns_notify_required_string (value, ":sound")];
++}
++
++/* Attach the files described by the list VALUE to CONTENT.  Each element
++   is a property list; only `:file' is required.  Note that the framework
++   copies each file into its own store, so a temporary file may be
++   deleted once this returns.  */
++
++static void
++ns_notify_add_attachments (UNMutableNotificationContent *content,
++			   Lisp_Object value)
++{
++  NSMutableArray *attachments = [NSMutableArray array];
++  Lisp_Object tail = value;
++
++  FOR_EACH_TAIL (tail)
++    {
++      Lisp_Object spec = XCAR (tail);
++      Lisp_Object file = plist_get (spec, QCfile);
++      Lisp_Object id = plist_get (spec, QCid);
++      Lisp_Object hint = plist_get (spec, QCtype_hint);
++      Lisp_Object time = plist_get (spec, QCthumbnail_time);
++      NSMutableDictionary *options = [NSMutableDictionary dictionary];
++      UNNotificationAttachment *attachment;
++      /* Not `error': that would shadow the function of the same name.  */
++      NSError *problem = nil;
++      NSURL *url;
++
++      if (!STRINGP (file))
++	error ("Attachment has no :file");
++
++      url = [NSURL fileURLWithPath:
++		     [NSString stringWithLispString:
++				 ENCODE_FILE (Fexpand_file_name (file,
++								 Qnil))]];
++
++      if (STRINGP (hint))
++	[options setObject: [NSString stringWithLispString: hint]
++		    forKey: UNNotificationAttachmentOptionsTypeHintKey];
++
++      if (!NILP (plist_get (spec, QCthumbnail_hidden)))
++	[options setObject: [NSNumber numberWithBool: YES]
++		    forKey:
++		      UNNotificationAttachmentOptionsThumbnailHiddenKey];
++
++      if (NUMBERP (time))
++	[options setObject: [NSNumber numberWithDouble: XFLOATINT (time)]
++		    forKey:
++		      UNNotificationAttachmentOptionsThumbnailTimeKey];
++
++      attachment
++	= [UNNotificationAttachment
++	    attachmentWithIdentifier: (STRINGP (id)
++				       ? [NSString stringWithLispString: id]
++				       : @"")
++				 URL: url
++			     options: options
++			       error: &problem];
++
++      if (!attachment)
++	error ("Cannot attach %s: %s", SSDATA (file),
++	       [[problem localizedDescription] UTF8String]);
++
++      [attachments addObject: attachment];
++    }
++
++  [content setAttachments: attachments];
++}
++
++/* Apply `:urgency'-style VALUE to CONTENT as an interruption level.  */
++
++static void
++ns_notify_set_interruption_level (UNMutableNotificationContent *content,
++				  Lisp_Object value)
++{
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 120000
++  UNNotificationInterruptionLevel level;
++
++  /* Interruption levels arrived in macOS 12.  On anything older the
++     notification simply keeps the default treatment.  */
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 120000
++  if (![content respondsToSelector: @selector (setInterruptionLevel:)])
++    return;
++#endif
++
++  if (EQ (value, Qpassive))
++    level = UNNotificationInterruptionLevelPassive;
++  else if (EQ (value, Qactive))
++    level = UNNotificationInterruptionLevelActive;
++  else if (EQ (value, Qtime_sensitive))
++    level = UNNotificationInterruptionLevelTimeSensitive;
++  else if (EQ (value, Qcritical))
++    /* A genuinely critical alert additionally needs an entitlement
++       granted by Apple, which Emacs does not have; without it the system
++       quietly treats this as time sensitive.  */
++    level = UNNotificationInterruptionLevelCritical;
++  else
++    error ("Invalid interruption level");
++
++  [content setInterruptionLevel: level];
++#endif
++}
++
++/* Return the trigger described by AFTER, AT and REPEAT, or nil to
++   deliver the notification immediately.  */
++
++static UNNotificationTrigger *
++ns_notify_trigger (Lisp_Object after, Lisp_Object at, Lisp_Object repeat)
++{
++  BOOL repeats = !NILP (repeat);
++
++  if (!NILP (after))
++    {
++      double interval;
++
++      CHECK_NUMBER (after);
++      interval = XFLOATINT (after);
++
++      if (interval <= 0)
++	error (":after must be a positive number of seconds");
++
++      /* The framework rejects a repeating interval under a minute.  */
++      if (repeats && interval < 60)
++	error ("A repeating :after must be at least 60 seconds");
++
++      return [UNTimeIntervalNotificationTrigger
++	       triggerWithTimeInterval: interval repeats: repeats];
++    }
++
++  if (!NILP (at))
++    {
++      NSDateComponents *components = [[[NSDateComponents alloc] init]
++				       autorelease];
++      Lisp_Object value;
++
++      value = plist_get (at, QCyear);
++      if (!NILP (value))
++	[components setYear: check_integer_range (value, 1, 9999)];
++      value = plist_get (at, QCmonth);
++      if (!NILP (value))
++	[components setMonth: check_integer_range (value, 1, 12)];
++      value = plist_get (at, QCday);
++      if (!NILP (value))
++	[components setDay: check_integer_range (value, 1, 31)];
++      value = plist_get (at, QChour);
++      if (!NILP (value))
++	[components setHour: check_integer_range (value, 0, 23)];
++      value = plist_get (at, QCminute);
++      if (!NILP (value))
++	[components setMinute: check_integer_range (value, 0, 59)];
++      value = plist_get (at, QCsecond);
++      if (!NILP (value))
++	[components setSecond: check_integer_range (value, 0, 59)];
++      value = plist_get (at, QCweekday);
++      if (!NILP (value))
++	[components setWeekday: check_integer_range (value, 1, 7)];
++
++      return [UNCalendarNotificationTrigger
++	       triggerWithDateMatchingComponents: components
++					 repeats: repeats];
++    }
++
++  return nil;
++}
++
++
++/* ==========================================================================
++
++    Lisp interface
++
++   ========================================================================== */
++
++DEFUN ("ns-notification-available-p", Fns_notification_available_p,
++       Sns_notification_available_p, 0, 0, 0,
++       doc: /* Return non-nil if this Emacs can post notifications.
++
++Notifications require macOS 10.14 or later and, because the system
++identifies the sender by its bundle, an Emacs running from an application
++bundle that Launch Services knows about.  Running the `emacs' executable
++directly from a build tree therefore returns nil.
++
++Callers that can fall back on another notification backend should test
++this rather than `fboundp': the functions in this file are defined when
++Emacs is dumped, long before the answer here is known.  */)
++  (void)
++{
++  return ns_notify_available_p () ? Qt : Qnil;
++}
++
++DEFUN ("ns-notification-request-authorization",
++       Fns_notification_request_authorization,
++       Sns_notification_request_authorization, 0, 2, 0,
++       doc: /* Ask the user to allow Emacs to post notifications.
++
++OPTIONS is a list of symbols naming what to ask for; it defaults to
++`(alert sound badge)'.  The recognized symbols are:
++
++  `alert'        Display notifications on screen.
++  `sound'        Play sounds with notifications.
++  `badge'        Set a count on the Dock icon.
++  `provisional'  Deliver quietly to Notification Center without asking
++                 the user anything.  Cannot be combined usefully with
++                 the others, which do prompt.
++
++The system prompts the user only the first time it is asked; afterwards
++it answers from the choice already recorded, which the user can revisit
++in System Settings.
++
++If HANDLER is non-nil, call it once the answer is known, with two
++arguments: non-nil if permission was granted, and a string describing the
++failure or nil.  The call happens later, from the command loop, not
++before this function returns.  */)
++  (Lisp_Object options, Lisp_Object handler)
++{
++  UNAuthorizationOptions mask = 0;
++  UNUserNotificationCenter *center = ns_notify_center ();
++  EMACS_INT token = NILP (handler) ? 0 : ns_notify_register (handler);
++
++  if (NILP (options))
++    mask = (UNAuthorizationOptionAlert | UNAuthorizationOptionSound
++	    | UNAuthorizationOptionBadge);
++  else
++    {
++      Lisp_Object tail = options;
++
++      FOR_EACH_TAIL (tail)
++	{
++	  Lisp_Object option = XCAR (tail);
++
++	  if (EQ (option, Qalert))
++	    mask |= UNAuthorizationOptionAlert;
++	  else if (EQ (option, Qsound))
++	    mask |= UNAuthorizationOptionSound;
++	  else if (EQ (option, Qbadge))
++	    mask |= UNAuthorizationOptionBadge;
++	  else if (EQ (option, Qprovisional))
++	    mask |= UNAuthorizationOptionProvisional;
++	  else
++	    error ("Invalid authorization option");
++	}
++    }
++
++  block_input ();
++  [center requestAuthorizationWithOptions: mask
++			completionHandler: ^(BOOL granted, NSError *problem)
++    {
++      if (token)
++	ns_notify_forward (token, ns_notify_result_authorization,
++			   @[[NSNumber numberWithBool: granted],
++			     problem ? (id) problem : (id) [NSNull null]]);
++    }];
++  unblock_input ();
++
++  return Qnil;
++}
++
++DEFUN ("ns-notification-get-settings", Fns_notification_get_settings,
++       Sns_notification_get_settings, 1, 1, 0,
++       doc: /* Report what the system currently permits.
++
++Call HANDLER, later and from the command loop, with one argument: a
++property list describing the current settings.  Its keys are
++`:authorization-status', `:alert-setting', `:sound-setting',
++`:badge-setting', `:notification-center-setting', `:lock-screen-setting',
++`:alert-style' and `:show-previews', plus `:time-sensitive-setting' and
++`:scheduled-delivery-setting' on macOS 12 and later.
++
++`:authorization-status' is one of `not-determined', `denied',
++`authorized' or `provisional'.  Each `...-setting' is `enabled',
++`disabled' or `not-supported'.  `:alert-style' is `none', `banner' or
++`alert', and `:show-previews' is `always', `when-authenticated' or
++`never'.  */)
++  (Lisp_Object handler)
++{
++  UNUserNotificationCenter *center = ns_notify_center ();
++  EMACS_INT token;
++
++  CHECK_TYPE (FUNCTIONP (handler), Qfunctionp, handler);
++  token = ns_notify_register (handler);
++
++  block_input ();
++  [center getNotificationSettingsWithCompletionHandler:
++	    ^(UNNotificationSettings *settings)
++    {
++      ns_notify_forward (token, ns_notify_result_settings, settings);
++    }];
++  unblock_input ();
++
++  return Qnil;
++}
++
++DEFUN ("ns-notification-set-categories", Fns_notification_set_categories,
++       Sns_notification_set_categories, 1, 1, 0,
++       doc: /* Register CATEGORIES, replacing any registered before.
++
++A category names a set of buttons that a notification can offer.  The
++framework has no way to attach buttons to one notification directly: a
++notification names a category, and the category supplies the buttons.
++
++CATEGORIES is a list of property lists, each accepting:
++
++  :id       String naming the category.  Required.
++  :actions  List of property lists describing the buttons, in order.
++  :intents  List of intent identifier strings.
++  :options  List of symbols from `custom-dismiss',
++            `hidden-previews-show-title' and
++            `hidden-previews-show-subtitle'.
++
++Include `custom-dismiss' if you want to be told when the user dismisses
++the notification; without it, dismissal is silent.
++
++Each action property list accepts:
++
++  :id             String naming the action.  Required.  This is what
++                  identifies the button in a response.
++  :title          String shown on the button.  Required.
++  :foreground     Bring Emacs to the front when chosen.
++  :destructive    Draw the button as a destructive choice.
++  :authenticate   Require the device be unlocked first.
++  :text-input     Let the user type a reply instead of just clicking.
++  :button-title   String on the send button of a `:text-input' action.
++  :placeholder    Placeholder string for its text field.
++
++This replaces the whole set, so callers should register everything they
++need at once.  `ns-notification-define-category' keeps a registry and
++does that for you.  */)
++  (Lisp_Object categories)
++{
++  UNUserNotificationCenter *center = ns_notify_center ();
++  NSMutableSet *set = [NSMutableSet set];
++  Lisp_Object tail = categories;
++
++  FOR_EACH_TAIL (tail)
++    {
++      Lisp_Object spec = XCAR (tail);
++      Lisp_Object actions = plist_get (spec, QCactions);
++      Lisp_Object intents = plist_get (spec, QCintents);
++      Lisp_Object options = plist_get (spec, QCoptions);
++      NSMutableArray *action_list = [NSMutableArray array];
++      NSMutableArray *intent_list = [NSMutableArray array];
++      UNNotificationCategoryOptions mask = 0;
++      Lisp_Object inner;
++
++      inner = actions;
++      FOR_EACH_TAIL (inner)
++	{
++	  Lisp_Object action = XCAR (inner);
++	  NSString *identifier
++	    = ns_notify_required_string (plist_get (action, QCid), ":id");
++	  NSString *title
++	    = ns_notify_required_string (plist_get (action, QCtitle),
++					 ":title");
++	  UNNotificationActionOptions action_mask = 0;
++
++	  if (!NILP (plist_get (action, QCforeground)))
++	    action_mask |= UNNotificationActionOptionForeground;
++	  if (!NILP (plist_get (action, QCdestructive)))
++	    action_mask |= UNNotificationActionOptionDestructive;
++	  if (!NILP (plist_get (action, QCauthenticate)))
++	    action_mask |= UNNotificationActionOptionAuthenticationRequired;
++
++	  if (NILP (plist_get (action, QCtext_input)))
++	    [action_list addObject:
++			   [UNNotificationAction
++			     actionWithIdentifier: identifier
++					    title: title
++					  options: action_mask]];
++	  else
++	    {
++	      Lisp_Object button = plist_get (action, QCbutton_title);
++	      Lisp_Object placeholder = plist_get (action, QCplaceholder);
++
++	      [action_list addObject:
++			     [UNTextInputNotificationAction
++			       actionWithIdentifier: identifier
++					      title: title
++					    options: action_mask
++			       textInputButtonTitle:
++				 (STRINGP (button)
++				  ? [NSString stringWithLispString: button]
++				  : @"Send")
++			       textInputPlaceholder:
++				 (STRINGP (placeholder)
++				  ? [NSString stringWithLispString:
++						placeholder]
++				  : @"")]];
++	    }
++	}
++
++      inner = intents;
++      FOR_EACH_TAIL (inner)
++	[intent_list addObject:
++		       ns_notify_required_string (XCAR (inner), ":intents")];
++
++      inner = options;
++      FOR_EACH_TAIL (inner)
++	{
++	  Lisp_Object option = XCAR (inner);
++
++	  if (EQ (option, Qcustom_dismiss))
++	    mask |= UNNotificationCategoryOptionCustomDismissAction;
++	  else if (EQ (option, Qhidden_previews_show_title))
++	    mask |= UNNotificationCategoryOptionHiddenPreviewsShowTitle;
++	  else if (EQ (option, Qhidden_previews_show_subtitle))
++	    mask |= UNNotificationCategoryOptionHiddenPreviewsShowSubtitle;
++	  else
++	    error ("Invalid category option");
++	}
++
++      [set addObject:
++	     [UNNotificationCategory
++	       categoryWithIdentifier:
++		 ns_notify_required_string (plist_get (spec, QCid), ":id")
++			      actions: action_list
++		    intentIdentifiers: intent_list
++			      options: mask]];
++    }
++
++  block_input ();
++  [center setNotificationCategories: set];
++  unblock_input ();
++
++  return Qnil;
++}
++
++DEFUN ("ns-notification-get-categories", Fns_notification_get_categories,
++       Sns_notification_get_categories, 1, 1, 0,
++       doc: /* Report the categories registered with the system.
++
++Call HANDLER, later and from the command loop, with one argument: a list
++of property lists in the form `ns-notification-set-categories' accepts.  */)
++  (Lisp_Object handler)
++{
++  UNUserNotificationCenter *center = ns_notify_center ();
++  EMACS_INT token;
++
++  CHECK_TYPE (FUNCTIONP (handler), Qfunctionp, handler);
++  token = ns_notify_register (handler);
++
++  block_input ();
++  [center getNotificationCategoriesWithCompletionHandler:
++	    ^(NSSet *categories)
++    {
++      ns_notify_forward (token, ns_notify_result_categories, categories);
++    }];
++  unblock_input ();
++
++  return Qnil;
++}
++
++DEFUN ("ns-notification-add", Fns_notification_add, Sns_notification_add,
++       1, 1, 0,
++       doc: /* Post the notification described by the property list PLIST.
++
++Return the identifier of the notification, a string.  Posting a
++notification whose identifier matches one already posted replaces it.
++
++This is the primitive underlying `ns-notification-notify', which is
++easier to use and which is what most callers should reach for.
++
++PLIST accepts:
++
++  :id            String identifying the notification.  One is generated
++                 if this is omitted.
++  :title         String shown as the heading.
++  :subtitle      String shown under the title.
++  :body          String of body text.
++  :category      Identifier of a category registered with
++                 `ns-notification-set-categories', supplying the buttons.
++  :group         String grouping related notifications together in
++                 Notification Center.
++  :sound         t or `default' for the system sound, a string naming a
++                 sound in ~/Library/Sounds or /System/Library/Sounds, or
++                 nil for silence.
++  :badge         Integer to show on the Dock icon.
++  :attachments   List of property lists, each with a `:file' and
++                 optionally `:id', `:type-hint', `:thumbnail-hidden' and
++                 `:thumbnail-time'.  Each file is copied into the
++                 system's own store, so a temporary file may be deleted
++                 once this returns.
++  :user-info     Any printable Lisp object, handed back unchanged to the
++                 handler of a response.  Unlike anything held in this
++                 Emacs session, it survives into a later one, because
++                 the system stores it alongside the notification.
++  :interruption-level
++                 One of `passive', `active', `time-sensitive' or
++                 `critical'.  Ignored before macOS 12.  Note that
++                 `critical' needs an entitlement Emacs does not have.
++  :relevance-score
++                 Float between 0.0 and 1.0 ordering notifications within
++                 a group.  Ignored before macOS 12.
++  :after         Deliver this many seconds from now rather than at once.
++  :at            Deliver at a matching date, given as a property list of
++                 `:year', `:month', `:day', `:hour', `:minute',
++                 `:second' and `:weekday'.
++  :repeat        Deliver repeatedly.  With `:after' the interval must be
++                 at least 60 seconds.
++  :handler       Function called, later and from the command loop, with
++                 one argument: a string describing why the notification
++                 could not be posted, or nil on success.
++
++A notification with no trigger is delivered immediately.  Note that
++macOS suppresses notifications from the frontmost application unless
++`ns-notification-foreground-presentation' says otherwise.  */)
++  (Lisp_Object plist)
++{
++  UNUserNotificationCenter *center = ns_notify_center ();
++  UNMutableNotificationContent *content;
++  UNNotificationRequest *request;
++  Lisp_Object value, id, handler;
++  EMACS_INT token;
++  NSString *identifier;
++
++  CHECK_LIST (plist);
++
++  id = plist_get (plist, QCid);
++  if (NILP (id))
++    {
++      /* Identifiers must be unique among live notifications but are
++	 otherwise arbitrary.  Include the process id so that two Emacs
++	 sessions cannot displace each other's notifications.  */
++      char buffer[INT_STRLEN_BOUND (intmax_t) * 2 + sizeof "emacs--"];
++
++      sprintf (buffer, "emacs-%"PRIdMAX"-%"PRIdMAX,
++	       (intmax_t) getpid (), (intmax_t) ++ns_notify_counter);
++      id = build_string (buffer);
++    }
++  else if (!STRINGP (id))
++    error ("Value of :id must be a string");
++
++  identifier = [NSString stringWithLispString: id];
++  handler = plist_get (plist, QChandler);
++  token = NILP (handler) ? 0 : ns_notify_register (handler);
++
++  content = [[[UNMutableNotificationContent alloc] init] autorelease];
++
++  value = plist_get (plist, QCtitle);
++  if (!NILP (value))
++    [content setTitle: ns_notify_required_string (value, ":title")];
++
++  value = plist_get (plist, QCsubtitle);
++  if (!NILP (value))
++    [content setSubtitle: ns_notify_required_string (value, ":subtitle")];
++
++  value = plist_get (plist, QCbody);
++  if (!NILP (value))
++    [content setBody: ns_notify_required_string (value, ":body")];
++
++  value = plist_get (plist, QCcategory);
++  if (!NILP (value))
++    [content setCategoryIdentifier:
++	       ns_notify_required_string (value, ":category")];
++
++  value = plist_get (plist, QCgroup);
++  if (!NILP (value))
++    [content setThreadIdentifier:
++	       ns_notify_required_string (value, ":group")];
++
++  value = plist_get (plist, QCbadge);
++  if (!NILP (value))
++    {
++      CHECK_FIXNAT (value);
++      [content setBadge: [NSNumber numberWithLongLong: XFIXNAT (value)]];
++    }
++
++  [content setSound: ns_notify_sound (plist_get (plist, QCsound))];
++
++  value = plist_get (plist, QCattachments);
++  if (!NILP (value))
++    ns_notify_add_attachments (content, value);
++
++  value = plist_get (plist, QCinterruption_level);
++  if (!NILP (value))
++    ns_notify_set_interruption_level (content, value);
++
++#if MAC_OS_X_VERSION_MAX_ALLOWED >= 120000
++  value = plist_get (plist, QCrelevance_score);
++  if (!NILP (value))
++    {
++      CHECK_NUMBER (value);
++#if MAC_OS_X_VERSION_MIN_REQUIRED < 120000
++      if ([content respondsToSelector: @selector (setRelevanceScore:)])
++#endif
++	[content setRelevanceScore: XFLOATINT (value)];
++    }
++#endif
++
++  /* `:user-info' has to round trip through a property list dictionary,
++     so store it printed and read it back on the way out.  */
++  value = plist_get (plist, QCuser_info);
++  if (!NILP (value))
++    [content setUserInfo:
++	       @{NS_NOTIFY_USER_INFO_KEY:
++		   [NSString stringWithLispString:
++			       Fprin1_to_string (value, Qnil, Qnil)]}];
++
++  request = [UNNotificationRequest
++	      requestWithIdentifier: identifier
++			    content: content
++			    trigger: ns_notify_trigger (plist_get (plist,
++								   QCafter),
++							plist_get (plist,
++								   QCat),
++							plist_get (plist,
++								   QCrepeat))];
++
++  block_input ();
++  [center addNotificationRequest: request
++	   withCompletionHandler: ^(NSError *problem)
++    {
++      if (token)
++	ns_notify_forward (token, ns_notify_result_error, problem);
++    }];
++  unblock_input ();
++
++  return id;
++}
++
++DEFUN ("ns-notification-remove", Fns_notification_remove,
++       Sns_notification_remove, 1, 2, 0,
++       doc: /* Withdraw the notifications named by IDS, a list of strings.
++
++Delivered notifications are removed from Notification Center.  If PENDING
++is non-nil, remove notifications that are scheduled but not yet delivered
++instead.  Identifiers that name nothing are ignored.  */)
++  (Lisp_Object ids, Lisp_Object pending)
++{
++  UNUserNotificationCenter *center = ns_notify_center ();
++  NSMutableArray *list = [NSMutableArray array];
++  Lisp_Object tail = ids;
++
++  if (STRINGP (ids))
++    tail = list1 (ids);
++
++  FOR_EACH_TAIL (tail)
++    [list addObject: ns_notify_required_string (XCAR (tail), "IDS")];
++
++  block_input ();
++  if (NILP (pending))
++    [center removeDeliveredNotificationsWithIdentifiers: list];
++  else
++    [center removePendingNotificationRequestsWithIdentifiers: list];
++  unblock_input ();
++
++  return Qnil;
++}
++
++DEFUN ("ns-notification-remove-all", Fns_notification_remove_all,
++       Sns_notification_remove_all, 0, 1, 0,
++       doc: /* Withdraw every notification Emacs has delivered.
++
++If PENDING is non-nil, cancel every notification Emacs has scheduled but
++which has not been delivered yet, instead.  */)
++  (Lisp_Object pending)
++{
++  UNUserNotificationCenter *center = ns_notify_center ();
++
++  block_input ();
++  if (NILP (pending))
++    [center removeAllDeliveredNotifications];
++  else
++    [center removeAllPendingNotificationRequests];
++  unblock_input ();
++
++  return Qnil;
++}
++
++DEFUN ("ns-notification-get-delivered", Fns_notification_get_delivered,
++       Sns_notification_get_delivered, 1, 1, 0,
++       doc: /* Report the notifications still showing in Notification Center.
++
++Call HANDLER, later and from the command loop, with one argument: a list
++of property lists, each with `:id', `:title', `:subtitle', `:body',
++`:category', `:group', `:user-info' and `:date'.  */)
++  (Lisp_Object handler)
++{
++  UNUserNotificationCenter *center = ns_notify_center ();
++  EMACS_INT token;
++
++  CHECK_TYPE (FUNCTIONP (handler), Qfunctionp, handler);
++  token = ns_notify_register (handler);
++
++  block_input ();
++  [center getDeliveredNotificationsWithCompletionHandler:
++	    ^(NSArray *notifications)
++    {
++      ns_notify_forward (token, ns_notify_result_notifications,
++			 notifications);
++    }];
++  unblock_input ();
++
++  return Qnil;
++}
++
++DEFUN ("ns-notification-get-pending", Fns_notification_get_pending,
++       Sns_notification_get_pending, 1, 1, 0,
++       doc: /* Report the notifications scheduled but not yet delivered.
++
++Call HANDLER, later and from the command loop, with one argument: a list
++of property lists, each with `:id', `:title', `:subtitle', `:body',
++`:category', `:group' and `:user-info'.  */)
++  (Lisp_Object handler)
++{
++  UNUserNotificationCenter *center = ns_notify_center ();
++  EMACS_INT token;
++
++  CHECK_TYPE (FUNCTIONP (handler), Qfunctionp, handler);
++  token = ns_notify_register (handler);
++
++  block_input ();
++  [center getPendingNotificationRequestsWithCompletionHandler:
++	    ^(NSArray *requests)
++    {
++      ns_notify_forward (token, ns_notify_result_requests, requests);
++    }];
++  unblock_input ();
++
++  return Qnil;
++}
++
++#else /* !NS_USE_USER_NOTIFICATIONS */
++
++void
++ns_init_notifications (void)
++{
++}
++
++#endif /* !NS_USE_USER_NOTIFICATIONS */
++
++void
++syms_of_nsnotify (void)
++{
++#if NS_USE_USER_NOTIFICATIONS
++  DEFSYM (QCaction, ":action");
++  DEFSYM (QCactions, ":actions");
++  DEFSYM (QCafter, ":after");
++  DEFSYM (QCalert_setting, ":alert-setting");
++  DEFSYM (QCalert_style, ":alert-style");
++  DEFSYM (QCat, ":at");
++  DEFSYM (QCattachments, ":attachments");
++  DEFSYM (QCauthenticate, ":authenticate");
++  DEFSYM (QCauthorization_status, ":authorization-status");
++  DEFSYM (QCbadge, ":badge");
++  DEFSYM (QCbadge_setting, ":badge-setting");
++  DEFSYM (QCbody, ":body");
++  DEFSYM (QCbutton_title, ":button-title");
++  DEFSYM (QCcategory, ":category");
++  DEFSYM (QCdate, ":date");
++  DEFSYM (QCday, ":day");
++  DEFSYM (QCdestructive, ":destructive");
++  DEFSYM (QCfile, ":file");
++  DEFSYM (QCforeground, ":foreground");
++  DEFSYM (QCgroup, ":group");
++  DEFSYM (QChandler, ":handler");
++  DEFSYM (QChour, ":hour");
++  DEFSYM (QCid, ":id");
++  DEFSYM (QCintents, ":intents");
++  DEFSYM (QCinterruption_level, ":interruption-level");
++  DEFSYM (QClock_screen_setting, ":lock-screen-setting");
++  DEFSYM (QCminute, ":minute");
++  DEFSYM (QCmonth, ":month");
++  DEFSYM (QCnotification_center_setting, ":notification-center-setting");
++  DEFSYM (QCoptions, ":options");
++  DEFSYM (QCplaceholder, ":placeholder");
++  DEFSYM (QCrelevance_score, ":relevance-score");
++  DEFSYM (QCrepeat, ":repeat");
++  DEFSYM (QCscheduled_delivery_setting, ":scheduled-delivery-setting");
++  DEFSYM (QCsecond, ":second");
++  DEFSYM (QCshow_previews, ":show-previews");
++  DEFSYM (QCsound, ":sound");
++  DEFSYM (QCsound_setting, ":sound-setting");
++  DEFSYM (QCsubtitle, ":subtitle");
++  DEFSYM (QCtext, ":text");
++  DEFSYM (QCtext_input, ":text-input");
++  DEFSYM (QCthumbnail_hidden, ":thumbnail-hidden");
++  DEFSYM (QCthumbnail_time, ":thumbnail-time");
++  DEFSYM (QCtime_sensitive_setting, ":time-sensitive-setting");
++  DEFSYM (QCtitle, ":title");
++  DEFSYM (QCtype_hint, ":type-hint");
++  DEFSYM (QCuser_info, ":user-info");
++  DEFSYM (QCweekday, ":weekday");
++  DEFSYM (QCyear, ":year");
++
++  DEFSYM (Qactive, "active");
++  DEFSYM (Qalert, "alert");
++  DEFSYM (Qalways, "always");
++  DEFSYM (Qauthorized, "authorized");
++  DEFSYM (Qbadge, "badge");
++  DEFSYM (Qbanner, "banner");
++  DEFSYM (Qcritical, "critical");
++  DEFSYM (Qcustom_dismiss, "custom-dismiss");
++  DEFSYM (Qdefault, "default");
++  DEFSYM (Qdenied, "denied");
++  DEFSYM (Qdisabled, "disabled");
++  DEFSYM (Qenabled, "enabled");
++  DEFSYM (Qhidden_previews_show_subtitle, "hidden-previews-show-subtitle");
++  DEFSYM (Qhidden_previews_show_title, "hidden-previews-show-title");
++  DEFSYM (Qlist, "list");
++  DEFSYM (Qnever, "never");
++  DEFSYM (Qnone, "none");
++  DEFSYM (Qnot_determined, "not-determined");
++  DEFSYM (Qnot_supported, "not-supported");
++  DEFSYM (Qpassive, "passive");
++  DEFSYM (Qprovisional, "provisional");
++  DEFSYM (Qtime_sensitive, "time-sensitive");
++  DEFSYM (Qwhen_authenticated, "when-authenticated");
++
++  /* Called with one argument, the property list describing a response.
++     Named here rather than looked up per notification because a response
++     may concern a notification posted by an earlier Emacs session.  */
++  DEFSYM (Qns_notification_handle_response, "ns-notification-handle-response");
++
++  DEFVAR_LISP ("ns-notification-foreground-presentation",
++	       Vns_notification_foreground_presentation,
++	       doc: /* How to present notifications while Emacs is frontmost.
++
++macOS withholds notifications from the application the user is already
++looking at unless that application asks for them anyway.  Since a
++notification Emacs posts is usually about something outside the frame the
++user is watching, Emacs does ask.
++
++The value is a list of symbols drawn from `banner' (show it on screen),
++`list' (keep it in Notification Center), `sound' (play its sound) and
++`badge' (update the Dock icon).  A nil value suppresses notifications
++while Emacs is frontmost, which is the system default behavior.
++
++Before macOS 11 there was no distinction between `banner' and `list';
++either one asks for the single alert of those versions.  */);
++  Vns_notification_foreground_presentation = list3 (Qbanner, Qlist, Qsound);
++
++  /* Callbacks for asynchronous queries in flight.  Not documented: this
++     is an implementation detail of the functions that take a handler.  */
++  ns_notify_pending = CALLN (Fmake_hash_table, QCtest, Qeql);
++  staticpro (&ns_notify_pending);
++
++  defsubr (&Sns_notification_available_p);
++  defsubr (&Sns_notification_request_authorization);
++  defsubr (&Sns_notification_get_settings);
++  defsubr (&Sns_notification_set_categories);
++  defsubr (&Sns_notification_get_categories);
++  defsubr (&Sns_notification_add);
++  defsubr (&Sns_notification_remove);
++  defsubr (&Sns_notification_remove_all);
++  defsubr (&Sns_notification_get_delivered);
++  defsubr (&Sns_notification_get_pending);
++#endif /* NS_USE_USER_NOTIFICATIONS */
++}
+diff --git c/src/nsterm.h i/src/nsterm.h
+index b21dd519e4b..40f9cad76b5 100644
+--- c/src/nsterm.h
++++ i/src/nsterm.h
+@@ -49,6 +49,17 @@ #define NS_USE_NSPasteboardTypeFileURL 1
+ #define NS_USE_NSPasteboardTypeFileURL 0
+ #endif
+ 
++/* UNUserNotificationCenter, the interface behind `ns-notification-notify',
++   arrived in macOS 10.14 and has no GNUstep counterpart.  It additionally
++   requires that Emacs run from an application bundle registered with
++   Launch Services; see `ns-notification-available-p' in nsnotify.m, which
++   is the run-time half of this test.  */
++#if defined NS_IMPL_COCOA && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
++#define NS_USE_USER_NOTIFICATIONS 1
++#else
++#define NS_USE_USER_NOTIFICATIONS 0
++#endif
++
+ /* ==========================================================================
+ 
+    Trace support
+@@ -1197,6 +1208,14 @@ #define NSAPP_DATA2_RUNFILEDIALOG 11
+ extern void syms_of_nsfns (void);
+ extern void syms_of_nsmenu (void);
+ extern void syms_of_nsselect (void);
++extern void syms_of_nsnotify (void);
++
++/* From nsnotify.m.  Attaches the notification centre delegate.  Called
++   once from -[EmacsApp applicationDidFinishLaunching:], early enough to
++   catch a response to a notification posted by an earlier Emacs session,
++   which macOS delivers shortly after launch.  A no-op where notifications
++   are unavailable.  */
++extern void ns_init_notifications (void);
+ 
+ /* From nsimage.m, needed in image.c.  */
+ struct image;
+diff --git c/src/nsterm.m i/src/nsterm.m
+index 288245dda87..1938b4feb7f 100644
+--- c/src/nsterm.m
++++ i/src/nsterm.m
+@@ -6525,6 +6525,12 @@ - (void)applicationDidFinishLaunching: (NSNotification *)notification
+   }
+ #endif
+ 
++  /* Attach the notification centre delegate now rather than when Emacs
++     first posts something: macOS delivers a response to a notification
++     left over from an earlier session shortly after launch, and would
++     drop it if no delegate were listening yet.  */
++  ns_init_notifications ();
++
+   ns_send_appdefined (-2);
+ }
+ 
+diff --git c/src/termhooks.h i/src/termhooks.h
+index 38c9df9cad2..bdf8d4a968b 100644
+--- c/src/termhooks.h
++++ i/src/termhooks.h
+@@ -350,10 +350,10 @@ #define EMACS_TERMHOOKS_H
+      the notification that was clicked.  */
+   , NOTIFICATION_CLICKED_EVENT
+ #endif /* HAVE_HAIKU */
+-#ifdef HAVE_ANDROID
++#if defined HAVE_ANDROID || defined HAVE_NS
+   /* In a NOTIFICATION_EVENT, .arg is a lambda to evaluate.  */
+   , NOTIFICATION_EVENT
+-#endif /* HAVE_ANDROID */
++#endif /* HAVE_ANDROID || HAVE_NS */
+ };
+ 
+ /* Bit width of an enum event_kind tag at the start of structs and unions.  */

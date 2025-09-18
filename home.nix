@@ -583,6 +583,15 @@ description(\"\")" ];
             "--bookmark"
           ];
 
+          ghstack = [
+            "util"
+            "exec"
+            "--"
+            "${pkgs.nushell}/bin/nu"
+            "--no-config-file"
+            ./jj-commands/ghstack.nu
+          ];
+
           log-status = [
             "util"
             "exec"

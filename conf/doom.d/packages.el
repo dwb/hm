@@ -146,9 +146,9 @@
 
 ;; from elpa
 (package! vc-jj)
-(package! jj-mode
-  :pin "20b7b516f9a1bcb96fc1fedbc0a43138f9fe8765"
-  :recipe (:host github :repo "bolivier/jj-mode.el"))
+;; (package! jj-mode
+;;   :pin "20b7b516f9a1bcb96fc1fedbc0a43138f9fe8765"
+;;   :recipe (:host github :repo "bolivier/jj-mode.el"))
 
 (package! majutsu
   ;; checked safe
@@ -181,4 +181,7 @@
 (package! buffer-terminator)
 
 ;; melpa
-(package! agent-shell)
+;; (package! agent-shell)
+
+;; melpa
+(package! jira)

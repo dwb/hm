@@ -53,17 +53,17 @@
         let
           pkgs = import nixpkgsUnstable { inherit system; };
           overlay = final: prev: {
-            version = "0.114.1";
+            version = "0.115.1";
 
             src = pkgs.fetchFromGitHub {
               owner = "nushell";
               repo = "nushell";
               tag = final.version;
-              hash = "sha256-EpcbOnEcu8llVNC9zGEo62dHIHUJnyRRxP4sV8kSUwY=";
+              hash = "sha256-qndvtW1yD4n++LpGp+ucQVNqIm8jgcrM3M4O5q5WDgk=";
             };
 
             cargoPatches = [ ./nushell-crossterm-fix.patch ];
-            cargoHash = "sha256-Fnt+/MwaoqKXp1rblvFWKWJBv1XQFmk3DysVNmDAnh4=";
+            cargoHash = "sha256-y4nH2uzxJJpjk2HWLL1PIanoSnOlR/BbUL5lX1jVpII=";
 
             doCheck = false;
           };

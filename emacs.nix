@@ -69,14 +69,15 @@ in
       in with emacsPkgs;
       (emacsPackagesFor (
         if guiEnabled then
-          (emacs30-pgtk.override {
+          (emacs31-pgtk.override {
             withNativeCompilation = true;
           }).overrideAttrs
             (old: {
               patches = old.patches ++ [
                 ./emacs-window-name.patch
-                ./emacs-flicker-fix.patch
-                ./emacs-dock-icon.patch
+                ./emacs-macos-notifications.patch
+                # ./emacs-flicker-fix.patch
+                # ./emacs-dock-icon.patch
               ];
             })
         else

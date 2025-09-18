@@ -1328,7 +1328,17 @@ end of the workspace list."
   (use-package! evil-textobj-tree-sitter :ensure t)
 
   ;; enable evil in minibuffer
-  (setf evil-want-minibuffer t)
+  (setopt evil-want-minibuffer t)
+
+  ;; `evil-local-mode' sets these two buffer-locally for minibuffers, but
+  ;; `minibuffer-mode' runs `kill-all-local-variables' on every minibuffer entry.
+  ;; Up to Emacs 30 `define-globalized-minor-mode' disabled and re-enabled the local
+  ;; mode on a major mode change, which restored them; Emacs 31 calls the turn-on
+  ;; function directly, so they stay killed and the minibuffer comes up in normal
+  ;; state.  Remove once https://github.com/emacs-evil/evil/issues/2034 is fixed.
+  (put 'evil-default-state 'permanent-local t)
+  (put 'evil-echo-state 'permanent-local t)
+
   (setf evil-undo-system 'undo-redo)
 
   (defmacro my/define-and-bind-text-object (key sym desc start-regex end-regex)
@@ -1967,7 +1977,9 @@ If ARG (universal argument), open selection in other-window."
             (when (and title (not (string= "" title)))
               (format " %s" title))))
 
-  (setopt ghostel-buffer-name-function #'my/ghostel-buffer-name-from-identity)
+  ;; (setopt ghostel-buffer-name-function #'my/ghostel-buffer-name-from-identity)
+  (setopt ghostel-buffer-name-function nil)
+  (setopt ghostel-project-buffer-scope 'identity)
 
 
   (cl-defun my/ghostel-make-buffer-identity (&key custom-name project)
@@ -2022,7 +2034,7 @@ If ARG (universal argument), open selection in other-window."
                                            (frame-project-dedicate--get-frame-project (selected-frame)))
                                       (project-current))))
                     (car (match-buffers (apply-partially #'my/ghostel-project-p project))))
-                  (my/project-ghostel)))))
+                  (ghostel-project)))))
 
       (unless (eq buf (current-buffer))
         (pop-to-buffer buf))))
@@ -2105,29 +2117,30 @@ If ARG (universal argument), open selection in other-window."
     (my/window-resize-standard-width)
     (my/window-preserve-size-any-buffer nil t t))
 
-  (defun my/ghostel-desktop-save (_desktop-dirname)
-    "Return the state needed to restore this ghostel buffer."
-    `((default-directory . ,default-directory)
-      (identity . ,ghostel--buffer-identity)
-      ,@(when (and my/ghostel-project (fboundp 'project-root))
-          `((project-root . ,(project-root my/ghostel-project))))))
+  (unless (fboundp 'ghostel-desktop-save-buffer)
+    (defun my/ghostel-desktop-save (_desktop-dirname)
+      "Return the state needed to restore this ghostel buffer."
+      `((default-directory . ,default-directory)
+        (identity . ,ghostel--buffer-identity)
+        ,@(when (and my/ghostel-project (fboundp 'project-root))
+            `((project-root . ,(project-root my/ghostel-project))))))
 
-  (defun my/ghostel-set-desktop-save ()
-    (setq desktop-save-buffer #'my/ghostel-desktop-save))
+    (defun my/ghostel-set-desktop-save ()
+      (setq desktop-save-buffer #'my/ghostel-desktop-save))
 
-  (add-hook 'ghostel-mode-hook #'my/ghostel-set-desktop-save)
+    (add-hook 'ghostel-mode-hook #'my/ghostel-set-desktop-save)
 
-  (defun my/ghostel-desktop-restore (_file-name buffer-name misc)
-    "Restore a ghostel buffer from a desktop session.
+    (defun my/ghostel-desktop-restore (_file-name buffer-name misc)
+      "Restore a ghostel buffer from a desktop session.
      MISC is an alist saved by `my/ghostel-desktop-save'."
-    (let* ((default-directory (or (alist-get 'default-directory misc)
-                                  default-directory))
-           (project-root (alist-get 'project-root misc))
-           (project (when project-root
-                      (let ((default-directory project-root))
-                        (project-current nil))))
-           (identity (alist-get 'identity misc)))
-      (my/ghostel :identity identity :project project)))
+      (let* ((default-directory (or (alist-get 'default-directory misc)
+                                    default-directory))
+             (project-root (alist-get 'project-root misc))
+             (project (when project-root
+                        (let ((default-directory project-root))
+                          (project-current nil))))
+             (identity (alist-get 'identity misc)))
+        (my/ghostel :identity identity :project project))))
 
   (defun my/ghostel-send-esc ()
     (interactive)
@@ -2143,7 +2156,7 @@ If ARG (universal argument), open selection in other-window."
 
    (:leader
     :desc "Open project ghostel"
-    "o t" #'my/project-ghostel)
+    "o t" #'ghostel-project)
    
    :map ghostel-mode-map
 
@@ -2179,8 +2192,9 @@ If ARG (universal argument), open selection in other-window."
 
 ;;;###autoload
   (with-eval-after-load 'desktop
-    (add-to-list 'desktop-buffer-mode-handlers
-                 '(ghostel-mode . my/ghostel-desktop-restore))))
+    (when (fboundp 'my/ghostel-desktop-restore)
+      (add-to-list 'desktop-buffer-mode-handlers
+                   '(ghostel-mode . my/ghostel-desktop-restore)))))
 
 (use-package ghostel-eshell
   :hook (eshell-load . ghostel-eshell-visual-command-mode))
@@ -3277,7 +3291,7 @@ Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
   (setopt window-sides-slots '(3 2 3 2))
   (setopt window-min-width 101)
 
-  (setq
+  (setopt
    display-buffer-alist
 
    `(((or
