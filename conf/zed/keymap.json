@@ -7,9 +7,24 @@
 // from the command palette.
 [
   {
-    "context": "Editor && vim_mode == normal",
+    "context": "Workspace",
     "bindings": {
-      "space ,": "tab_switcher::Toggle"
+      "ctrl-escape": ["workspace::ActivatePane", 0],
+      "ctrl-w h": "workspace::ActivatePaneLeft",
+      "ctrl-w l": "workspace::ActivatePaneRight",
+      "ctrl-w k": "workspace::ActivatePaneUp",
+      "ctrl-w j": "workspace::ActivatePaneDown",
+      "alt-x": "command_palette::Toggle"
+    }
+  },
+  {
+    "context": "(not_editing || (Editor && vim_mode == normal)) && !menu",
+    "bindings": {
+      "space g j": ["task::Spawn", { "task_name": "jj", "reveal_target": "center" }],
+      "space .": "pane::RevealInProjectPanel",
+      "space space": "file_finder::Toggle",
+      "space ,": "tab_switcher::Toggle",
+      "space :": "command_palette::Toggle"
     }
   },
   {
@@ -21,11 +36,8 @@
   {
     "context": "Terminal",
     "bindings": {
-      "ctrl-w ctrl-w": ["terminal::SendKeystroke", "ctrl-w"],
-      "ctrl-w h": "workspace::ActivatePaneLeft",
-      "ctrl-w l": "workspace::ActivatePaneRight",
-      "ctrl-w k": "workspace::ActivatePaneUp",
-      "ctrl-w j": "workspace::ActivatePaneDown"
+      "cmd-t": "workspace::NewTerminal",
+      "ctrl-w ctrl-w": ["terminal::SendKeystroke", "ctrl-w"]
     }
   }
 ]
