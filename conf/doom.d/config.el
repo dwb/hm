@@ -379,6 +379,10 @@
     :side 'right :width 101 :vslot 0 :slot 1 :height 0.5
     :select t :quit nil :ttl nil :autosave 'ignore))
 
+(after! llm
+  ;; shut uppppppppp
+  (setopt llm-warn-on-nonfree nil))
+
 (use-package ellama
   :commands (ellama-transient-main-menu)
   ;; send last message in chat buffer with C-c C-c
