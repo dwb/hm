@@ -328,7 +328,7 @@ in
               shift
             elif [ -n "''${gitforceinjj:-}" ]; then
               :
-            elif [ -n "''${CLAUDECODE:-}" ]; then
+            elif [ -n "''${CLAUDECODE:-}" ] || [ -n "''${CODEX_SESSION_ID:-}" ]; then
               printf 'git: refused to run inside a Jujutsu (jj) repo (.jj/ found at %s).\n' "$jj_root" >&2
               printf 'git: if you are an agent, remember that you should be using Jujutsu and read the jj skill\n' >&2
               exit 1

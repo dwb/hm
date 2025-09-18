@@ -4,7 +4,7 @@ description: Structured code review of a jj change with numbered findings for di
 argument-hint: "[change-id] [extra-intructions]"
 disable-model-invocation: true
 effort: max
-allowed-tools: AskUserQuestion, EnterPlanMode
+context: fork
 ---
 
 # Code Review
