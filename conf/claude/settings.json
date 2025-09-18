@@ -23,6 +23,12 @@
       "Bash(jj show:*)",
       "Bash(jj st:*)",
       "Bash(jj status:*)",
+      "Bash(jj op show:*)",
+      "Bash(jj operation show:*)",
+      "Bash(jj op diff:*)",
+      "Bash(jj operation diff:*)",
+      "Bash(jj op log:*)",
+      "Bash(jj operation log:*)",
       "Bash(grep:*)"
     ],
     "deny": [
