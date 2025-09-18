@@ -112,22 +112,24 @@ This is used for special buffers like *Help*, *Messages*, etc.")
 
 (defun frame-project-dedicate--buffer-allowed-p (project buffer)
   "Return t if BUFFER should be allowed in a frame dedicated to PROJECT."
-  (when frame-project-dedicate--called-recursively
-    (setq my/fpdbt (backtrace-get-frames 'backtrace-get-frames))
-    (error "OH NO"))
+  (if frame-project-dedicate--called-recursively
+      (prog1 (buffer-live-p buffer)
+        ;; (setq my/fpdbt (backtrace-get-frames 'backtrace-get-frames))
+        ;; (message "frame-project-dedicate--buffer-allowed-p: called recursively")
+        )
 
-  (let ((frame-project-dedicate--called-recursively t))
-    (when (buffer-live-p buffer)
-      (frame-project-dedicate--with-project-buffers-cache
-       (or
-        ;; Buffer has honorary project that matches
-        ;; TODO - prob use buffer-local-value
-        ;; (and frame-project-dedicate--honorary-project
-        ;;      (string= frame-project-dedicate--honorary-project project-root))
-        ;; Buffer belongs to the project (using project.el functionality)
-        (seq-contains-p (frame-project-dedicate--get-project-buffers project) buffer)
-        ;; Special buffers without files that should always be allowed
-        (frame-project-dedicate--special-buffer-p buffer))))))
+    (let ((frame-project-dedicate--called-recursively t))
+      (when (buffer-live-p buffer)
+        (frame-project-dedicate--with-project-buffers-cache
+         (or
+          ;; Buffer has honorary project that matches
+          ;; TODO - prob use buffer-local-value
+          ;; (and frame-project-dedicate--honorary-project
+          ;;      (string= frame-project-dedicate--honorary-project project-root))
+          ;; Buffer belongs to the project (using project.el functionality)
+          (seq-contains-p (frame-project-dedicate--get-project-buffers project) buffer)
+          ;; Special buffers without files that should always be allowed
+          (frame-project-dedicate--special-buffer-p buffer)))))))
 
 (defun frame-project-dedicate--special-buffer-p (buffer)
   "Return t if BUFFER is a special buffer that should be allowed in any frame."
@@ -168,7 +170,7 @@ This is used for special buffers like *Help*, *Messages*, etc.")
         (prog1 existing-frame
           (select-frame existing-frame)
           (raise-frame existing-frame)
-          (message "Switched to existing frame for project: %s" 
+          (message "Switched to existing frame for project: %s"
                    (project-root project)))
       ;; Create new dedicated frame
       (let ((frame (make-frame)))
@@ -234,8 +236,8 @@ This allows special buffers to appear in project-dedicated frames."
          (project-root (project-root project)))
     (project-remember-project project)
     (setq frame-project-dedicate--honorary-project project-root)
-    (message "Buffer '%s' now has honorary project: %s" 
-             (buffer-name) 
+    (message "Buffer '%s' now has honorary project: %s"
+             (buffer-name)
              (file-name-nondirectory (directory-file-name project-root)))))
 
 (defun frame-project-dedicate--server-switch-buffer-advice (&optional next-buffer &rest _)
