@@ -174,6 +174,34 @@ def relative-path-from [target: string, base: string]: nothing -> string {
 }
 
 def completer [context: string] {
+  let word = ($context | str trim | split row " " | last)
+  let parts = ($word | path split)
+
+  # If the word has multiple path components, complete subdirectories under
+  # the resolved first component.
+  if ($parts | length) > 1 {
+    let name = ($parts | first)
+    let subpath_parts = ($parts | skip 1)
+    let base = (try { resolve $name } catch { return { completions: [], options: { sort: false } } })
+    let dir = ($subpath_parts | reduce --fold $base { |p, acc| $acc | path join $p })
+    # If the partial path is an existing directory, list its children;
+    # otherwise treat the last component as a prefix and glob its parent.
+    let is_dir = (($dir | path exists) and ($dir | path type) == "dir")
+    let search_dir = if $is_dir { $dir } else { $dir | path dirname }
+    let prefix = if $is_dir { "" } else { $dir | path basename }
+    let completions = if ($search_dir | path exists) {
+      ls $search_dir | where type == dir | get name
+      | where { |child| $prefix == "" or ($child | path basename | str starts-with $prefix) }
+      | each { |child|
+        let rel = ($child | path relative-to $base)
+        { value: ([$name $rel] | path join), description: ($child | str replace $env.HOME "~") }
+      }
+    } else {
+      []
+    }
+    return { completions: $completions, options: { sort: false } }
+  }
+
   let state = (load-state)
   let dirs = ($state | get -o dirs | default {})
   let parents = ($state | get -o parent-dirs | default [])
@@ -319,6 +347,13 @@ export def --env main [
       cd ($ancestors | sort-by { $in | str length } | last)
     }
   } else {
-    cd (resolve $target)
+    let parts = ($target | path split)
+    let base = (resolve ($parts | first))
+    let subpath = ($parts | skip 1)
+    if ($subpath | is-empty) {
+      cd $base
+    } else {
+      cd ($subpath | reduce --fold $base { |p, acc| $acc | path join $p })
+    }
   }
 }
