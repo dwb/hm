@@ -318,9 +318,11 @@ in
           if [ -n "$jj_root" ]; then
             if [ "''${1:-}" = --unsafe-force-in-jj-repo ]; then
               shift
+            elif [ -n "''${gitforceinjj:-}" ]; then
+              :
             else
-              printf 'git: refused to run inside a jj repo (.jj/ found at %s).\n' "$jj_root" >&2
-              printf 'git: pass --unsafe-force-in-jj-repo as the first argument to override.\n' >&2
+              printf 'git: refused to run inside a Jujutsu (jj) repo (.jj/ found at %s).\n' "$jj_root" >&2
+              printf 'git: if you are an agent, remember that you should be using Jujutsu and read the jj skill\n' >&2
               exit 1
             fi
           fi
