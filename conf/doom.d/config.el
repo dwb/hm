@@ -53,7 +53,8 @@
                   org-verbatim))
     (set-face-attribute face nil :inherit 'fixed-pitch))
 
-  (add-hook 'org-mode-hook #'variable-pitch-mode)
+  ;; This was causing variable-pitch flickering just like the line number flickering :(
+  ;; (add-hook 'org-mode-hook #'variable-pitch-mode)
 
   (when (fboundp 'ns-dock-badge-set)
     (defun my/org-open-todos-count ()
@@ -804,7 +805,7 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
         (let* ((line-parts (string-split line "\0"))
                (changeid (cl-first line-parts))
                (desc (cl-second line-parts)))
-          (push changeid revision-ids)
+          (push (list changeid desc) revision-ids)
           (puthash changeid desc revision-descriptions)))
       
       (let* ((annotate #'(lambda (id)
