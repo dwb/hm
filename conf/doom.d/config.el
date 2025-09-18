@@ -2125,6 +2125,10 @@ revisions (i.e., use a \"...\" range)."
    "s-;" #'frame-project-dedicate-switch
 
    :leader
+
+   :desc "Pop to buffer"
+   "k" #'pop-to-buffer
+
    :desc "Switch project frame"
    ";" #'frame-project-dedicate-switch))
 

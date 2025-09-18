@@ -113,12 +113,15 @@ This is used for special buffers like *Help*, *Messages*, etc.")
 
 (defun frame-project-dedicate--select-project-frame ()
   "Interactively select a project frame and return the frame."
-  (let* ((frame-alist (frame-project-dedicate--get-project-frame-alist))
-         (project-names (mapcar #'car frame-alist)))
+  (let* ((frame-alist (seq-sort-by
+                       (lambda (e) (if (eq (cdr e) (selected-frame)) 1 0))
+                       #'<
+                       (frame-project-dedicate--get-project-frame-alist)))
+         (project-names (seq-map #'car frame-alist)))
     (if (null project-names)
         (user-error "No project-dedicated frames exist")
-      (let* ((selected-name (completing-read "Switch to project frame: " project-names nil t))
-             (selected-frame (cdr (assoc selected-name frame-alist))))
+      (let* ((selected-name (completing-read "Switch to project frame: " frame-alist nil t))
+             (selected-frame (cdr (assoc selected-name frame-alist #'string=))))
         selected-frame))))
 
 (defun frame-project-dedicate--select-project-and-switch-or-create (&optional project initial-buffer)
@@ -147,15 +150,11 @@ This is used for special buffers like *Help*, *Messages*, etc.")
     (project-current nil (buffer-local-value 'default-directory buffer))))
 
 (defun frame-project-dedicate-ensure-installed-in-frame (frame)
-  (message "frame-project-dedicate-ensure-installed-in-frame %S with frame params %S" frame (frame-parameters frame))
   (when-let* ((project (frame-project-dedicate--get-frame-project frame)))
-    (message "setting project %S" project)
     (frame-project-dedicate--set-frame-name frame)
     (set-frame-parameter frame
                          'buffer-predicate
-                         (apply-partially
-                          #'frame-project-dedicate--buffer-allowed-p
-                          project))))
+                         (lambda (b) (frame-project-dedicate--buffer-allowed-p project b)))))
 
 (defun frame-project-dedicate-ensure-installed-in-frames (&optional frames)
   (seq-each #'frame-project-dedicate-ensure-installed-in-frame
@@ -270,8 +269,10 @@ indirectly called by the latter."
               (project-root (project-root project))
               (predicate
                (lambda (frame)
-                 (and (not (eq frame (selected-frame)))
-                      (get-lru-window frame))))
+                 ;; (and (not (eq frame (selected-frame)))
+                 ;;      (get-lru-window frame))))
+                 (string= project-root
+                          (frame-project-dedicate--get-frame-project-root frame))))
               (frame (or (seq-find predicate (frame-list))
                          (frame-project-dedicate--select-project-and-switch-or-create project)))
               (window (get-lru-window
