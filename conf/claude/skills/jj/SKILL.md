@@ -1,13 +1,11 @@
 ---
 name: jj
-description: Read-only navigation and research of Jujutsu VCS repository history. Use when exploring commits, bookmarks, diffs, and history. No mutating operations.
+description: Read-only navigation and research of Jujutsu VCS repository history. Use when exploring commits, bookmarks, diffs, and history. No mutating operations unless expressly requested.
 ---
 
-# Jujutsu (jj) VCS - Read-Only Navigation Skill
+# Jujutsu (jj) VCS Navigation Skill
 
-Use this skill when asked to explore, navigate, or research repository history using jj. This skill is for read-only operations only.
-
-**CRITICAL: This skill permits ONLY read-only commands. NO MUTATING COMMANDS are allowed.**
+Use this skill when asked to explore, navigate, or research repository history using jj. Default to read-only operations. Mutating commands may be used when the user expressly requests them.
 
 ## Context
 
@@ -321,9 +319,10 @@ jj diff --from 'other-workspace@' --to @ --git  # Compare workspaces
 See [split-tool.md](split-tool.md) for the manifest-driven `jj-split-tool.sh`
 that enables hunk-level splits without a TUI, via `jj split --tool`.
 
-## FORBIDDEN (Mutating Commands)
+## Mutating Commands (User Request Required)
 
-DO NOT USE any of these commands - they modify repository state:
+The following commands modify repository state. Do not use them on your own initiative — only when the user expressly requests it. They will require user approval before execution.
+
 - `jj new`, `jj commit`, `jj describe`
 - `jj edit`, `jj squash`, `jj split`
 - `jj rebase`, `jj abandon`

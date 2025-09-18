@@ -26,7 +26,7 @@ The development shell is provided via direnv (`use flake`).
 - `registry-pins.nix` / `channel-pins.nix` - Nix registry and channel pinning
 
 **Configuration Directories:**
-- `conf/` - Dotfiles for various tools (doom.d, nushell, wezterm, etc.)
+- `conf/` - Dotfiles for various tools (Emacs / doomemacs, nushell, wezterm, etc.)
 - `jj-commands/` - Custom Jujutsu VCS commands (Python/Nushell)
 - `pkgs/` - Custom Nix package definitions
 - `prebuilt/` - Pre-built binaries (Iosevka fonts)
@@ -47,3 +47,9 @@ The development shell is provided via direnv (`use flake`).
 Configuration changes should be made to the Nix expressions.
 
 Custom commands in `jj-commands/` support megamerge workflows (multiple parent commits). The `link.nu` script handles symlinking these and other config files.
+
+## Emacs
+
+My `config.el` lives in `conf/doom.d/config.el`, which as you can see is Doom Emacs based. This file, unlike regular home-manager-built configs, is symlinked into `~/.doom.d` for fast development. The other normal Doom `init.el` and `packages.el` are in the same directory, along with a bunch of my own little packages and things in `lib` and so on.
+
+And so many packages are installed into `~/.emacs.d/.local/straight/repos`, which you can look into if you need to. Use `emacsclient` to find the value of `lisp-directory` if you need to see the built-in Emacs package source. If you need the Emacs C source, find the right derivation in the Nix config here and use Nix to pull the source into the Nix store, if not already present.
