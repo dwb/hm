@@ -115,6 +115,7 @@ in
       # nodejs_22 # mainly for emacs copilot but generally useful too ig
       plantuml
       python3
+      (python3Packages.callPackage ./pkgs/rassumfrassum.nix { })
       ripgrep
       rsync
       (ruby_3_4.withPackages (
@@ -427,6 +428,13 @@ in
           ];
           rp = [ "rm-parent" ];
 
+          claude = [ "util" "exec" "--" "bash" "-c" ''
+            set -e
+            if [[ -z "$1" ]]; then echo "$0: call with a change ID"; exit 1; fi
+            change="$1"; shift
+            exec claude "/jj $change" "$@"
+          '' "jj claude"];
+
           di = [ "diff" ];
           # diff from trunk
           dt = [
@@ -527,9 +535,16 @@ in
           ];
           # rebase on trunk
           retrunk = [
-            "rebase"
-            "-r" "roots(trunk()..@)"
-            "-o" "trunk()"
+            "util"
+            "exec"
+            "--"
+            "${pkgs.bash}/bin/bash"
+            "-c"
+            ''
+              from="''${1:-@}"
+              exec jj rebase -b "roots(trunk()..''${from}) & mine() & mutable()" -A 'trunk()'
+            ''
+            "jj retrunk"
           ];
           # split before private (commits)
           sbp = [
