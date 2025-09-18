@@ -26,6 +26,8 @@ export MOST_SWITCHES="-w"
 if (( $+commands[nu] )) && \
    [[ -o login ]] && \
    [[ -o interactive ]] && \
+   [[ ! -o shinstdin ]] && \
+   [[ -z $ZSH_EXECUTION_STRING ]] && \
    [[ -z $VSCODE_RESOLVING_ENVIRONMENT ]] && \
    [[ -z $INTELLIJ_ENVIRONMENT_READER ]] && \
    [[ ! -f ~/.inhibit-nushell-autoexec ]]; then
