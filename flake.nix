@@ -86,21 +86,33 @@
       });
 
       # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
-      packages = forAllSystems (system: {
-        homeConfigurations = lib.genAttrs usernames
-          (username: home-manager.lib.homeManagerConfiguration {
-            pkgs = importPkgs nixpkgs system;
-            modules = [
-              ({ pkgs, ... }@args: {
-                _module.args = {
-                  inherit username;
-                } // inputs // (deps args);
-              })
+      packages = forAllSystems (system:
+        let
+          pkgs = importPkgs nixpkgs system;
+        in {
+          homeConfigurations = lib.genAttrs usernames
+            (username: home-manager.lib.homeManagerConfiguration {
+              inherit pkgs;
+              modules = [
+                ({ pkgs, ... }@args: {
+                  _module.args = {
+                    inherit username;
+                  } // inputs // (deps args);
+                })
 
-              home
-            ];
+                home
+              ];
+            });
+
+          iosevkaDWB = (pkgs.iosevka.override {
+            privateBuildPlan = builtins.readFile ./iosevka-private-build-plans.toml;
+            set = "DWB";
           });
-      });
+          iosevkaDWBTerm = (pkgs.iosevka.override {
+            privateBuildPlan = builtins.readFile ./iosevka-term-private-build-plans.toml;
+            set = "DWBTerm";
+          });
+        });
 
       nixosModules = {
         inherit registryPins nixpkgsConfig;
