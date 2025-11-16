@@ -112,6 +112,7 @@ in
   ]) ++ lib.optionals stdenv.hostPlatform.isDarwin ((with pkgs; [
     reattach-to-user-namespace
   ]) ++ (with pkgsUnstable; [
+    container # https://github.com/apple/container
     ghostty-bin
   ]));
 
