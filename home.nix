@@ -96,7 +96,7 @@ in
     wget
     zstd
   ]) ++ (with pkgsUnstable; [
-    aider-chat
+    # aider-chat # dependency kvazaar fails tests rn and i dont use it
     delve
     go
     gopls
