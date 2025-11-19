@@ -1,5 +1,4 @@
-{ nixpkgs, nixpkgsUnstable }:
-{ ... }:
+{ nixpkgs, nixpkgsUnstable, ... }:
 
 {
   nix.channels = {

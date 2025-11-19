@@ -47,8 +47,8 @@
       });
 
       home = import ./home.nix;
-      registryPins = import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; };
-      channelPins = import ./channel-pins.nix { inherit nixpkgs nixpkgsUnstable; };
+      registryPins = import ./registry-pins.nix;
+      channelPins = import ./channel-pins.nix;
 
       homeModule = { pkgs, username, ... }@args: {
         home-manager.users.${username} = {

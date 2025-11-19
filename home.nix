@@ -49,10 +49,10 @@ in
         inherit guiEnabled;
       };
     })
+    ./channel-pins.nix
+    ./registry-pins.nix
     ./emacs.nix
     ./nushell-vterm
-    (import ./channel-pins.nix { inherit nixpkgs nixpkgsUnstable; })
-    (import ./registry-pins.nix { inherit nixpkgs nixpkgsUnstable; })
     ./linkapps.nix
   ];
 
