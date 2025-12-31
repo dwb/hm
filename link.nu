@@ -11,7 +11,11 @@ def main [] {
     for fn in (glob --no-dir ($sectionPath)/**) {
       let dest = $env.HOME | path join $section.dest ($fn | path relative-to $sectionPath)
       ($dest | path dirname) | mkdir -v $in
-      ln -fsv $fn $dest
+      if ($dest | path type) == 'file' {
+        print -e $"($dest): is a regular file, not overwriting"
+      } else {
+        ln -fsv $fn $dest
+      }
     }
   }
 }
