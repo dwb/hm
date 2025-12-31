@@ -24,13 +24,23 @@
     };
   };
 
-  outputs = inputs@{ nixpkgs, nixpkgsUnstable, home-manager, ... }:
+  outputs =
+    inputs@{
+      nixpkgs,
+      nixpkgsUnstable,
+      home-manager,
+      ...
+    }:
     let
       inherit (nixpkgs) lib;
 
-      usernames = [ "dan" "dwb" ];
+      usernames = [
+        "dan"
+        "dwb"
+      ];
 
-      importPkgs = input: system:
+      importPkgs =
+        input: system:
         import input {
           inherit system;
           config = {
@@ -42,40 +52,53 @@
         };
       forAllSystems = lib.genAttrs lib.platforms.all;
 
-      deps = ({ pkgs, ... }: inputs // {
-        pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
-      });
+      deps = (
+        { pkgs, ... }:
+        inputs
+        // {
+          pkgsUnstable = importPkgs nixpkgsUnstable pkgs.system;
+        }
+      );
 
       home = import ./home.nix;
       registryPins = import ./registry-pins.nix;
       channelPins = import ./channel-pins.nix;
 
-      homeModule = { pkgs, username, ... }@args: {
-        home-manager.users.${username} = {
-          imports = [ home ];
-          _module.args = {
-            inherit username;
-          } // inputs // (deps args);
+      homeModule =
+        { pkgs, username, ... }@args:
+        {
+          home-manager.users.${username} = {
+            imports = [ home ];
+            _module.args = {
+              inherit username;
+            }
+            // inputs
+            // (deps args);
+          };
         };
-      };
 
       # TODO: use these
       nixpkgsConfig = {
-        global = { ... }: {
-          config.nixpkgs.config = {
-            allowUnfree = true;
-          };
-        };
-        noGUI = { ... }: {
-          config.nixpkgs.config = {
-            packageOverrides = pkgs: {
-              jre = pkgs.jre_headless;
+        global =
+          { ... }:
+          {
+            config.nixpkgs.config = {
+              allowUnfree = true;
             };
           };
-        };
+        noGUI =
+          { ... }:
+          {
+            config.nixpkgs.config = {
+              packageOverrides = pkgs: {
+                jre = pkgs.jre_headless;
+              };
+            };
+          };
       };
 
-    in {
+    in
+    {
 
       apps = forAllSystems (system: {
         default = {
@@ -85,33 +108,47 @@
       });
 
       # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = importPkgs nixpkgs system;
-        in {
-          homeConfigurations = lib.genAttrs usernames
-            (username: home-manager.lib.homeManagerConfiguration {
+        in
+        {
+          homeConfigurations = lib.genAttrs usernames (
+            username:
+            home-manager.lib.homeManagerConfiguration {
               inherit pkgs;
               modules = [
-                ({ pkgs, ... }@args: {
-                  _module.args = {
-                    inherit username;
-                  } // inputs // (deps args);
-                })
+                (
+                  { pkgs, ... }@args:
+                  {
+                    _module.args = {
+                      inherit username;
+                    }
+                    // inputs
+                    // (deps args);
+                  }
+                )
 
                 home
               ];
-            });
+            }
+          );
 
-          iosevkaDWB = (pkgs.iosevka.override {
-            privateBuildPlan = builtins.readFile ./iosevka-private-build-plans.toml;
-            set = "DWB";
-          });
-          iosevkaDWBTerm = (pkgs.iosevka.override {
-            privateBuildPlan = builtins.readFile ./iosevka-term-private-build-plans.toml;
-            set = "DWBTerm";
-          });
-        });
+          iosevkaDWB = (
+            pkgs.iosevka.override {
+              privateBuildPlan = builtins.readFile ./iosevka-private-build-plans.toml;
+              set = "DWB";
+            }
+          );
+          iosevkaDWBTerm = (
+            pkgs.iosevka.override {
+              privateBuildPlan = builtins.readFile ./iosevka-term-private-build-plans.toml;
+              set = "DWBTerm";
+            }
+          );
+        }
+      );
 
       nixosModules = {
         inherit registryPins nixpkgsConfig;
@@ -127,15 +164,20 @@
         inherit channelPins;
       };
 
-      devShells = forAllSystems (system:
-        let pkgs = (importPkgs nixpkgs system); in {
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = (importPkgs nixpkgs system);
+        in
+        {
           default = pkgs.mkShellNoCC {
             packages = [ home-manager.packages.${system}.default ];
             shellHook = ''
               printf '%s\n' ''' '# dani’s home-manager config #'  '''
             '';
           };
-        });
+        }
+      );
 
       formatter = forAllSystems (system: (importPkgs nixpkgs system).nixfmt);
     };

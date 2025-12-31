@@ -1,4 +1,13 @@
-{ pkgs, pkgsUnstable, nixpkgs, nixpkgsUnstable, doomemacs, nu-scripts, username, ... }@args:
+{
+  pkgs,
+  pkgsUnstable,
+  nixpkgs,
+  nixpkgsUnstable,
+  doomemacs,
+  nu-scripts,
+  username,
+  ...
+}@args:
 let
   inherit (pkgs) lib stdenv;
   guiEnabled = args.guiEnabled or stdenv.hostPlatform.isDarwin;
@@ -29,26 +38,32 @@ let
     '';
   };
 
-  prebuiltPkg = (name: stdenv.mkDerivation {
-    inherit name;
-    src = ./prebuilt/${name}.tar.xz;
-    dontConfigure = true;
-    dontBuild = true;
-    doCheck = false;
-    dontFixup = true;
-    installPhase = ''
-      mkdir "$out"
-      mv * "$out/"
-    '';
-  });
+  prebuiltPkg = (
+    name:
+    stdenv.mkDerivation {
+      inherit name;
+      src = ./prebuilt/${name}.tar.xz;
+      dontConfigure = true;
+      dontBuild = true;
+      doCheck = false;
+      dontFixup = true;
+      installPhase = ''
+        mkdir "$out"
+        mv * "$out/"
+      '';
+    }
+  );
 in
 {
   imports = [
-    ({ ... }@args: {
-      config._module.args = {
-        inherit guiEnabled;
-      };
-    })
+    (
+      { ... }@args:
+      {
+        config._module.args = {
+          inherit guiEnabled;
+        };
+      }
+    )
     ./channel-pins.nix
     ./registry-pins.nix
     ./emacs.nix
@@ -59,9 +74,8 @@ in
   home.stateVersion = "23.11"; # XXX: remember, don't change!
 
   home.username = username;
-  home.homeDirectory = if stdenv.hostPlatform.isDarwin
-                       then "/Users/${username}"
-                       else "/home/${username}";
+  home.homeDirectory =
+    if stdenv.hostPlatform.isDarwin then "/Users/${username}" else "/home/${username}";
 
   home.language.base = "en_GB.UTF-8";
 
@@ -69,57 +83,65 @@ in
     "$HOME/.local/bin" # uv at least puts stuff in here
   ];
 
-  home.packages = (with pkgs; [
-    aws-vault
-    fd
-    gh
-    git-absorb
-    git-extras
-    graphviz
-    gum # shell UI bits https://github.com/charmbracelet/gum
-    home-manager
-    htop
-    (prebuiltPkg "iosevkaDWB")
-    (prebuiltPkg "iosevkaDWBTerm")
-    jc # makes JSON out of standard commands, used in my nushell utils
-    mosh
-    nixd
-    nixfmt-rfc-style
-    # nodejs_22 # mainly for emacs copilot but generally useful too ig
-    plantuml
-    python3
-    ripgrep
-    rsync
-    (ruby_3_4.withPackages (ps: with ps; [
-      faraday
-      nokogiri
-      pry
-    ]))
-    uv
-    wget
-    zstd
-  ]) ++ (with pkgsUnstable; [
-    # aider-chat # dependency kvazaar fails tests rn and i dont use it
-    awscli2
-    delve
-    difftastic
-    go
-    gopls
-    (symlinkJoin {
-      name = "gotools";
-      paths = [ gotools ];
-      # clashes with ruby bundler!
-      postBuild = ''
-        mv $out/bin/bundle $out/bin/gobundle
-      '';
-    })
-    jjui
-  ]) ++ lib.optionals stdenv.hostPlatform.isDarwin ((with pkgs; [
-    reattach-to-user-namespace
-  ]) ++ (with pkgsUnstable; [
-    container # https://github.com/apple/container
-    ghostty-bin
-  ]));
+  home.packages =
+    (with pkgs; [
+      aws-vault
+      fd
+      gh
+      git-absorb
+      git-extras
+      graphviz
+      gum # shell UI bits https://github.com/charmbracelet/gum
+      home-manager
+      htop
+      (prebuiltPkg "iosevkaDWB")
+      (prebuiltPkg "iosevkaDWBTerm")
+      jc # makes JSON out of standard commands, used in my nushell utils
+      mosh
+      nixd
+      nixfmt-rfc-style
+      # nodejs_22 # mainly for emacs copilot but generally useful too ig
+      plantuml
+      python3
+      ripgrep
+      rsync
+      (ruby_3_4.withPackages (
+        ps: with ps; [
+          faraday
+          nokogiri
+          pry
+        ]
+      ))
+      uv
+      wget
+      zstd
+    ])
+    ++ (with pkgsUnstable; [
+      # aider-chat # dependency kvazaar fails tests rn and i dont use it
+      awscli2
+      delve
+      difftastic
+      go
+      gopls
+      (symlinkJoin {
+        name = "gotools";
+        paths = [ gotools ];
+        # clashes with ruby bundler!
+        postBuild = ''
+          mv $out/bin/bundle $out/bin/gobundle
+        '';
+      })
+      jjui
+    ])
+    ++ lib.optionals stdenv.hostPlatform.isDarwin (
+      (with pkgs; [
+        reattach-to-user-namespace
+      ])
+      ++ (with pkgsUnstable; [
+        container # https://github.com/apple/container
+        ghostty-bin
+      ])
+    );
 
   fonts.fontconfig.enable = true;
 
@@ -302,9 +324,13 @@ in
         relativePaths = true;
         submoduleSummary = true;
       };
-      credential = if stdenv.hostPlatform.isDarwin then {} else {
-        helper = "osxkeychain";
-      };
+      credential =
+        if stdenv.hostPlatform.isDarwin then
+          { }
+        else
+          {
+            helper = "osxkeychain";
+          };
       branch.sort = "committerdate";
       github.user = "dwb";
       init.defaultBranch = "main";
@@ -320,110 +346,202 @@ in
   programs.jujutsu = {
     enable = true;
     package = pkgsUnstable.jujutsu;
-    settings = let
-      gum = "${pkgs.gum}/bin/gum";
-      privateCommits = "description(glob:'wip:*') | description(glob:'private:*')";
-    in {
-      user = {
-        name = userName;
-        email = userEmail;
+    settings =
+      let
+        gum = "${pkgs.gum}/bin/gum";
+        privateCommits = "description(glob:'wip:*') | description(glob:'private:*')";
+      in
+      {
+        user = {
+          name = userName;
+          email = userEmail;
+        };
+        ui = {
+          bookmark-list-sort-keys = [ "committer-date" ];
+          default-command = [ "log-status" ];
+          diff-editor = ":builtin";
+          diff-formatter = [
+            "${difftAutoDisplay}/bin/difft-auto-display"
+            "--width"
+            "$width"
+            "--color"
+            "always"
+            "$left"
+            "$right"
+          ];
+          # diff-formatter = ":git";
+          pager = ":builtin";
+          paginate = "auto";
+        };
+        git = {
+          private-commits = privateCommits;
+        };
+        aliases = {
+          add-parent = [
+            "util"
+            "exec"
+            "--"
+            "${pkgs.python3}/bin/python"
+            ./jj-commands/add-parent.py
+          ];
+          ap = [ "add-parent" ];
+          apt = [
+            "add-parent"
+            "trunk()"
+          ];
+          rm-parent = [
+            "util"
+            "exec"
+            "--"
+            "${pkgs.python3}/bin/python"
+            ./jj-commands/rm-parent.py
+          ];
+          rp = [ "rm-parent" ];
+
+          di = [ "diff" ];
+          # diff from trunk
+          dt = [
+            "diff"
+            "-r"
+            "trunk()..@"
+          ];
+          # log to trunk
+          # lt = ["log" "--reversed" "-r" "fork_point(trunk() | ancestors(@, 2))::@"];
+          lt = [
+            "util"
+            "exec"
+            "--"
+            "sh"
+            "-c"
+            ''
+              from=''${1-@}
+              exec jj log --reversed -r "''${from}::@ | trunk()..''${from} | parents(trunk()..''${from})"
+            ''
+            "jj-lt"
+          ];
+
+          gf = [
+            "git"
+            "fetch"
+          ];
+          gp = [
+            "git"
+            "push"
+          ];
+          gpnb = [
+            "git"
+            "push"
+            "--allow-new"
+            "--bookmark"
+          ];
+
+          log-status = [
+            "util"
+            "exec"
+            "--"
+            "sh"
+            "-c"
+            ''
+              set -e
+              jj lt --ignore-working-copy "$@"
+              echo
+              jj status "$@"
+            ''
+            "jj-log-status"
+          ];
+
+          # (heads of) my branches (even ahead of bookmarks)
+          mb = [
+            "log"
+            "--reversed"
+            "-r"
+            "visible_heads() & mine()::"
+          ];
+          pre-commit = [
+            "util"
+            "exec"
+            "--"
+            "${pkgs.bash}/bin/bash"
+            "-c"
+            ''
+              set -euo pipefail
+
+              EMPTY=$(jj log --no-graph -r @ -T 'empty')
+              if [[ $EMPTY = "false" ]]; then echo "not on an empty revision"; exit 1; fi
+
+              FROM=$(jj log --no-graph -r "fork_point(trunk() | @)" -T "commit_id")
+              TO=$(jj log --no-graph -r "@" -T "commit_id")
+
+              ROOT=$(jj root)
+              if [[ -f $ROOT/.jj/repo ]]; then
+                # we are in a workspace
+                real_repo="$(< "$ROOT/.jj/repo")"
+                export GIT_DIR="$(realpath "$real_repo/../../.git")"
+                export GIT_WORK_TREE="$ROOT"
+              fi
+
+              jj diff --from "$FROM" --to "$TO" -T 'path ++ "\0"' |
+                readarray -d "" PATHS
+
+              exec pre-commit run --from="$FROM" --to="$TO" "$@" --files "''${PATHS[@]}"
+            ''
+            "jj-pre-commit"
+          ];
+          # rebase on trunk
+          retrunk = [
+            "rebase"
+            "-d"
+            "trunk()"
+          ];
+          # split before private (commits)
+          sbp = [
+            "split"
+            "--insert-after"
+            "heads((trunk()..@) ~ private_commits())"
+          ];
+          # split between trunk and head
+          sth = [
+            "split"
+            "-A"
+            "trunk()"
+            "-B@"
+          ];
+          # split to parent
+          stp = [
+            "util"
+            "exec"
+            "--"
+            "${pkgsUnstable.nushell}/bin/nu"
+            ./jj-commands/split-to-parent.nu
+            "jj-split-to-parent"
+          ];
+          # squash to parent
+          qtp = [
+            "util"
+            "exec"
+            "--"
+            "${pkgsUnstable.nushell}/bin/nu"
+            ./jj-commands/squash-to-parent.nu
+            "jj-squash-to-parent"
+          ];
+          tug = [
+            "bookmark"
+            "move"
+            "--from"
+            "closest_bookmark(@)"
+            "--to"
+            "closest_public_nonempty(@)"
+          ];
+        };
+        revset-aliases = {
+          "closest_bookmark(to)" = "heads(first_ancestors(to) & bookmarks())";
+          "closest_nonempty(to)" = "heads(::to ~ empty())";
+          "closest_public_nonempty(to)" = "closest_nonempty(to) ~ private_commits()";
+          # "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
+          "immutable_heads()" = "builtin_immutable_heads() | (trunk().. & ~mine())";
+          "private_commits()" = privateCommits;
+        };
       };
-      ui = {
-        bookmark-list-sort-keys = ["committer-date"];
-        default-command = ["log-status"];
-        diff-editor = ":builtin";
-        diff-formatter = [
-          "${difftAutoDisplay}/bin/difft-auto-display"
-          "--width" "$width"
-          "--color" "always"
-          "$left" "$right"
-        ];
-        # diff-formatter = ":git";
-        pager = ":builtin";
-        paginate = "auto";
-      };
-      git = {
-        private-commits = privateCommits;
-      };
-      aliases = {
-        add-parent = ["util" "exec" "--" "${pkgs.python3}/bin/python"
-                      ./jj-commands/add-parent.py];
-        ap = ["add-parent"];
-        apt = ["add-parent" "trunk()"];
-        rm-parent = ["util" "exec" "--" "${pkgs.python3}/bin/python"
-                      ./jj-commands/rm-parent.py];
-        rp = ["rm-parent"];
-
-        di = ["diff"];
-        # diff from trunk
-        dt = ["diff" "-r" "trunk()..@"];
-        # log to trunk
-        # lt = ["log" "--reversed" "-r" "fork_point(trunk() | ancestors(@, 2))::@"];
-        lt = ["util" "exec" "--" "sh" "-c" ''
-          from=''${1-@}
-          exec jj log --reversed -r "''${from}::@ | trunk()..''${from} | parents(trunk()..''${from})"
-        '' "jj-lt"];
-
-        gf = ["git" "fetch"];
-        gp = ["git" "push"];
-        gpnb = ["git" "push" "--allow-new" "--bookmark"];
-
-        log-status = ["util" "exec" "--" "sh" "-c" ''
-          set -e
-          jj lt --ignore-working-copy "$@"
-          echo
-          jj status "$@"
-        '' "jj-log-status"];
-
-        # (heads of) my branches (even ahead of bookmarks)
-        mb = ["log" "--reversed" "-r" "visible_heads() & mine()::"];
-        pre-commit = ["util" "exec" "--" "${pkgs.bash}/bin/bash" "-c" ''
-          set -euo pipefail
-
-          EMPTY=$(jj log --no-graph -r @ -T 'empty')
-          if [[ $EMPTY = "false" ]]; then echo "not on an empty revision"; exit 1; fi
-
-          FROM=$(jj log --no-graph -r "fork_point(trunk() | @)" -T "commit_id")
-          TO=$(jj log --no-graph -r "@" -T "commit_id")
-
-          ROOT=$(jj root)
-          if [[ -f $ROOT/.jj/repo ]]; then
-            # we are in a workspace
-            real_repo="$(< "$ROOT/.jj/repo")"
-            export GIT_DIR="$(realpath "$real_repo/../../.git")"
-            export GIT_WORK_TREE="$ROOT"
-          fi
-
-          jj diff --from "$FROM" --to "$TO" -T 'path ++ "\0"' |
-            readarray -d "" PATHS
-
-          exec pre-commit run --from="$FROM" --to="$TO" "$@" --files "''${PATHS[@]}"
-        '' "jj-pre-commit"];
-        # rebase on trunk
-        retrunk = ["rebase" "-d" "trunk()"];
-        # split before private (commits)
-        sbp = ["split" "--insert-after" "heads((trunk()..@) ~ private_commits())"];
-        # split between trunk and head
-        sth = ["split" "-A" "trunk()" "-B@"];
-        # split to parent
-        stp = ["util" "exec" "--" "${pkgsUnstable.nushell}/bin/nu"
-               ./jj-commands/split-to-parent.nu
-               "jj-split-to-parent"];
-        # squash to parent
-        qtp = ["util" "exec" "--" "${pkgsUnstable.nushell}/bin/nu"
-               ./jj-commands/squash-to-parent.nu
-               "jj-squash-to-parent"];
-        tug = ["bookmark" "move" "--from" "closest_bookmark(@)" "--to" "closest_public_nonempty(@)"];
-      };
-      revset-aliases = {
-        "closest_bookmark(to)" = "heads(first_ancestors(to) & bookmarks())";
-        "closest_nonempty(to)" = "heads(::to ~ empty())";
-        "closest_public_nonempty(to)" = "closest_nonempty(to) ~ private_commits()";
-        # "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
-        "immutable_heads()" = "builtin_immutable_heads() | (trunk().. & ~mine())";
-        "private_commits()" = privateCommits;
-      };
-    };
   };
 
   programs.helix = {
@@ -447,21 +565,28 @@ in
     ];
     configFile.text = lib.concatLines (
       # ["source ${nu-scripts}/themes/nu-themes/windows-highcontrast-light.nu"] ++
-      (lib.pipe [
-        ./conf/config.nu
-        ./conf/local_config.nu
-      ] [
-        (lib.filter lib.pathExists)
-        (map builtins.readFile)
-      ]));
-    envFile.text = lib.pipe [
-      ./conf/env.nu
-      ./conf/local_env.nu
-    ] [
-      (lib.filter lib.pathExists)
-      (map builtins.readFile)
-      lib.concatLines
-    ];
+      (lib.pipe
+        [
+          ./conf/config.nu
+          ./conf/local_config.nu
+        ]
+        [
+          (lib.filter lib.pathExists)
+          (map builtins.readFile)
+        ]
+      )
+    );
+    envFile.text =
+      lib.pipe
+        [
+          ./conf/env.nu
+          ./conf/local_env.nu
+        ]
+        [
+          (lib.filter lib.pathExists)
+          (map builtins.readFile)
+          lib.concatLines
+        ];
     enableVtermIntegration = true;
   };
 
@@ -517,14 +642,17 @@ in
       bind-key -T copy-mode-vi Escape send-keys -X cancel
 
       bind-key R respawn-pane
-    '' + (lib.optionalString stdenv.hostPlatform.isDarwin
-      (let
+    ''
+    + (lib.optionalString stdenv.hostPlatform.isDarwin (
+      let
         rtun = "${pkgs.reattach-to-user-namespace}/bin/reattach-to-user-namespace";
-      in ''
+      in
+      ''
         bind-key -T copy-mode-vi y send-keys -X copy-pipe "${rtun} pbcopy"
         bind-key P run-shell "${rtun} pbpaste | tmux load-buffer - && tmux paste-buffer"
         bind-key y run "tmux save-buffer - | ${rtun} pbcopy"
-      ''));
+      ''
+    ));
   };
 
   programs.vim = {
@@ -549,7 +677,7 @@ in
     envExtra = lib.concatLines [
       (builtins.readFile ./conf/zshenv-local.zsh)
       ''
-      if [[ -n $override_EDITOR ]]; then EDITOR="$override_EDITOR"; fi
+        if [[ -n $override_EDITOR ]]; then EDITOR="$override_EDITOR"; fi
       ''
     ];
   };
