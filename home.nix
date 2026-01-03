@@ -12,6 +12,16 @@ let
   inherit (pkgs) lib stdenv;
   guiEnabled = args.guiEnabled or stdenv.hostPlatform.isDarwin;
 
+  carapace = pkgsUnstable.carapace.overrideAttrs (old: {
+    version = "1.5.7";
+    src = pkgs.fetchFromGitHub {
+      owner = "dwb";
+      repo = "carapace-bin";
+      rev = "5f6412369aad905e87731f956c844f75453ee783";
+      hash = lib.fakeHash;
+    };
+  });
+
   userName = "Dani Brown";
   userEmail = "d@dani.cool";
 
@@ -210,7 +220,7 @@ in
 
   programs.carapace = {
     enable = true;
-    package = pkgsUnstable.carapace;
+    package = carapace;
   };
 
   programs.direnv = {
