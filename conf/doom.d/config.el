@@ -1604,6 +1604,11 @@ If ARG (universal argument), open selection in other-window."
   (after! window-purpose
     (setq magit-display-buffer-function #'magit-display-buffer-traditional))
 
+  (if (boundp '+magit-auto-revert)
+      ;; Prevent Emacs hanging on every frame activation
+      ;; https://github.com/doomemacs/doomemacs/issues/8354
+      (setopt +magit-auto-revert nil))
+
   (setq magit-list-refs-sortby "-committerdate")
 
   (setq git-commit-style-convention-checks
