@@ -102,6 +102,8 @@
 (with-eval-after-load 'desktop
   (desktop-save-mode 1))
 
+(keymap-global-set "<f5>" #'repeat)
+
 (with-eval-after-load 'rx
   (rx-define my-file-name (+ (not ?/)))
 
@@ -1902,7 +1904,49 @@ revisions (i.e., use a \"...\" range)."
   (add-to-list 'prettier-major-mode-parsers '(typescript-tsx-mode typescript babel-ts)))
 
 (after! ace-window
-  (setq aw-dispatch-always t))
+  (setf aw-dispatch-always t))
+
+(progn
+  ;; TODO: put this somewhere better
+  
+  (defun my/resize-window-left (arg)
+    (interactive "p")
+    (let ((window (selected-window))
+          (amt (or arg 1)))
+      (if (window-at-side-p window 'right)
+          (window-resize window amt t)
+        (window-resize window (* -1 amt) t))))
+
+  (defun my/resize-window-right (arg)
+    (interactive "p")
+    (let ((window (selected-window))
+          (amt (or arg 1)))
+      (if (window-at-side-p window 'left)
+          (window-resize window amt t)
+        (window-resize window (* -1 amt) t))))
+
+  (defun my/resize-window-up (arg)
+    (interactive "p")
+    (let ((window (selected-window))
+          (amt (or arg 1)))
+      (if (window-at-side-p window 'bottom)
+          (window-resize window amt)
+        (window-resize window (* -1 amt)))))
+
+  (defun my/resize-window-down (arg)
+    (interactive "p")
+    (let ((window (selected-window))
+          (amt (or arg 1)))
+      (if (window-at-side-p window 'top)
+          (window-resize window amt)
+        (window-resize window (* -1 amt)))))
+
+  (map!
+   :map evil-window-map
+   ("C-k" #'my/resize-window-up
+    "C-j" #'my/resize-window-down
+    "C-h" #'my/resize-window-left
+    "C-l" #'my/resize-window-right)))
 
 (after! rustic
   (setq rustic-format-on-save t))
