@@ -426,6 +426,7 @@
 
 (use-package! norns)
 (use-package! combobulate
+  :disabled
   :hook (go-ts-mode typescript-ts-base-mode)
   :config
   (map!
@@ -459,6 +460,7 @@
          ("C-x o" . 'copilot-complete)))
 
 (use-package! forge
+  :disabled
   :config
   ;; fuck sake so 1password secret IDs can't contain carets
   ;; so overriding this to not use one
@@ -475,8 +477,9 @@
 
 (use-package! auth-source-1password
   :config
-  (setf auth-source-1password-vault "Employee")
-  (auth-source-1password-enable))
+  (when (executable-find "op")
+    (setf auth-source-1password-vault "Employee")
+    (auth-source-1password-enable)))
 
 (use-package unison-ts-mode)
 (use-package unison-daemon)
@@ -505,7 +508,18 @@ With C-u C-u and jj backend, prompt for one revision and show its changes."
        (t
         (vc-diff-internal nil fileset nil nil)))))
 
-  (map! :map vc-prefix-map "e" #'my/vc-dir-diff))
+  (map! :map vc-prefix-map "e" #'my/vc-dir-diff)
+
+  (define-advice vc-diff-internal
+      (:filter-args (args) my/better-default-buffer-name)
+    "Project-scope vc-diff buffer name"
+    (pcase args
+      ((seq async vc-fileset rev1 rev2 verbose buffer)
+       (list async vc-fileset rev1 rev2 verbose
+          (or buffer
+              (when-let* ((p (project-current)))
+                (format "*vc-diff[%s]*" (project-name p))))))
+      (_ args))))
 
 (use-package! vc-jj
   :config
@@ -1099,10 +1113,14 @@ end of the workspace list."
    :desc "window"
    :g "<f6>" 'evil-window-map
 
-   :mode Info-mode
-   :n "m" #'Info-menu
-   :n "f" #'link-hint-open-link
-   :n "C-i" #'Info-history-forward))
+   (:mode diff-mode
+    :desc "Refresh"
+    :n "r" #'revert-buffer)
+
+   (:mode Info-mode
+    :n "m" #'Info-menu
+    :n "f" #'link-hint-open-link
+    :n "C-i" #'Info-history-forward)))
 
 (after! evil-surround
   (add-to-list 'evil-surround-pairs-alist '(?o . ("{|" . "|}"))))
@@ -1499,6 +1517,7 @@ If ARG (universal argument), open selection in other-window."
      :i "C-c ," #'my/consult-term-buffer)))
 
 (use-package! eat
+  :disabled
   :config
   (setopt eat-shell "/bin/zsh -l")
   (setopt eat-semi-char-non-bound-keys
@@ -1721,8 +1740,6 @@ revisions (i.e., use a \"...\" range)."
       (git-gutter:update-all-windows)))
 
   (map!
-   :n "<f5>" #'magit-dispatch
-
    :map magit-status-mode-map
    (:g "s-r" #'magit-refresh)
    (:n "h" #'magit-section-up)
