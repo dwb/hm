@@ -92,6 +92,31 @@
   ;; default is 60, way too small
   (setopt imenu-max-item-length 250))
 
+(after! diff-mode
+  (defun my/diff-mode-imenu-create-index ()
+    (require 'rx)
+    (goto-char (point-min))
+    (cl-loop
+     with pat = (rx line-start (group (or "---" "+++")) (+ space)
+                    (? (any "ab") "/")
+                    (group (+ (not space))))
+     for fn = (and (re-search-forward pat nil t)
+                   (buffer-substring-no-properties
+                    (match-beginning 2)
+                    (match-end 2)))
+     while fn
+     if (not (equal "/dev/null" fn))
+     collect (cons fn (line-beginning-position))
+     and
+     if (equal "---" (match-string 1))
+     do (next-line 2)))
+
+  (defun my/diff-mode-better-imenu-hook ()
+    (setq-local imenu-generic-expression nil)
+    (setq-local imenu-create-index-function #'my/diff-mode-imenu-create-index))
+
+  (add-hook 'diff-mode-hook #'my/diff-mode-better-imenu-hook))
+
 (defun my/save-all-file-buffers ()
   (save-some-buffers t))
 
