@@ -1,5 +1,5 @@
 def xdg-config-home [for?: string] {
-  let default = ($nu.home-path | path join .config)
+  let default = ($nu.home-dir | path join .config)
   mut out = (try { $env.XDG_CONFIG_HOME } catch { $default })
   if $out == "" {
     $out = $default
@@ -11,7 +11,7 @@ def xdg-config-home [for?: string] {
 }
 
 def xdg-state-home [for?: string] {
-  let default = ($nu.home-path | path join .local state)
+  let default = ($nu.home-dir | path join .local state)
   mut out = (try { $env.XDG_STATE_HOME } catch { $default })
   if $out == "" {
     $out = $default

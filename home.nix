@@ -140,7 +140,6 @@ in
       })
     ])
     ++ (with pkgsUnstable; [
-      # aider-chat # dependency kvazaar fails tests rn and i dont use it
       awscli2
       delve
       difftastic
