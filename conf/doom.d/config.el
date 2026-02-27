@@ -1649,6 +1649,12 @@ If ARG (universal argument), open selection in other-window."
    :desc "Paste (yank)"
    :ni "s-v" #'eat-yank))
 
+(use-package! pgmacs
+  :disable t
+  :config
+  (when (modulep! :ui popup)
+    (set-popup-rule! '(derived-mode . pgmacs-mode) :ignore t)))
+
 (after! doom-modeline
   (setq doom-modeline-persp-name t)
 
@@ -1803,9 +1809,7 @@ revisions (i.e., use a \"...\" range)."
      ("gopls.analyses.shadow" t t)
      ("gopls.analyses.unusedparams" t t)
      ("gopls.analyses.unusedwrite" t t)
-     ("eslint.useESLintClass" t t)))
-
-  (lsp-subprojects-mode))
+     ("eslint.useESLintClass" t t))))
 
 (after! eglot
   (add-to-list 'eglot-server-programs '(haskell-mode . ("haskell-language-server" "--lsp")))
@@ -2392,13 +2396,13 @@ revisions (i.e., use a \"...\" range)."
   :bind
   (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode))
   :config
-  (setopt claude-code-terminal-backend 'eat)
+  (setopt claude-code-terminal-backend 'vterm)
 
   ;; optional IDE integration with Monet
   (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
   (monet-mode 1)
   (set-popup-rule! (rx string-start "*claude")
-    :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
+    :side 'right :width 101 :vslot 0 :slot 1 :select t :quit nil :ttl nil))
 
 (use-package! claude-code-ide
   :disabled
@@ -2468,8 +2472,8 @@ revisions (i.e., use a \"...\" range)."
   (("C-c C-'" . bourdet-command-map))
   :config
   (set-popup-rule! '(derived-mode . bourdet-mode)
-    :side
-    'right :width 101 :vslot 0 :slot 1 :select t :quit nil :ttl nil)
+    :side 'right :width 101 :height 0.5 :vslot 0 :slot 1
+    :select t :quit nil :ttl nil)
 
   (setopt bourdet-stream-partial t)
   (setopt bourdet--sync-custom-title t)
@@ -2507,6 +2511,9 @@ revisions (i.e., use a \"...\" range)."
     (add-hook 'bourdet-notification-functions #'my/bourdet-notify)
     (add-hook 'bourdet-notification-clear-functions #'my/bourdet-notify-clear)))
 
+(use-package zig-mode
+  :mode ("\\.\\(zig\\|zon\\)\\'" . zig-mode))
+
 ;;; doom modules config
 
 
@@ -2531,7 +2538,7 @@ revisions (i.e., use a \"...\" range)."
   (after! vterm
     (set-popup-rule!
       '(or . ((derived-mode . vterm-mode) "^\\*vterm"))
-      :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
+      :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
   (after! eat
     (defun my/eat-buffer-p (bn &rest _)
@@ -2571,6 +2578,21 @@ revisions (i.e., use a \"...\" range)."
      :leader
      :desc "Switch tab"
      ";" #'tab-switch)))
+
+;;; 
+;;; EXPERIMENTS
+;;; 
+
+;; (progn
+;;   (use-package! bourdet
+;;     :bind-keymap (("C-c C-'" . bourdet-command-map))
+;;     :config
+;;     (setopt bourdet--sync-custom-title t)
+;;     (setopt bourdet-stream-partial t)
+;;     (set-popup-rule! '(derived-mode . bourdet-mode)
+;;       :side 'right :width 101 :height 0.5 :vslot 0 :slot 1
+;;       :select t :quit nil :ttl nil)))
+
 
 ;;;
 ;;; DIAGNOSTICS

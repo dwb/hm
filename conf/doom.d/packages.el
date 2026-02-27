@@ -143,19 +143,6 @@
 ;; https://github.com/svaante/dape
 (package! dape)
 
-(package! pg-el
-  :pin "7db902c20f406068a834e27ae145d7c296a63873"
-  :recipe
-  (:host github
-   :repo "emarsden/pg-el"))
-(package! pgmacs
-  :pin "9907be6e606c1a0d51fa5d835f7527eeb88a667f"
-  :recipe
-  (:host github
-   :repo "emarsden/pgmacs"))
-
-(package! forge)
-
 (package! auth-source-1password
   :pin "7bb8ad3507c58cc642b2ebbd7e57a91efab80e14"
   :recipe
@@ -164,15 +151,15 @@
 
 (package! caddyfile-mode)
 
-(package! eat
-  :recipe (:files ("*.el" "*.texi" "terminfo")))
-
 ;; from elpa
 (package! vc-jj)
 (package! jj-mode
-  :pin "96bee43f6a60c42f86c27b109c497cf6e1827743"
+  :pin "20b7b516f9a1bcb96fc1fedbc0a43138f9fe8765"
   :recipe (:host github :repo "bolivier/jj-mode.el"))
 
 (package! bourdet
   :recipe (:repo "git@github.com:dwb/bourdet"
            :branch "main"))
+
+;; non-gnu elpa
+(package! zig-mode)

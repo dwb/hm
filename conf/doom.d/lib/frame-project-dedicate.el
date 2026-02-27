@@ -116,8 +116,7 @@ This is used for special buffers like *Help*, *Messages*, etc.")
       (prog1 (buffer-live-p buffer)
         ;; (setq my/fpdbt (backtrace-get-frames 'backtrace-get-frames))
         ;; (message "frame-project-dedicate--buffer-allowed-p: called recursively")
-        )
-
+        ))
     (let ((frame-project-dedicate--called-recursively t))
       (when (buffer-live-p buffer)
         (frame-project-dedicate--with-project-buffers-cache
@@ -129,7 +128,7 @@ This is used for special buffers like *Help*, *Messages*, etc.")
           ;; Buffer belongs to the project (using project.el functionality)
           (seq-contains-p (frame-project-dedicate--get-project-buffers project) buffer)
           ;; Special buffers without files that should always be allowed
-          (frame-project-dedicate--special-buffer-p buffer)))))))
+          (frame-project-dedicate--special-buffer-p buffer))))))
 
 (defun frame-project-dedicate--special-buffer-p (buffer)
   "Return t if BUFFER is a special buffer that should be allowed in any frame."
@@ -275,8 +274,7 @@ indirectly called by the latter."
               (frame (or (seq-find predicate (frame-list))
                          (frame-project-dedicate--select-project-and-switch-or-create
                           project t)))
-              (window (get-largest-window
-                       frame nil (cdr (assq 'inhibit-same-window alist)))))
+              (window (window-main-window frame)))
     (prog1 (window--display-buffer buffer window 'reuse alist)
       (unless (cdr (assq 'inhibit-switch-frame alist))
         (window--maybe-raise-frame frame)))))
