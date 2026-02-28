@@ -88,6 +88,17 @@
 (add-to-list 'default-frame-alist '(width . 220))
 (add-to-list 'default-frame-alist '(fullscreen . fullheight))
 
+(define-advice scroll-up
+    (:before-while (&optional _arg) my/no-scrolling-past-end-of-buffer)
+  (let ((end (window-end)))
+    (with-current-buffer (window-buffer)
+      (if (or (null end)
+              (< end (point-max)))
+          t
+        (prog1 nil
+          (recenter (- (line-number-at-pos (max (window-start) (point)))
+                       (+ 1 (line-number-at-pos (point-max))))))))))
+
 (after! imenu
   ;; default is 60, way too small
   (setopt imenu-max-item-length 250))
@@ -1546,6 +1557,25 @@ If ARG (universal argument), open selection in other-window."
 
      :desc "Switch buffer"
      :i "C-c ," #'my/consult-term-buffer)))
+
+(with-eval-after-load 'gterm
+  (defun my/gterm-send-C-w ()
+    (interactive)
+    (when-let* (((and gterm--terminal gterm--process gterm--alive))
+                (encoded (gterm-send-key gterm--terminal 'key-w 2)))
+      (process-send-string gterm--process encoded)))
+
+  (map!
+   :map gterm-mode-map
+
+   :desc "window"
+   :ni "C-w" 'evil-window-map
+
+   :i "C-c C-w" #'my/gterm-send-C-w
+   :ni "C-c ," #'my/consult-term-buffer)
+
+  (set-popup-rule! '(derived-mode . gterm-mode)
+    :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
 (use-package! eat
   :disabled
