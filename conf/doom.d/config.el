@@ -37,9 +37,10 @@
 
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
-(when-let ((d (seq-find #'file-exists-p '("~/Library/Mobile Documents/com~apple~CloudDocs/org/"
+(when-let ((d (seq-find #'file-exists-p '(;; "~/Library/Mobile Documents/com~apple~CloudDocs/org/"
                                           "~/org/"))))
-  (setq org-directory d))
+  (setopt org-directory d)
+  (setopt org-roam-directory d))
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
@@ -49,8 +50,20 @@
 (when (eq system-type 'darwin)
   (setq mac-right-option-modifier 'none))
 
-;; Disprefer showing the same buffer in two windows in the same frame
-(setq switch-to-prev-buffer-skip 'this)
+(defun my/switch-to-prev-buffer-skip (window buffer bury-or-kill)
+  (with-current-buffer buffer
+    (or
+     (and (not (eq major-mode
+                   (with-current-buffer (window-buffer window)
+                     major-mode)))
+          (not (memq buffer (window-prev-buffers window))))
+     (and (eq 'side (window-dedicated-p window))
+          (derived-mode-p '(prog-mode text-mode)))
+     (and (fboundp 'frame-project-dedicate-switch-to-prev-buffer-skip)
+          (buffer-file-name buffer)
+          (frame-project-dedicate-switch-to-prev-buffer-skip
+           window buffer bury-or-kill)))))
+(setopt switch-to-prev-buffer-skip #'my/switch-to-prev-buffer-skip)
 
 (setq window-sides-vertical t)
 
@@ -204,9 +217,9 @@
              (wmm (nth 0 mm-size))
              (is-retina (>= (/ wpix wmm) 4))
              (goodfonts (list
-                         (font-spec :family "Iosevka DWB" :weight 'medium
+                         (font-spec :family "Iosevka DWB Term" :weight 'medium
                                     :size (if is-retina 12.0 14.0))
-                         (font-spec :family "Iosevka SS08" :weight 'medium
+                         (font-spec :family "Iosevka Term SS08" :weight 'medium
                                     :size (if is-retina 12.0 14.0))))
              (ffl (font-family-list))
              (matching-font (seq-find
@@ -2593,6 +2606,7 @@ revisions (i.e., use a \"...\" range)."
 (use-package zig-mode
   :mode ("\\.\\(zig\\|zon\\)\\'" . zig-mode))
 
+;; trad emacs buffer display setup
 (unless (modulep! :ui popup)
   ;; left top right bottom
   (setopt window-sides-slots '(3 2 3 2))
@@ -2609,11 +2623,13 @@ revisions (i.e., use a \"...\" range)."
        ,(rx bol "*vterm"))
       (display-buffer-in-side-window)
       (side . right)
+      (slot . -1)
       (window-width . 101))
 
      ((derived-mode . bourdet-mode)
       (display-buffer-in-side-window)
       (side . right)
+      (slot . 0)
       (window-width . 101))
 
      ((or

@@ -269,6 +269,11 @@ indirectly called by the latter."
       (unless (cdr (assq 'inhibit-switch-frame alist))
         (window--maybe-raise-frame frame)))))
 
+(defun frame-project-dedicate-switch-to-prev-buffer-skip (window buffer _bury-or-kill)
+  (when-let* ((frame (window-frame window))
+              (project (frame-project-dedicate--get-frame-project frame)))
+    (not (frame-project-dedicate--buffer-in-project-p buffer project))))
+
 (define-minor-mode frame-project-dedicate-mode nil :global t
   (if frame-project-dedicate-mode
       (progn
