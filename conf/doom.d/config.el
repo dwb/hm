@@ -416,10 +416,11 @@
    :leader
    :desc "Aider"
    :n "l a" #'aidermacs-transient-menu)
-  (set-popup-rule!
-    (rx string-start "*aidermacs")
-    :side 'right :width 101 :vslot 0 :slot 1 :height 0.5
-    :select t :quit nil :ttl nil :autosave 'ignore))
+  (when (modulep! :ui popup)
+    (set-popup-rule!
+      (rx string-start "*aidermacs")
+      :side 'right :width 101 :vslot 0 :slot 1 :height 0.5
+      :select t :quit nil :ttl nil :autosave 'ignore)))
 
 (after! llm
   ;; shut uppppppppp
@@ -507,7 +508,8 @@
   (defun my/forge-mode-p (&rest _)
     (derived-mode-p 'forge-pullreq-mode))
 
-  (set-popup-rule! #'my/forge-mode-p :ignore t))
+  (when (modulep! :ui popup)
+    (set-popup-rule! #'my/forge-mode-p :ignore t)))
 
 (use-package! nushell-ts-mode)
 
@@ -668,7 +670,8 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
     (evil-set-initial-state 'jj-mode 'emacs))
 
   ;; (set-popup-rule! '(derived-mode . jj-mode) :ttl nil :side 'right :vslot 0 :slot 0 :select t)
-  (set-popup-rule! '(derived-mode . jj-mode) :ignore t))
+  (when (modulep! :ui popup)
+    (set-popup-rule! '(derived-mode . jj-mode) :ignore t)))
 
 (use-package! frame-project-dedicate
   :config
@@ -1090,10 +1093,11 @@ end of the workspace list."
   ;; i'm not sure this is good, so here's a snippet to disable it
   ;; (advice-remove 'compilation-start #'my/compilation-start-args-advice)
 
-  (set-popup-rule!
-    (rx string-start "*compilation*")
-    :side 'right :width 101 :vslot 0 :slot 1 :height 0.5
-    :select t :quit nil :ttl 0))
+  (when (modulep! :ui popup)
+    (set-popup-rule!
+      (rx string-start "*compilation*")
+      :side 'right :width 101 :vslot 0 :slot 1 :height 0.5
+      :select t :quit nil :ttl 0)))
 
 (after! evil
   (use-package! evil-textobj-tree-sitter :ensure t)
@@ -1574,8 +1578,9 @@ If ARG (universal argument), open selection in other-window."
    :i "C-c C-w" #'my/gterm-send-C-w
    :ni "C-c ," #'my/consult-term-buffer)
 
-  (set-popup-rule! '(derived-mode . gterm-mode)
-    :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
+  (when (modulep! :ui popup)
+    (set-popup-rule! '(derived-mode . gterm-mode)
+      :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil)))
 
 (use-package! eat
   :disabled
@@ -2235,9 +2240,10 @@ revisions (i.e., use a \"...\" range)."
                                                      :title-name-pattern "*dash-docs: %s *")))
     (setf dash-docs-browser-func #'my/dash-docs-xwidget-browse))
 
-  (set-popup-rule!
-    (rx string-start "*dash-docs")
-    :side 'bottom :height 0.4 :select t :ttl 0))
+  (when (modulep! :ui popup)
+    (set-popup-rule!
+      (rx string-start "*dash-docs")
+      :side 'bottom :height 0.4 :select t :ttl 0)))
 
 (after! treesit
   (setf treesit-language-source-alist
@@ -2397,7 +2403,8 @@ revisions (i.e., use a \"...\" range)."
 
   (evil-set-initial-state 'pgmacs-mode 'emacs)
 
-  (set-popup-rule! '(derived-mode . pgmacs-mode) :ignore t)
+  (when (modulep! :ui popup)
+    (set-popup-rule! '(derived-mode . pgmacs-mode) :ignore t))
   
   ;; help
   (keymap-unset pgmacs-row-list-map "h")
@@ -2471,8 +2478,9 @@ revisions (i.e., use a \"...\" range)."
   ;; optional IDE integration with Monet
   (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
   (monet-mode 1)
-  (set-popup-rule! (rx string-start "*claude")
-    :side 'right :width 101 :vslot 0 :slot 1 :select t :quit nil :ttl nil))
+  (when (modulep! :ui popup)
+    (set-popup-rule! (rx string-start "*claude")
+      :side 'right :width 101 :vslot 0 :slot 1 :select t :quit nil :ttl nil)))
 
 (use-package! claude-code-ide
   :disabled
@@ -2541,9 +2549,10 @@ revisions (i.e., use a \"...\" range)."
   :bind-keymap
   (("C-c C-'" . bourdet-command-map))
   :config
-  (set-popup-rule! '(derived-mode . bourdet-mode)
-    :side 'right :width 101 :height 0.5 :vslot 0 :slot 1
-    :select t :quit nil :ttl nil)
+  (when (modulep! :ui popup)
+    (set-popup-rule! '(derived-mode . bourdet-mode)
+      :side 'right :width 101 :height 0.5 :vslot 0 :slot 1
+      :select t :quit nil :ttl nil))
 
   (setopt bourdet-stream-partial t)
   (setopt bourdet--sync-custom-title t)
@@ -2584,9 +2593,42 @@ revisions (i.e., use a \"...\" range)."
 (use-package zig-mode
   :mode ("\\.\\(zig\\|zon\\)\\'" . zig-mode))
 
+(unless (modulep! :ui popup)
+  ;; left top right bottom
+  (setopt window-sides-slots '(3 2 3 2))
+  (setopt window-min-width 101)
+
+  (setq
+   display-buffer-alist
+
+   `(((or
+       (category . comint)
+       (derived-mode . vterm-mode)
+       (derived-mode . gterm-mode)
+       (derived-mode . compilation-mode)
+       ,(rx bol "*vterm"))
+      (display-buffer-in-side-window)
+      (side . right)
+      (window-width . 101))
+
+     ((derived-mode . bourdet-mode)
+      (display-buffer-in-side-window)
+      (side . right)
+      (window-width . 101))
+
+     ((or
+       (category . help)
+       (derived-mode . help-mode)
+       (derived-mode . helpful-mode)
+       (derived-mode . Info-mode))
+      (display-buffer-reuse-mode-window
+       display-buffer-in-side-window)
+      (side . bottom)))))
+
 ;;; doom modules config
 
-
+;; popup currently disabled, i think it's not helpful on balance
+;; see above for trad config
 (when (modulep! :ui popup)
   (defun my/disable-popup-close-on-esc ()
     (remove-hook 'doom-escape-hook #'+popup-close-on-escape-h))
@@ -2607,8 +2649,8 @@ revisions (i.e., use a \"...\" range)."
 
   (after! vterm
     (set-popup-rule!
-      '(or . ((derived-mode . vterm-mode) "^\\*vterm"))
-      :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
+     '(or . ((derived-mode . vterm-mode) "^\\*vterm"))
+     :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
   (after! eat
     (defun my/eat-buffer-p (bn &rest _)
@@ -2616,7 +2658,7 @@ revisions (i.e., use a \"...\" range)."
         (with-current-buffer buffer
           (derived-mode-p 'eat-mode))))
     (set-popup-rule! #'my/eat-buffer-p
-      :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
+                     :side 'right :width 101 :vslot 0 :slot 0 :select t :quit nil :ttl nil))
 
   (defun my/compilation-buffer-p (bn &rest _)
     (let ((buffer (window-normalize-buffer bn)))
@@ -2625,8 +2667,8 @@ revisions (i.e., use a \"...\" range)."
           (derived-mode-p 'compilation-mode)))))
 
   (set-popup-rule!
-    #'my/compilation-buffer-p
-    :side 'right :width 81 :modeline t :select t :ttl 0)
+   #'my/compilation-buffer-p
+   :side 'right :width 81 :modeline t :select t :ttl 0)
 
   (set-popup-rule! '(derived-mode . diff-mode) :height 0.5))
 
@@ -2740,7 +2782,8 @@ WHERE is nil when the default value is changed, or a buffer for local sets."
               (unless (derived-mode-p 'prog-mode 'text-mode 'conf-mode)
                 (display-line-numbers-mode -1)))))
 
-(my/watch-line-numbers-mode 1)
+;; This is not actually showing up the problem
+;; (my/watch-line-numbers-mode 1)
 
 ;; END DIAGNOSTICS
 

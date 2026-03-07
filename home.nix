@@ -384,15 +384,6 @@ in
           bookmark-list-sort-keys = [ "committer-date" ];
           default-command = [ "log-status" ];
           diff-editor = ":builtin";
-          # diff-formatter = [
-          #   "${difftAutoDisplay}/bin/difft-auto-display"
-          #   "--width"
-          #   "$width"
-          #   "--color"
-          #   "always"
-          #   "$left"
-          #   "$right"
-          # ];
           diff-formatter = ":git";
           paginate = "auto";
         };
