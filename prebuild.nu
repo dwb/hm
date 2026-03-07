@@ -2,7 +2,7 @@
 
 def main [pkg: string] {
   print -e $"*** prebuilding ($pkg)..."
-  let paths = (nix build --no-link --print-out-paths .#($pkg) | lines)
+  let paths = (nix build --no-link --print-build-logs --print-out-paths .#($pkg) | lines)
   if ($paths | length) > 1 {
     error make { msg: "expected only one out path" }
   }

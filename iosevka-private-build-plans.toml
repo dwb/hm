@@ -2,7 +2,9 @@
 family = "Iosevka DWB"
 spacing = "normal"
 serifs = "sans"
-noCvSs = false
+snapshotFamily = 'Iosevka'
+snapshotFeature = {"ss08" = 1}
+noCvSs = true
 exportGlyphNames = true
 
   [buildPlans.IosevkaDWB.variants]

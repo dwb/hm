@@ -23,4 +23,4 @@ link:
 prebuild:
 	./prebuild.nu iosevkaDWB
 	./prebuild.nu iosevkaDWBTerm
-	jj status --config snapshot.max-new-file-size=30000000
+	jj status --config snapshot.max-new-file-size=10000000

@@ -1,8 +1,10 @@
 [buildPlans.IosevkaDWBTerm]
 family = "Iosevka DWB Term"
-spacing = "normal"
+spacing = "term"
 serifs = "sans"
-noCvSs = false
+snapshotFamily = 'Iosevka'
+snapshotFeature = {"ss08" = 1}
+noCvSs = true
 exportGlyphNames = true
 noLigation = true
 
