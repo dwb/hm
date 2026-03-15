@@ -101,6 +101,11 @@
 (add-to-list 'default-frame-alist '(width . 220))
 (add-to-list 'default-frame-alist '(fullscreen . fullheight))
 
+(defun my/select-previous-window ()
+  (interactive)
+  (other-window -1))
+(keymap-global-set "C-M-`" #'my/select-previous-window)
+
 (define-advice scroll-up
     (:before-while (&optional _arg) my/no-scrolling-past-end-of-buffer)
   (let ((end (window-end)))
@@ -709,6 +714,7 @@ When REV1 and REV2 are both nil, pass \"@\" \"@\" so vc-jj-diff uses
     (set-popup-rule! '(derived-mode . jj-mode) :ignore t)))
 
 (use-package! frame-project-dedicate
+  :if (display-graphic-p)
   :config
   (map!
    :desc "Switch project frame"
@@ -1605,6 +1611,36 @@ If ARG (universal argument), open selection in other-window."
                 (encoded (gterm-send-key gterm--terminal 'key-w 2)))
       (process-send-string gterm--process encoded)))
 
+  (defun my/pop-closest-gterm ()
+    (interactive)
+    (let* ((buf
+            (cl-labels ((gtermp (buf)
+                          (buffer-match-p '(derived-mode . gterm-mode) buf))
+                        (gterm-project-p (project buf)
+                          (and (gtermp buf)
+                               (when-let* ((p (buffer-local-value 'gterm-project buf)))
+                                 (equal (project-root project)
+                                        (project-root p))))))
+              (or (seq-find #'gtermp (seq-map #'window-buffer (window-list)))
+                  (let* ((project (or (and (fboundp 'frame-project-dedicate--get-frame-project)
+                                           (frame-project-dedicate--get-frame-project (selected-frame)))
+                                      (project-current))))
+                    (car (match-buffers (apply-partially #'gterm-project-p project))))
+                  (my/project-gterm)))))
+
+      (unless (eq buf (current-buffer))
+        (pop-to-buffer buf))))
+
+  (defun my/switch-window-gterm ()
+    (interactive)
+    (when-let* ((other-buffers (seq-map #'car (seq-concatenate 'list
+                                                               (window-prev-buffers) (window-next-buffers))))
+                (other-gterms (match-buffers `(and (derived-mode . gterm-mode)
+                                                   ,(lambda (b)
+                                                      (not (eq b (current-buffer)))))
+                                             other-buffers)))
+      (pop-to-buffer-same-window (car other-gterms))))
+
   (defun my/project-gterm (&optional arg)
     "Open a gterm in the current project."
     (interactive "p")
@@ -1640,11 +1676,18 @@ If ARG (universal argument), open selection in other-window."
 
   (map!
 
+   :g "C-`" #'my/pop-closest-gterm
+   :g "C-~" #'my/project-gterm-named
+
    (:leader
     :desc "Open project gterm"
     "o t" #'my/project-gterm)
    
    :map gterm-mode-map
+
+   :eni "C-`" #'my/switch-window-gterm
+   :eni "C-M-`" #'my/select-previous-window
+   :eni "C-~" #'my/project-gterm-named
 
    :desc "window"
    :eni "C-w" 'evil-window-map
