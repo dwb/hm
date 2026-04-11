@@ -286,6 +286,7 @@ in
 
   programs.direnv = {
     enable = true;
+    package = pkgs.direnv.overrideAttrs { doCheck = false; };
     enableNushellIntegration = true;
     enableFishIntegration = false;
     nix-direnv.enable = true;
@@ -714,8 +715,8 @@ in
     shortcut = "w";
 
     extraConfig = ''
-      bind-key w send-key C-w
-      bind-key C-w last-pane
+      bind-key C-w send-key C-w
+      bind-key w last-pane
 
       bind-key A last-window
       bind-key C clear-history

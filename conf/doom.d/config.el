@@ -1717,12 +1717,13 @@ If ARG (universal argument), open selection in other-window."
      :desc "Switch buffer"
      :i "C-c ," #'my/consult-term-buffer)))
 
+(require 'gterm nil t)
 (with-eval-after-load 'gterm
 
   (defun my/gterm-send-C-w ()
     (interactive)
     (when-let* (((and gterm--terminal gterm--process gterm--alive))
-                (encoded (gterm-send-key gterm--terminal 'key-w 2)))
+                (encoded (gterm--send-key gterm--terminal 'key-w 2)))
       (process-send-string gterm--process encoded)))
 
   (defun my/pop-closest-gterm ()
@@ -2845,6 +2846,7 @@ revisions (i.e., use a \"...\" range)."
 
   (setopt bourdet-stream-partial t)
   (setopt bourdet--sync-custom-title t)
+  (setopt bourdet-model-remap nil)
 
   (defun my/bourdet-notification-id (id)
     (format "emacs-%d-bourdet-%d" (emacs-pid) id))

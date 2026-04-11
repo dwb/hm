@@ -105,6 +105,8 @@
     ]
   },
   "alwaysThinkingEnabled": true,
+  "theme": "auto",
+  "editorMode": "vim",
   "feedbackSurveyState": {
     "lastShownTime": 1754299769863
   },
