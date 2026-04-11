@@ -1665,13 +1665,27 @@ If ARG (universal argument), open selection in other-window."
 
   (defun my/switch-window-gterm ()
     (interactive)
-    (when-let* ((other-buffers (seq-map #'car (seq-concatenate 'list
-                                                               (window-prev-buffers) (window-next-buffers))))
-                (other-gterms (match-buffers `(and (derived-mode . gterm-mode)
-                                                   ,(lambda (b)
-                                                      (not (eq b (current-buffer)))))
-                                             other-buffers)))
-      (pop-to-buffer-same-window (car other-gterms))))
+    (let* ((cbuf (current-buffer))
+           (project-root (when-let* ((p (project-current))) (project-root p))))
+      (cl-flet* ((matchp (b) (buffer-match-p
+                              `(and (derived-mode . gterm-mode)
+                                    ,(lambda (b)
+                                       (and (not (eq b cbuf))
+                                            (equal project-root
+                                                   (when-let*
+                                                       ((p (buffer-local-value
+                                                            'gterm-project
+                                                            b)))
+                                                     (project-root p))))))
+                              b))
+                 (wmatchp (b) (matchp (car b))))
+        (when-let* ((buf (or (when-let* ((l (seq-find #'wmatchp
+                                                      (reverse (window-prev-buffers)))))
+                               (car l)) 
+                             (when-let* ((l (seq-find #'wmatchp (window-next-buffers))))
+                               (car l))
+                             (seq-find #'matchp (buffer-list (selected-frame))))))
+          (pop-to-buffer-same-window buf)))))
 
   (defun my/project-gterm (&optional arg)
     "Open a gterm in the current project."
