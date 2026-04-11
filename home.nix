@@ -633,12 +633,13 @@ in
         };
         revsets = {
           bookmark-advance-from = "exactly(heads(::to & bookmarks()), 1)";
-          bookmark-advance-to = "closest_public_nonempty(@)";
+          bookmark-advance-to = "exactly(heads(nonempty(to) ~ private_commits()), 1)";
         };
         revset-aliases = {
           "closest_bookmark(to)" = "heads(first_ancestors(to) & bookmarks())";
-          "closest_nonempty(to)" = "heads(::to ~ empty() ~ description(\"\"))";
-          "closest_public_nonempty(to)" = "heads(::to ~ private_commits() ~ empty() ~ description(\"\"))";
+          "nonempty(to)" = "::to ~ empty() ~ description(\"\")";
+          "closest_nonempty(to)" = "heads(nonempty(to))";
+          "closest_public_nonempty(to)" = "heads(nonempty(to) ~ private_commits())";
           # "immutable_heads()" = "builtin_immutable_heads() | tracked_remote_bookmarks() | (trunk().. & ~mine())";
           "immutable_heads()" = "builtin_immutable_heads() | (trunk().. & ~mine())";
           "private_commits()" = privateCommits;
