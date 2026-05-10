@@ -183,7 +183,7 @@ in
         # modernize is also provided by gopls!
         postBuild = ''
           mv $out/bin/bundle $out/bin/gobundle
-          rm $out/bin/modernize
+          if [[ -f $out/bin/modernize ]]; then rm $out/bin/modernize; fi
         '';
       })
       jjui
