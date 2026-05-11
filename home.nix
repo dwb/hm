@@ -634,7 +634,7 @@ in
         };
         revsets = {
           bookmark-advance-from = "exactly(heads(::to & bookmarks()), 1)";
-          bookmark-advance-to = "exactly(heads(nonempty(to) ~ private_commits()), 1)";
+          bookmark-advance-to = "exactly(heads(nonempty(@) ~ private_commits()), 1)";
         };
         revset-aliases = {
           "closest_bookmark(to)" = "heads(first_ancestors(to) & bookmarks())";
