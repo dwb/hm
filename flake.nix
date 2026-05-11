@@ -39,19 +39,55 @@
         "dwb"
       ];
 
+      nushellPatched =
+        system:
+        let
+          pkgs = import nixpkgsUnstable { inherit system; };
+          overlay = final: prev: {
+            version = "0.112.2";
+
+            src = pkgs.fetchFromGitHub {
+              owner = "nushell";
+              repo = "nushell";
+              tag = final.version;
+              hash = "sha256-wc7mfbwkJO5gq9mwsiTVx74+btqU6Ox8tPhnXkfmXRU=";
+            };
+
+            cargoPatches = [ ./nushell-crossterm-fix.patch ];
+            cargoHash = "sha256-osWYPJ8/zKcEbakk9vXXKGMl7sbl5S1vfNYpiQ0HDeQ=";
+
+            doCheck = false;
+          };
+        in
+        pkgs.nushell.override (old: {
+          rustPlatform = old.rustPlatform // {
+            buildRustPackage = args: old.rustPlatform.buildRustPackage (lib.extends overlay args);
+          };
+        });
+
+      baseNixpkgsConfig = {
+        allowUnfree = true;
+        packageOverrides = pkgs:
+          let system = pkgs.stdenv.hostPlatform.system;
+          in {
+            direnv = pkgs.direnv.overrideAttrs { doCheck = false; };
+            jre = pkgs.jre_headless;
+            nushell = nushellPatched system;
+            # Plugins inherit cargoHash from their nushell arg (nixpkgs pattern).
+            # Our patched nushell has a different cargoHash (crossterm cargoPatches
+            # change the vendor set), so we pin plugins to the original nushell to
+            # keep their cargoHash consistent. The plugin ABI is unaffected.
+            nushellPlugins = lib.mapAttrs
+              (_: p: p.override { nushell = pkgs.nushell; })
+              pkgs.nushellPlugins;
+          };
+      };
+
       importPkgs =
         input: system:
         import input {
           inherit system;
-          config = {
-            allowUnfree = true;
-            packageOverrides = pkgs: {
-              direnv = pkgs.direnv.overrideAttrs {
-                doCheck = false;
-              };
-              jre = pkgs.jre_headless;
-            };
-          };
+          config = baseNixpkgsConfig;
         };
       forAllSystems = lib.genAttrs lib.platforms.all;
 
@@ -183,6 +219,10 @@
       );
 
       formatter = forAllSystems (system: (importPkgs nixpkgs system).nixfmt);
+
+      lib = {
+        nixpkgsConfig = baseNixpkgsConfig;
+      };
     };
 
 }

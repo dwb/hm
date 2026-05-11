@@ -24,28 +24,6 @@ let
     vendorHash = "sha256-ABppEG8uIXKbEq51hlUVbCsmt1cAgJex4S25fBb37os=";
   });
 
-  nushellPatched =
-    let overlay = final: prev: {
-          version = "0.112.2";
-          
-          src = pkgsUnstable.fetchFromGitHub {
-            owner = "nushell";
-            repo = "nushell";
-            tag = final.version;
-            hash = "sha256-wc7mfbwkJO5gq9mwsiTVx74+btqU6Ox8tPhnXkfmXRU=";
-          };
-
-          cargoPatches = [ ./nushell-crossterm-fix.patch ];
-          cargoHash = "sha256-osWYPJ8/zKcEbakk9vXXKGMl7sbl5S1vfNYpiQ0HDeQ=";
-
-          doCheck = false;
-        };
-    in pkgsUnstable.nushell.override (old: {
-      rustPlatform = old.rustPlatform // {
-        buildRustPackage = args: old.rustPlatform.buildRustPackage (lib.extends overlay args);
-      };
-    });
-
   # nushellLocal = pkgsUnstable.nushell.overrideAttrs (old: {
   #   patches = [ ./nushell-crossterm-fix.patch ];
   #   doCheck = false;
@@ -127,6 +105,8 @@ in
   home.sessionPath = [
     "$HOME/.local/bin" # uv at least puts stuff in here
   ];
+
+  xdg.enable = true; # don't use macos dirs for stuff
 
   home.packages =
     (with pkgs; [
@@ -470,15 +450,26 @@ in
           ];
           rp = [ "rm-parent" ];
 
-          claude = [ "util" "exec" "--" "bash" "-c" ''
-            set -e
-            if [[ -z "$1" ]]; then echo "$0: call with a change ID"; exit 1; fi
-            change="$1"; shift
-            exec claude "/jj $change" "$@"
-          '' "jj claude"];
+          claude = [
+            "util"
+            "exec"
+            "--"
+            "bash"
+            "-c"
+            ''
+              set -e
+              if [[ -z "$1" ]]; then echo "$0: call with a change ID"; exit 1; fi
+              change="$1"; shift
+              exec claude "/jj $change" "$@"
+            ''
+            "jj claude"
+          ];
 
           di = [ "diff" ];
-          dn = [ "diff" "--name-only" ];
+          dn = [
+            "diff"
+            "--name-only"
+          ];
           # diff from trunk
           dt = [
             "diff"
@@ -592,7 +583,11 @@ in
           # ];
 
           # rebase on trunk (all new, simpler)
-          rot = [ "rebase" "-o" "trunk()" ];
+          rot = [
+            "rebase"
+            "-o"
+            "trunk()"
+          ];
           # split before private (commits)
           sbp = [
             "split"
@@ -611,7 +606,7 @@ in
             "util"
             "exec"
             "--"
-            "${nushellPatched}/bin/nu"
+            "${pkgs.nushell}/bin/nu"
             ./jj-commands/split-to-parent.nu
           ];
           # squash to parent
@@ -619,7 +614,7 @@ in
             "util"
             "exec"
             "--"
-            "${nushellPatched}/bin/nu"
+            "${pkgs.nushell}/bin/nu"
             ./jj-commands/squash-to-parent.nu
           ];
           tug = [
@@ -630,7 +625,10 @@ in
             "--to"
             "closest_public_nonempty(@)"
           ];
-          wup = [ "workspace" "update-stale" ];
+          wup = [
+            "workspace"
+            "update-stale"
+          ];
         };
         revsets = {
           bookmark-advance-from = "exactly(heads(::to & bookmarks()), 1)";
@@ -655,7 +653,7 @@ in
 
   programs.nushell = {
     enable = true;
-    package = nushellPatched;
+    package = pkgsUnstable.nushell;
     plugins = with pkgsUnstable.nushellPlugins; [
       # broken for 0.108
       # (pkgsUnstable.callPackage (import ./pkgs/nushell-plugins-nupsql.nix) {})
@@ -785,8 +783,7 @@ in
         if [[ -n $ZSH_PROFILE_STARTUP ]]; then zmodload zsh/zprof; fi
       '')
       (lib.mkOrder 1000 (builtins.readFile ./conf/zshenv-local.zsh))
-      (lib.mkOrder 1000 
-      ''
+      (lib.mkOrder 1000 ''
         if [[ -n $override_EDITOR ]]; then EDITOR="$override_EDITOR"; fi
       '')
     ];
