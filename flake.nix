@@ -67,9 +67,12 @@
 
       baseNixpkgsConfig = {
         allowUnfree = true;
-        packageOverrides = pkgs:
-          let system = pkgs.stdenv.hostPlatform.system;
-          in {
+        packageOverrides =
+          pkgs:
+          let
+            system = pkgs.stdenv.hostPlatform.system;
+          in
+          {
             direnv = pkgs.direnv.overrideAttrs { doCheck = false; };
             jre = pkgs.jre_headless;
             nushell = nushellPatched system;
@@ -77,9 +80,7 @@
             # Our patched nushell has a different cargoHash (crossterm cargoPatches
             # change the vendor set), so we pin plugins to the original nushell to
             # keep their cargoHash consistent. The plugin ABI is unaffected.
-            nushellPlugins = lib.mapAttrs
-              (_: p: p.override { nushell = pkgs.nushell; })
-              pkgs.nushellPlugins;
+            nushellPlugins = lib.mapAttrs (_: p: p.override { nushell = pkgs.nushell; }) pkgs.nushellPlugins;
           };
       };
 
@@ -89,7 +90,12 @@
           inherit system;
           config = baseNixpkgsConfig;
         };
-      forAllSystems = lib.genAttrs lib.platforms.all;
+
+      forAllSystems = lib.genAttrs [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ];
 
       deps = (
         { pkgs, ... }:
