@@ -1,0 +1,22 @@
+name: "Publish every Git push to main to FlakeHub"
+on:
+  push:
+    branches:
+      - "main"
+jobs:
+  flakehub-publish:
+    runs-on: "ubuntu-latest"
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
+        with:
+          persist-credentials: false
+      - uses: "DeterminateSystems/determinate-nix-action@bafaa638b9d5ec0e7e3ac1a7fc80453ef1fd265f"
+      - uses: "DeterminateSystems/flakehub-push@de51456967df5cb744ae4fde416a21f40a99233f"
+        with:
+          name: "dwb/hm"
+          rolling: true
+          visibility: "unlisted"
+          include-output-paths: true
