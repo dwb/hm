@@ -65,6 +65,17 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+          "matcher": "*",
+          "hooks": [              
+              {
+                  "type": "command",
+                  "command": "if [ -d \"$CLAUDE_PROJECT_DIR/.jj\" ]; then echo 'CRITICAL: I use jujutsu (`jj`), not git. Do not run any git commands. Always invoke the `jj` skill before running ANY jj commands. On every change you make, a hook creates a new jj snapshot. So you can look at the history of changes, both yours and mine, with `jj evolog`.'; fi"
+              }
+          ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write",
