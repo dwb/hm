@@ -14,7 +14,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: "DeterminateSystems/determinate-nix-action@bafaa638b9d5ec0e7e3ac1a7fc80453ef1fd265f"
-      - uses: "DeterminateSystems/flakehub-push@de51456967df5cb744ae4fde416a21f40a99233f"
+      - uses: "DeterminateSystems/flakehub-push@44a8940d2c060ae8e37d5acf203f1db54514f588"
         with:
           name: "dwb/hm"
           rolling: true
