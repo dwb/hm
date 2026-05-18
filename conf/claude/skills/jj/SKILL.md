@@ -210,3 +210,100 @@ The following commands modify repository state. Do not use them on your own init
 - `jj undo`, `jj op restore`
 - `jj workspace add/forget`
 - Any other command that modifies commits, bookmarks, or working copy
+
+### Rule Zero: Always `jj status` First
+
+Before ANY mutating operation, run `jj st`. You need to know:
+
+- What files are changed in `@` (both tracked and untracked)
+- What `@`'s parent(s) are
+- Whether you're in a megamerge or simple-linear workflow
+- Whether there are conflicting or unexpected changes
+
+Making commits without checking status first leads to squashing into the wrong parent, committing unintended files, losing track of which branch you're on, or misunderstanding the graph structure.
+
+### The `@` as Working Copy
+
+`@` is a working-copy change — it holds uncommitted edits. It is NOT a proper commit: it typically has no description, and it's the thing you edit files into.
+
+The goal of making commits is to **move changes out of `@`** and into described, permanent commits in the graph. Three commands do this:
+
+| Command | Effect | `@` after |
+|---------|--------|-----------|
+| `jj commit -m "msg"` | Move ALL changes from `@` into a new child commit | Advances to point to the new (empty) child |
+| `jj split -m "msg" [paths]` | Move SELECTED changes from `@` into a new sibling commit | Points to the sibling with the *remaining* changes |
+| `jj squash [-r <rev>]` | Move changes from `@` INTO an existing ancestor commit | Collapses; `@` is replaced by the target commit |
+
+**Interactive flags (`-i`) require a TUI.** The agent cannot use them. When hunk-level precision is needed, use `--tool` with the manifest-driven split helper (see below). Otherwise, select changes by passing explicit file paths.
+
+### `jj commit` — Commit Everything
+
+```bash
+jj commit -m "descriptive message"
+```
+
+Creates a new child commit containing all of `@`'s changes. `@` advances to a new empty working copy on top of that child.
+
+Use when: all the changes in `@` form one logical commit. To commit only specific files, use `jj split` instead (see below) — `jj commit` has no path arguments.
+
+### `jj split` — Split Into Logical Commits
+
+```bash
+jj split -m "message for first commit" path/to/file1 path/to/file2
+```
+
+Produces two sibling commits from `@`: one with the selected files' changes, one with everything else. `@` advances to the sibling with the *remaining* (not-yet-committed) changes.
+
+Use when: `@` contains multiple logical changes that should be separate commits. Select which changes move into the first commit by naming paths or directories. The split tool (`jj split --tool`) with the manifest-driven helper (see below) enables hunk-level splits without a TUI.
+
+**After a split, `@` still holds the remaining changes.** Run `jj st` and continue committing or splitting until `@` is empty of intentional changes.
+
+### `jj squash` — Fold Changes Into an Existing Commit
+
+```bash
+jj squash -k -u                       # squash all of @ into @- (the parent)
+jj squash -k -u path/to/file          # squash only changes to that file
+jj squash -k -u -r <rev>             # squash a specific revision into its parent
+jj squash -k -u --into <rev>         # squash @ into a specific ancestor
+```
+
+Moves changes from `@` into an existing ancestor commit. The destination absorbs `@`'s changes. Commonly used for fixups, or when a follow-up edit logically belongs in a parent commit. Limit which changes move by passing paths.
+
+**Recommended flags for routine use:**
+
+- **`-k` (`--keep-emptied`)**: Prevents jj from abandoning the emptied source. Without this, when `@` empties, jj abandons it and creates a new `@` — pointless churn. With `-k`, the emptied `@` stays, preserving its change ID.
+- **`-u` (`--use-destination-message`)**: Uses the destination's existing description and discards the source's. Without this, if both have descriptions, jj prompts to combine them. Since `@` rarely has a meaningful description, `-u` suppresses an unnecessary prompt.
+
+The typical invocation is `jj squash -k -u`. Omit `-u` when the source has a description worth keeping. Omit `-k` only if you explicitly want the source abandoned.
+
+Use when: the changes in `@` amend or fix up a previous commit, rather than standing alone.
+
+### Anti-Patterns
+
+- **Using `jj new` to "make a commit."** `jj new` creates an empty child of `@` but does NOT move any changes. All changes stay in `@`. Use `jj commit` instead.
+- **Skipping `jj st`.** You don't know what you're committing, squashing into, or splitting from. Always check first.
+- **Leaving changes in `@` without checking.** After `jj split`, call `jj st` to confirm what remains. Uncommitted changes left in `@` may get picked up by the next operation unintentionally.
+- **Forgetting `-m`.** An undescribed commit is like an empty commit subject in git — it needs a message before it's presentable.
+
+### Workflow: Typical Change
+
+```bash
+# 1. ALWAYS check status first
+jj st
+
+# 2. Make code changes (editing files, etc.)
+
+# 3. Review what you have
+jj st
+jj diff --git
+
+# 4. Move changes out of @ into proper commits
+jj commit -m "add foo feature"              # everything is one commit
+# OR
+jj split -m "extract bar helper" src/bar.rs # split bar.rs into its own commit first
+jj st                                       # check what remains
+jj commit -m "add foo feature"              # commit the rest
+
+# 5. Verify the result
+jj lt
+```
