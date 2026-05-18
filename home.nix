@@ -301,7 +301,41 @@ in
     ## doesn't include keychain integration.
     # package = pkgs.gitAndTools.gitFull;
 
-    package = pkgsUnstable.git;
+    package =
+      let
+        unwrappedGit = pkgsUnstable.git;
+        gitJjGuard = pkgs.writeShellScript "git-jj-guard" ''
+          set -eu
+          dir=$PWD
+          jj_root=
+          while [ "$dir" != / ]; do
+            if [ -d "$dir/.jj" ]; then
+              jj_root=$dir
+              break
+            fi
+            dir=$(dirname "$dir")
+          done
+          if [ -n "$jj_root" ]; then
+            if [ "''${1:-}" = --unsafe-force-in-jj-repo ]; then
+              shift
+            else
+              printf 'git: refused to run inside a jj repo (.jj/ found at %s).\n' "$jj_root" >&2
+              printf 'git: pass --unsafe-force-in-jj-repo as the first argument to override.\n' >&2
+              exit 1
+            fi
+          fi
+          exec ${unwrappedGit}/bin/git "$@"
+        '';
+      in
+      pkgs.symlinkJoin {
+        name = "git-jj-safe-${unwrappedGit.version}";
+        paths = [ unwrappedGit ];
+        postBuild = ''
+          rm $out/bin/git
+          install -m755 ${gitJjGuard} $out/bin/git
+          ln -s ${unwrappedGit}/bin/git $out/bin/gitunsafe
+        '';
+      };
 
     ignores = [
       ".DS_Store"
@@ -449,6 +483,7 @@ in
           };
         };
         git = {
+          executable-path = "gitunsafe";
           private-commits = privateCommits;
         };
         aliases = {
