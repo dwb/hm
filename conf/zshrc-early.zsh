@@ -20,7 +20,7 @@ export MOST_SWITCHES="-w"
 ### MAYBE AUTOEXEC NUSHELL ###
 
 if (( $+commands[nu] )) && \
-   [[ -o login ]] && \
+   [[ -o login || -n $zsh_force_login ]] && \
    [[ -o interactive ]] && \
    [[ ! -o shinstdin ]] && \
    [[ -z $ZSH_EXECUTION_STRING ]] && \
@@ -29,6 +29,8 @@ if (( $+commands[nu] )) && \
    [[ ! -f ~/.inhibit-nushell-autoexec ]]; then
 
   () {
+    unset zsh_force_login
+      
     if [[ -n $ZSH_PROFILE_STARTUP ]]; then zprof; fi
 
     local args=()

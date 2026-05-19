@@ -229,6 +229,10 @@ in
     '';
   };
 
+  xdg.configFile."zellij/config.kdl" = {
+    source = ./conf/zellij/config.kdl;
+  };
+
   home.file.".config/ghostty/config" = {
     text = ''
       font-family = "Iosevka DWB Term"
