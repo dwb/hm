@@ -88,7 +88,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "input=$(cat); if [ -f \"$HOME/.claude/SUBAGENTS.md\" ]; then jq --rawfile subagents \"$HOME/.claude/SUBAGENTS.md\" '{hookSpecificOutput: {hookEventName: \"PreToolUse\", updatedInput: (.tool_input + {prompt: ($subagents + \"\\n\\n---\\n\\n\" + .tool_input.prompt)})}}' <<<\"$input\"; fi"
+            "command": "input=$(cat); if [ -f \"$HOME/.claude/SUBAGENTS.md\" ]; then printf '%s' \"$input\" | jq --rawfile subagents \"$HOME/.claude/SUBAGENTS.md\" '{hookSpecificOutput: {hookEventName: \"PreToolUse\", updatedInput: (.tool_input + {prompt: ($subagents + \"\\n\\n---\\n\\n\" + .tool_input.prompt)})}}'; fi"
           }
         ]
       }
