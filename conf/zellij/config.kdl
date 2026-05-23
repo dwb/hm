@@ -178,7 +178,7 @@ keybinds clear-defaults=true {
         bind "enter" { SwitchToMode "locked"; }
     }
     shared_except "locked" "entersearch" "renametab" "renamepane" "prompt" "tmux" {
-        bind "Ctrl w" { SwitchToMode "locked"; }
+        bind "esc" { SwitchToMode "locked"; }
     }
     shared_except "locked" "entersearch" "renametab" "renamepane" {
         bind "esc" { SwitchToMode "locked"; }
