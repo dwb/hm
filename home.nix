@@ -765,12 +765,12 @@ description(\"\")" ];
     keyMode = "vi";
     mouse = true;
     newSession = false;
-    shortcut = "w";
+    shortcut = "s";
 
     extraConfig = ''
-      bind-key C-w send-key C-w
-      bind-key w last-pane
+      bind-key C-s send-key C-s
 
+      bind-key a last-pane
       bind-key A last-window
       bind-key C clear-history
 
