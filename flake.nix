@@ -141,24 +141,11 @@
           };
       };
 
-    in
-    {
-
-      apps = forAllSystems (system: {
-        default = {
-          type = "app";
-          program = lib.getExe (importPkgs nixpkgs system).home-manager;
-        };
-      });
-
-      # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
-      packages = forAllSystems (
-        system:
+      homeConfigurationsFor = system:
         let
           pkgs = importPkgs nixpkgs system;
         in
-        {
-          homeConfigurations = lib.genAttrs usernames (
+          lib.genAttrs usernames (
             username:
             home-manager.lib.homeManagerConfiguration {
               inherit pkgs;
@@ -179,6 +166,25 @@
             }
           );
 
+    in
+    {
+
+      apps = forAllSystems (system: {
+        default = {
+          type = "app";
+          program = lib.getExe (importPkgs nixpkgs system).home-manager;
+        };
+      });
+
+      # sigh: https://github.com/nix-community/home-manager/issues/3075#issuecomment-1330661815
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = importPkgs nixpkgs system;
+        in
+        {
+          homeConfigurations = homeConfigurationsFor system;
+
           iosevkaDWB = (
             pkgs.iosevka.override {
               privateBuildPlan = builtins.readFile ./iosevka-private-build-plans.toml;
@@ -193,6 +199,8 @@
           );
         }
       );
+
+      homeConfigurations = forAllSystems homeConfigurationsFor;
 
       nixosModules = {
         inherit registryPins nixpkgsConfig;

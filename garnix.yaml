@@ -1,0 +1,12 @@
+builds:
+  exclude:
+  - packages.*.homeConfigurations
+  include:
+  - '*.x86_64-linux.*'
+  - '*.aarch64-linux.*'
+  - '*.aarch64-darwin.*'
+  - defaultPackage.*
+  - devShell.*
+  - homeConfigurations.*
+  - darwinConfigurations.*
+  - nixosConfigurations.*
