@@ -90,11 +90,12 @@
           config = baseNixpkgsConfig;
         };
 
-      forAllSystems = lib.genAttrs [
+      allSystems = [
         "x86_64-linux"
         "aarch64-linux"
         "aarch64-darwin"
       ];
+      forAllSystems = lib.genAttrs allSystems;
 
       deps = (
         { pkgs, ... }:
@@ -200,7 +201,13 @@
         }
       );
 
-      homeConfigurations = forAllSystems homeConfigurationsFor;
+      homeConfigurations = builtins.foldl'
+        (acc: s:
+          let cs = lib.mapAttrs'
+            (username: value: { name = "${username}@${s}"; inherit value; })
+            (homeConfigurationsFor s);
+          in acc // cs)
+        {} allSystems;
 
       nixosModules = {
         inherit registryPins nixpkgsConfig;
