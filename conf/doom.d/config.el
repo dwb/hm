@@ -1351,9 +1351,9 @@ end of the workspace list."
     (define-key evil-outer-text-objects-map "k" `("keyed" . ,(evil-textobj-tree-sitter-get-textobj "keyed" query)))
     (define-key evil-inner-text-objects-map "k" `("keyed" . ,(evil-textobj-tree-sitter-get-textobj "keyed" query)))))
 
-(after! org
-  (setq! org-agenda-start-on-weekday t)
-  (setq! org-blank-before-new-entry
+(with-eval-after-load 'org
+  (setopt org-agenda-start-on-weekday 1)
+  (setopt org-blank-before-new-entry
          '((heading . t) (plain-list-item . nil)))
 
   (defun my/show-org ()
