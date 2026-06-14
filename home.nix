@@ -138,6 +138,7 @@ in
         ]
       ))
       uv
+      watchman # for jj status
       wget
       zstd
 
@@ -167,7 +168,6 @@ in
         '';
       })
       jjui
-      watchman # for jj status
     ])
     ++ lib.optionals stdenv.hostPlatform.isDarwin (
       (with pkgs; [

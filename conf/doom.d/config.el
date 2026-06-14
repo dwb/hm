@@ -1033,7 +1033,7 @@ The actual buffer content (the absolute path) remains unchanged."
 (map!
  :g "C-<escape>" #'my/select-main-window
 
- (:when IS-MAC
+ (:when (featurep :system 'macos)
    :g "s-k" #'kill-current-buffer)
 
  :map evil-window-map

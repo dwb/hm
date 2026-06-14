@@ -3,13 +3,13 @@
 
   inputs = {
     nixpkgs = {
-      url = "github:NixOS/nixpkgs/release-25.11";
+      url = "github:NixOS/nixpkgs/release-26.05";
     };
     nixpkgsUnstable = {
       url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     };
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.11";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -43,17 +43,17 @@
         let
           pkgs = import nixpkgsUnstable { inherit system; };
           overlay = final: prev: {
-            version = "0.112.2";
+            version = "0.113.1";
 
             src = pkgs.fetchFromGitHub {
               owner = "nushell";
               repo = "nushell";
               tag = final.version;
-              hash = "sha256-wc7mfbwkJO5gq9mwsiTVx74+btqU6Ox8tPhnXkfmXRU=";
+              hash = "sha256-sV2fN9TOWQVyPVFSWdNLPOtOdLuynPTvt9+uqJsgtds=";
             };
 
             cargoPatches = [ ./nushell-crossterm-fix.patch ];
-            cargoHash = "sha256-osWYPJ8/zKcEbakk9vXXKGMl7sbl5S1vfNYpiQ0HDeQ=";
+            cargoHash = "sha256-cWpxKK6bQkHYxW/0dldn2tHIdvESt5PGL4bFMYe7tzc=";
 
             doCheck = false;
           };
