@@ -123,7 +123,7 @@ in
       jc # makes JSON out of standard commands, used in my nushell utils
       mosh
       nixd
-      nixfmt-rfc-style
+      nixfmt
       # nodejs_22 # mainly for emacs copilot but generally useful too ig
       plantuml
       python3
