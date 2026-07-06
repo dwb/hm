@@ -636,6 +636,7 @@ OS-level focus; we only need to update Emacs's internal state."
 
 (use-package! agent-shell
   :config
+  :disabled
   ;; TODO: this doesn't pick up project env vars, of course
   ;; (setopt agent-shell-anthropic-claude-environment
   ;;         nil

@@ -1,4 +1,5 @@
 use std iter
+use my/formats.nu *
 
 export def e [fn: path] {
   ^$env.EDITOR $fn
@@ -134,6 +135,30 @@ export def pbjson []: nothing -> any {
 
 export def ,download-video [url: string] {
   nix run nixpkgs#yt-dlp -- --format 'bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/b[ext=mp4] / bv*+ba / b' $url
+}
+
+export def ,claude-fix-sdk-logs [] {
+    ls ~/.claude/projects/*/*.jsonl | each { |f|
+        mut changed = false
+        mut out = []
+        for r in (open $f.name) {
+          $out = $out | append (
+            if ($r | get -o entrypoint) == sdk-cli {
+                $changed = true
+                $r | update entrypoint cli
+            } else {
+                $r
+            }
+          )
+        }
+        if $changed {
+          $out | save -f $f.name
+          touch -t $f.modified $f.name
+          { filename: $f.name, status: changed }
+        } else {
+          { filename: $f.name, status: unchanged }
+        }
+    }
 }
 
 export def uvnix [...args: string] {

@@ -101,6 +101,7 @@ use my/archivebox.nu
 use my/aws.nu *
 use my/file-menu.nu
 use my/glob-menu.nu
+use my/formats.nu *
 use my/ollama.nu *
 use my/my-nix.nu *
 use my/new.nu *

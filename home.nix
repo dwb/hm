@@ -838,6 +838,8 @@ description(\"\")" ];
 
   programs.zsh = {
     enable = true;
+    # TODO: legacy config, can probably upgrade to XDG-compat
+    # dotDir = config.home.homeDirectory;
     envExtra = lib.mkMerge [
       (lib.mkOrder 400 ''
         if [[ -n $ZSH_PROFILE_STARTUP ]]; then zmodload zsh/zprof; fi
