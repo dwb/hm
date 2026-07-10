@@ -125,6 +125,7 @@
   "alwaysThinkingEnabled": true,
   "theme": "auto",
   "editorMode": "vim",
+  "cleanupPeriodDays": 99999,
   "feedbackSurveyState": {
     "lastShownTime": 1754299769863
   }
