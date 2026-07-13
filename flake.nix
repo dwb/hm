@@ -14,9 +14,14 @@
     };
 
     doomemacs = {
-      url = "github:doomemacs/doomemacs/master";
+      url = "github:doomemacs/core/master";
       flake = false;
     };
+    doomemacs-modules = {
+      url = "github:doomemacs/modules/main";
+      flake = false;
+    };
+
     nu-scripts = {
       url = "github:nushell/nu_scripts";
       flake = false;

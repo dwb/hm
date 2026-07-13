@@ -83,13 +83,6 @@
 
 (package! hyperbole)
 
-(package! combobulate
-  :recipe (:host github
-           :repo "mickeynp/combobulate"
-           :branch "master")
-  :pin "59b64d66d66eb84da6a2cedd152b1692378af674")
-
-
 (when (>= emacs-major-version 30)
   (package! eglot :built-in t)
   (package! eldoc :built-in t)

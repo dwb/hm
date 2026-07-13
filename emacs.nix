@@ -4,6 +4,7 @@
   pkgsUnstable,
   guiEnabled,
   doomemacs,
+  doomemacs-modules,
   ...
 }:
 let
@@ -51,6 +52,7 @@ in
       RSYNC=${pkgs.rsync}/bin/rsync
 
       run $RSYNC -rlp --delete --chmod=+w --exclude=/.local/ $VERBOSE_ARG ${doomemacs}/ ~/${configDir}/
+      run $RSYNC -rlp --delete --chmod=+w $VERBOSE_ARG ${doomemacs-modules}/ ~/${configDir}/sources/doom+
 
       if [[ -n $checkout ]]; then
         ln -snf "$checkout" ~/.doom.d

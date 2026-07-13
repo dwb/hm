@@ -3,17 +3,34 @@
     "doomemacs": {
       "flake": false,
       "locked": {
-        "lastModified": 1780773944,
-        "narHash": "sha256-BG+/yHc8OQ3x8mE4Kj2Cf0EUsRALq0esL7xKBZb1GBE=",
+        "lastModified": 1783881028,
+        "narHash": "sha256-FXX38mnaQ2BW1P6bDCcE+Q2gOZzxNfhYPvr4R5dqRbo=",
         "owner": "doomemacs",
-        "repo": "doomemacs",
-        "rev": "373ea9ed2af5847dee09885fba8faf34c9c51943",
+        "repo": "core",
+        "rev": "635bc939d3cb835873d7039a6505d78cdb99d313",
         "type": "github"
       },
       "original": {
         "owner": "doomemacs",
         "ref": "master",
-        "repo": "doomemacs",
+        "repo": "core",
+        "type": "github"
+      }
+    },
+    "doomemacs-modules": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783796998,
+        "narHash": "sha256-57qXyk+9+izjIMwiOejKFvnQ+yhseBFk04ItgWkcxMY=",
+        "owner": "doomemacs",
+        "repo": "modules",
+        "rev": "86b65e45ced780b5ce992ccdec970637d76249a1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "doomemacs",
+        "ref": "main",
+        "repo": "modules",
         "type": "github"
       }
     },
@@ -110,6 +127,7 @@
     "root": {
       "inputs": {
         "doomemacs": "doomemacs",
+        "doomemacs-modules": "doomemacs-modules",
         "home-manager": "home-manager",
         "jj-hunk": "jj-hunk",
         "nixpkgs": "nixpkgs",
