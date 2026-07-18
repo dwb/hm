@@ -7,6 +7,7 @@ def main [
     --date: string = ""               # Target datetime in ISO 8601 (e.g. 2026-05-01T00:00:00Z)
     --dry-run                         # Print the nix command without running it
     --lock-file: string = "flake.lock"
+    --except: string = ""
 ] {
     let target = if ($date | is-not-empty) {
         $date
@@ -17,10 +18,11 @@ def main [
     print $"Pinning GitHub inputs to commits before ($target)"
 
     let lock = open $lock_file | from json
+    let exceptlist = $except | split row ','
 
     let github_inputs = $lock.nodes
         | items { |name, node| {name: $name, node: $node} }
-        | where { |it| $it.name != "root" and ($it.node | get -o locked | get -o type) == "github" }
+        | where { |it| $it.name not-in $exceptlist and $it.name != "root" and ($it.node | get -o locked | get -o type) == "github" }
 
     let overrides = $github_inputs | each { |it|
         let owner = $it.node.locked.owner
