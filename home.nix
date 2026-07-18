@@ -173,6 +173,7 @@ in
         '';
       })
       jjui
+      sandbox-runtime
     ])
     ++ lib.optionals stdenv.hostPlatform.isDarwin (
       (with pkgs; [
