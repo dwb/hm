@@ -217,7 +217,8 @@ frames, avoiding `project-current' which is expensive and side-effectful."
   (project-current nil (buffer-local-value 'default-directory buffer)))
 
 (defun frame-project-dedicate-ensure-installed-in-frame (frame)
-  (when-let* ((project (frame-project-dedicate--get-frame-project frame)))
+  (when-let* ((project (frame-project-dedicate--get-frame-project frame))
+              ((display-graphic-p frame)))
     (frame-project-dedicate--set-frame-name frame)
     (set-frame-parameter frame
                          'buffer-predicate
@@ -268,6 +269,7 @@ This allows special buffers to appear in project-dedicated frames."
 
 (defun frame-project-dedicate--display-buffer-advice (oldfun buffer-or-name &optional action frame)
   (if-let* (((or (null frame) (not (framep frame))))
+            ((display-graphic-p)) ; Don't redirect from TTY frames.
             (buffer (if (bufferp buffer-or-name)
                         buffer-or-name
                       (get-buffer buffer-or-name)))
@@ -297,7 +299,9 @@ This is an action function for buffer display, see Info
 node `(elisp) Buffer Display Action Functions'.  It should be
 called only by `display-buffer' or a function directly or
 indirectly called by the latter."
-  (if-let* ((project (frame-project-dedicate-project-of-buffer buffer))
+  ;; Don't redirect buffers away from TTY frames.
+  (if-let* (((display-graphic-p))
+            (project (frame-project-dedicate-project-of-buffer buffer))
             (project-root (project-root project))
             (predicate
              (lambda (frame)

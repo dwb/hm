@@ -64,7 +64,9 @@ in
   programs.emacs = {
     enable = true;
     package =
-      with pkgsUnstable;
+      let
+        emacsPkgs = pkgsUnstable;
+      in with emacsPkgs;
       (emacsPackagesFor (
         if guiEnabled then
           (emacs30-pgtk.override {
@@ -84,7 +86,7 @@ in
           epkgs: with epkgs; [
             treesit-grammars.with-all-grammars
             vterm
-            ghostel
+            (epkgs.callPackage (import ./pkgs/ghostel.nix) {})
           ]
         );
   };

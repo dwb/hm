@@ -2033,7 +2033,9 @@ If ARG (universal argument), open selection in other-window."
                               b))
                  (wmatchp (b) (matchp (car b)))
                  (wmatchanyp (bb) (let ((b (car bb)))
-                                    (when (buffer-match-p '(derived-mode . ghostel-mode) b)
+                                    (when (buffer-match-p `(and (derived-mode . ghostel-mode)
+                                                                ,(lambda (b) (not (eq b cbuf))))
+                                                          b)
                                       b))))
         (when-let* ((buf (or (when-let* ((l (seq-find #'wmatchp
                                                       (reverse (window-prev-buffers)))))
