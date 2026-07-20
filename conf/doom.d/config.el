@@ -2763,28 +2763,10 @@ revisions (i.e., use a \"...\" range)."
               (setcar next (concat dirpat (car next))))
             (setq args (cdr args)))))))
 
-  (define-advice consult--buffer-preview (:override () fix-buffer-switching)
-    "Buffer preview function."
-    (let ((orig-buf (current-buffer)) (win-prev-bufs 'unset) other-win)
-      (lambda (action cand)
-        (when (eq action 'preview)
-          (when (and (eq consult--buffer-display #'switch-to-buffer-other-window)
-                     (not other-win))
-            (switch-to-buffer-other-window orig-buf)
-            (setq other-win (selected-window)))
-          (let ((win (or other-win (selected-window)))
-                (switch-to-buffer-obey-display-actions))
-            (when (window-live-p win)
-              (with-selected-window win
-                (cond
-                 ((and cand (get-buffer cand))
-                  (when (eq win-prev-bufs 'unset)
-                    (setq win-prev-bufs (window-prev-buffers)))
-                  (switch-to-buffer cand 'norecord))
-                 ((buffer-live-p orig-buf)
-                  (switch-to-buffer orig-buf 'norecord)
-                  (when (not (eq win-prev-bufs 'unset))
-                    (set-window-prev-buffers win win-prev-bufs))))))))))))
+  (define-advice consult--buffer-preview (:filter-return (fn) fix-buffer-switching)
+    (lambda (action cand)
+      (let* ((switch-to-buffer-obey-display-actions))
+        (funcall fn action cand)))))
 
 (after! vertico
   (setopt vertico-sort-function nil)
