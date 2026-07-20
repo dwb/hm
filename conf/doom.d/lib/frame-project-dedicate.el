@@ -82,21 +82,41 @@ This is used for special buffers like *Help*, *Messages*, etc.")
     ;; set-frame-name only works on the selected frame
     (modify-frame-parameters frame (list (cons 'name name)))))
 
+(defun frame-project-dedicate--save-placeholder-buffer (_desktop-dirname)
+  `((project-root  . ,default-directory)))
+
+(defun frame-project-dedicate--restore-placeholder-buffer (_file-name _buffer-name misc)
+  (when-let* ((project-root (alist-get 'project-root misc))
+              (project (let ((default-directory project-root))
+                         (project-current nil))))
+    (frame-project-dedicate--create-placeholder-buffer project)))
+
+(defun frame-project-dedicate--create-placeholder-buffer (project)
+  (let* ((name (format "*project %s*" (project-name project)))
+         (buffer (get-buffer name)))
+    (or buffer
+        (with-current-buffer (get-buffer-create name)
+          (prog1 (current-buffer)
+            (insert "yay, ")
+            (insert (project-name project))
+            (setq-local default-directory (project-root project))
+            (frame-project-dedicate-project-placeholder-mode))))))
+
+(with-eval-after-load 'desktop
+  (add-to-list 'desktop-buffer-mode-handlers
+               '(frame-project-dedicate-project-placeholder-mode . frame-project-dedicate--restore-placeholder-buffer)))
+
+(define-derived-mode frame-project-dedicate-project-placeholder-mode special-mode
+  "Project"
+  (setf desktop-save-buffer #'frame-project-dedicate--save-placeholder-buffer))
+
 (defun frame-project-dedicate--project-placeholder-buffer (project)
   (or (when-let* ((root (file-name-as-directory (project-root project)))
                   (fns (seq-map #'(lambda (fn) (concat root fn))
                                 '("README.md" "README.org" "README.txt" "README")))
                   (fn (seq-find #'file-exists-p fns)))
         (find-file-noselect fn t))
-      (let* ((name (format "*project %s*" (project-name project)))
-             (buffer (get-buffer name)))
-        (or buffer
-            (with-current-buffer (get-buffer-create name)
-              (prog1 (current-buffer)
-                (insert "yay, ")
-                (insert (project-name project))
-                (setq-local default-directory (project-root project))
-                (read-only-mode)))))))
+      (frame-project-dedicate--create-placeholder-buffer project)))
 
 (defvar frame-project-dedicate--called-recursively nil)
 (defvar frame-project-dedicate--project-buffers-cache nil)

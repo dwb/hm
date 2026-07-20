@@ -1781,7 +1781,7 @@ If ARG (universal argument), open selection in other-window."
      :desc "Switch buffer"
      :i "C-c ," #'my/consult-term-buffer)))
 
-(require 'gterm nil t)
+;; (require 'gterm nil t)
 (with-eval-after-load 'gterm
 
   (defun my/gterm-send-C-w ()
@@ -1941,6 +1941,246 @@ If ARG (universal argument), open selection in other-window."
   (when (modulep! :ui popup)
     (set-popup-rule! '(derived-mode . gterm-mode)
                      :side 'right :width 101 :height 0.5 :vslot 0 :slot 0 :select t :quit nil :ttl nil)))
+
+(use-package ghostel
+  :config
+
+  (defvar-local my/ghostel-project nil)
+  (defvar-local my/ghostel-custom-name nil)
+
+  (defconst my/ghostel-default-custom-name "main")
+
+  (defun my/ghostel-buffer-name-from-identity (title)
+    (concat ghostel--buffer-identity
+            (when (and title (not (string= "" title)))
+              (format " %s" title))))
+
+  (setopt ghostel-buffer-name-function #'my/ghostel-buffer-name-from-identity)
+
+
+  (cl-defun my/ghostel-make-buffer-identity (&key custom-name project)
+    (or
+     (and (or custom-name project)
+          (concat ghostel-buffer-name
+                  (format "<%s:%s>"
+                          (if project (project-name project) ":")
+                          (if (and custom-name (not (string= "" custom-name)))
+                              custom-name
+                            my/ghostel-default-custom-name))))
+     ghostel-buffer-name))
+
+  (cl-defun my/ghostel (&key custom-name project identity)
+    (ghostel--load-module t)
+    (let* ((identity (or identity
+                         (my/ghostel-make-buffer-identity
+                          :custom-name custom-name
+                          :project project)))
+           (display-action (append display-buffer--same-window-action
+                                   '((category . comint))))
+           (existing (ghostel--find-buffer-by-identity identity))
+           (buffer (or existing
+                       (ghostel--create identity display-action))))
+      (if existing
+          (progn
+            (unless (buffer-local-value 'ghostel--term existing)
+              (user-error "Ghostel buffer %s has no terminal"
+                          (buffer-name existing)))
+            (pop-to-buffer existing display-action))
+        (with-current-buffer buffer
+          (setq ghostel--managed-buffer-name (buffer-name))
+          (setq ghostel--buffer-identity identity)
+          (when project
+            (setq my/ghostel-project project))
+          (ghostel--start-process)
+          (ghostel--apply-initial-input-mode)))
+      buffer))
+
+  (defun my/pop-closest-ghostel ()
+    (interactive)
+    (let* ((buf
+            (cl-labels ((ghostelp (buf)
+                          (buffer-match-p '(derived-mode . ghostel-mode) buf))
+                        (my/ghostel-project-p (project buf)
+                          (and (ghostelp buf)
+                               (when-let* ((p (buffer-local-value 'my/ghostel-project buf)))
+                                 (equal (project-root project)
+                                        (project-root p))))))
+              (or (seq-find #'ghostelp (seq-map #'window-buffer (window-list)))
+                  (let* ((project (or (and (fboundp 'frame-project-dedicate--get-frame-project)
+                                           (frame-project-dedicate--get-frame-project (selected-frame)))
+                                      (project-current))))
+                    (car (match-buffers (apply-partially #'my/ghostel-project-p project))))
+                  (my/project-ghostel)))))
+
+      (unless (eq buf (current-buffer))
+        (pop-to-buffer buf))))
+
+  (defun my/switch-window-ghostel ()
+    (interactive)
+    (let* ((cbuf (current-buffer))
+           (project-root (when-let* ((p (project-current))) (project-root p))))
+      (cl-flet* ((matchp (b) (buffer-match-p
+                              `(and (derived-mode . ghostel-mode)
+                                    ,(lambda (b)
+                                       (and (not (eq b cbuf))
+                                            (equal project-root
+                                                   (when-let*
+                                                       ((p (buffer-local-value
+                                                            'my/ghostel-project
+                                                            b)))
+                                                     (project-root p))))))
+                              b))
+                 (wmatchp (b) (matchp (car b)))
+                 (wmatchanyp (bb) (let ((b (car bb)))
+                                    (when (buffer-match-p '(derived-mode . ghostel-mode) b)
+                                      b))))
+        (when-let* ((buf (or (when-let* ((l (seq-find #'wmatchp
+                                                      (reverse (window-prev-buffers)))))
+                               (car l)) 
+                             (when-let* ((l (seq-find #'wmatchp (window-next-buffers))))
+                               (car l))
+                             (when-let* ((l (seq-find #'wmatchanyp
+                                                      (reverse (window-prev-buffers)))))
+                               (car l))
+                             (when-let* ((l (seq-find #'wmatchanyp (window-next-buffers))))
+                               (car l))
+                             (seq-find #'matchp (buffer-list (selected-frame))))))
+          (pop-to-buffer-same-window buf)))))
+
+  (defun my/project-ghostel (&optional arg)
+    "Open a ghostel in the current project."
+    (interactive "p")
+    (cond
+     ((or (null arg) (eq arg 1))
+      (my/project-ghostel-named))
+     ((eq arg 4)
+      (if-let* ((project (project-current))
+                (root (project-root project)))
+          (let* ((default-directory root))
+            (my/project-ghostel-named))
+        (my/project-ghostel-named)))
+     (t
+      (let* ((default-directory (getenv "HOME")))
+        (my/project-ghostel-named)))))
+
+  (defun my/project-ghostel-named (&optional arg)
+    "Open a ghostel in the current project with a particular name."
+    (interactive "MTerminal name: ")
+    (my/ghostel :project (or
+                          (buffer-local-value 'my/ghostel-project (current-buffer))
+                          (project-current))
+                :custom-name arg))
+
+  (defun my/rename-ghostel-buffer (arg)
+    "Rename a ghostel buffer to a nice pattern"
+    (interactive "MNew name: ")
+
+    (when (not (eq major-mode 'ghostel-mode)) (user-error "not a ghostel buffer"))
+
+    (let* ((identity (my/ghostel-make-buffer-identity :custom-name arg :project my/ghostel-project)))
+      (when (ghostel--find-buffer-by-identity identity)
+        (user-error "There is already a buffer named %s" identity))
+
+      (setf my/ghostel-custom-name arg)
+      (setf ghostel--buffer-identity identity)
+      ;; poke a rename
+      (ghostel--set-title ghostel--title)))
+
+  (defun my/set-ghostel-width ()
+    (interactive)
+    (my/window-resize-standard-width)
+    (my/window-preserve-size-any-buffer nil t t))
+
+  (defun my/ghostel-desktop-save (_desktop-dirname)
+    "Return the state needed to restore this ghostel buffer."
+    `((default-directory . ,default-directory)
+      (identity . ,ghostel--buffer-identity)
+      ,@(when (and my/ghostel-project (fboundp 'project-root))
+          `((project-root . ,(project-root my/ghostel-project))))))
+
+  (defun my/ghostel-set-desktop-save ()
+    (setq desktop-save-buffer #'my/ghostel-desktop-save))
+
+  (add-hook 'ghostel-mode-hook #'my/ghostel-set-desktop-save)
+
+  (defun my/ghostel-desktop-restore (_file-name buffer-name misc)
+    "Restore a ghostel buffer from a desktop session.
+     MISC is an alist saved by `my/ghostel-desktop-save'."
+    (let* ((default-directory (or (alist-get 'default-directory misc)
+                                  default-directory))
+           (project-root (alist-get 'project-root misc))
+           (project (when project-root
+                      (let ((default-directory project-root))
+                        (project-current nil))))
+           (identity (alist-get 'identity misc)))
+      (my/ghostel :identity identity :project project)))
+
+  (defun my/ghostel-send-esc ()
+    (interactive)
+    (ghostel-send-key "escape"))
+
+  (defun my/ghostel-send-C-w ()
+    (interactive)
+    (ghostel-send-key "w" "ctrl"))
+
+  (map!
+   :g "C-`" #'my/pop-closest-ghostel
+   :g "C-~" #'my/project-ghostel-named
+
+   (:leader
+    :desc "Open project ghostel"
+    "o t" #'my/project-ghostel)
+   
+   :map ghostel-mode-map
+
+   :eni "C-`" #'my/switch-window-ghostel
+   :eni "C-M-`" #'my/select-previous-window
+   :eni "C-~" #'my/project-ghostel-named
+
+   :eni "C-c ," #'switch-to-buffer
+
+   ;; :i "s-v" #'yank
+
+   :desc "New ghostel"
+   :en "C-c n" #'my/project-ghostel-named
+
+   :desc "Rename buffer"
+   :eni "C-c r" #'my/rename-ghostel-buffer
+
+   :desc "Find URL"
+   :eni "C-c l" #'link-hint-open-link)
+
+  (with-eval-after-load 'evil
+    (evil-set-initial-state 'ghostel-mode 'insert)
+    (map!
+     :map ghostel-mode-map
+
+     :i "<escape>" #'my/ghostel-send-esc
+     :i "C-c C-<escape>" #'evil-force-normal-state
+
+     :desc "window"
+     :i "C-w" evil-window-map
+
+     :i "C-c C-w" #'my/ghostel-send-C-w))
+
+;;;###autoload
+  (with-eval-after-load 'desktop
+    (add-to-list 'desktop-buffer-mode-handlers
+                 '(ghostel-mode . my/ghostel-desktop-restore))))
+
+(use-package ghostel-eshell
+  :hook (eshell-load . ghostel-eshell-visual-command-mode))
+
+(use-package ghostel-compile
+  :hook (after-init . ghostel-compile-global-mode))
+
+(use-package ghostel-comint
+  :hook (after-init . ghostel-comint-global-mode))
+
+(use-package evil-ghostel
+  :disabled                             ; not that useful
+  :after (ghostel evil)
+  :hook (ghostel-mode . evil-ghostel-mode))
 
 (use-package! eat
   :disabled
@@ -2926,8 +3166,8 @@ revisions (i.e., use a \"...\" range)."
 
   (when (modulep! :ui popup)
     (set-popup-rule! '(derived-mode . bourdet-mode)
-      :side 'right :width 101 :height 0.5 :vslot 0 :slot 1
-      :select t :quit nil :ttl nil))
+                     :side 'right :width 101 :height 0.5 :vslot 0 :slot 1
+                     :select t :quit nil :ttl nil))
 
   (setopt bourdet-stream-partial t)
   (setopt bourdet--sync-custom-title t)
@@ -2984,6 +3224,7 @@ revisions (i.e., use a \"...\" range)."
        (category . terminal)
        (derived-mode . vterm-mode)
        (derived-mode . gterm-mode)
+       (derived-mode . ghostel-mode)
        (derived-mode . compilation-mode)
        (derived-mode . cider-repl-mode)
        ,(rx bol "*vterm"))

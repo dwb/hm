@@ -160,14 +160,18 @@
   :recipe (:repo "git@github.com:dwb/bourdet"
            :branch "main"))
 
-(package! gterm
-  :recipe (:repo "git@github.com:dwb/gterm"
-           :branch "main"
-           :pre-build ("make")
-           :files (:defaults
-                   "lib/*"
-                   ("terminfo/67" "terminfo/67/*")
-                   ("terminfo/78" "terminfo/78/*"))))
+;; (package! gterm
+;;   :recipe (:repo "git@github.com:dwb/gterm"
+;;            :branch "main"
+;;            :pre-build ("make")
+;;            :files (:defaults
+;;                    "lib/*"
+;;                    ("terminfo/67" "terminfo/67/*")
+;;                    ("terminfo/78" "terminfo/78/*"))))
+
+;; installed by nix
+;; (package! ghostel)
+;; (package! evil-ghostel)
 
 ;; non-gnu elpa
 (package! zig-mode)

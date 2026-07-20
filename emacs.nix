@@ -84,6 +84,7 @@ in
           epkgs: with epkgs; [
             treesit-grammars.with-all-grammars
             vterm
+            ghostel
           ]
         );
   };
