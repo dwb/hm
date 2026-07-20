@@ -2725,7 +2725,9 @@ revisions (i.e., use a \"...\" range)."
                             "--color=never"
                             "--no-require-git"
                             "--full-path"
-                            "--hidden --exclude .git"))
+                            "--ignore-case"
+                            "--hidden"
+                            "--exclude" ".git"))
 
   (defun my/consult-project-buffer ()
     (interactive)
@@ -2741,7 +2743,27 @@ revisions (i.e., use a \"...\" range)."
    :desc "Switch to project buffer"
    "k" #'my/consult-project-buffer)
 
-  (defun consult--buffer-preview ()
+  ;; Fixes query paths so it works better with --full-path - multiple
+  ;; queries shouldn't match to parent dirs now.
+  (define-advice consult--fd-make-builder (:around (oldfun paths) fix-with-full-path)
+    (lambda (input)
+      (setq ret (funcall (funcall oldfun paths) input))
+      (prog1 ret
+        (pcase-let* ((`(,args . ,_hl) ret)
+                     (dirpat
+                      (format "^(%s).*"
+                              (string-join
+                               (mapcar
+                                (lambda (p) (file-name-as-directory (file-truename p)))
+                                paths)
+                               "|"))))
+          (while-let ((arg (car args))
+                      (next (cdr args)))
+            (when (string= "--and" arg)
+              (setcar next (concat dirpat (car next))))
+            (setq args (cdr args)))))))
+
+  (define-advice consult--buffer-preview (:override () fix-buffer-switching)
     "Buffer preview function."
     (let ((orig-buf (current-buffer)) (win-prev-bufs 'unset) other-win)
       (lambda (action cand)
