@@ -14,7 +14,7 @@ let
   inherit (stdenv.hostPlatform) system;
   guiEnabled = args.guiEnabled or stdenv.hostPlatform.isDarwin;
 
-  carapace = pkgsUnstable.carapace.overrideAttrs (old: {
+  carapacePatched = pkgsUnstable.carapace.overrideAttrs (old: {
     version = "1.5.7";
     src = pkgs.fetchFromGitHub {
       owner = "dwb";
@@ -294,7 +294,7 @@ in
 
   programs.carapace = {
     enable = true;
-    package = carapace;
+    # package = carapacePatched;
   };
 
   programs.direnv = {
