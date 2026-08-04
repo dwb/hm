@@ -2598,6 +2598,39 @@ revisions (i.e., use a \"...\" range)."
 (when (fboundp 'global-prettier-mode)
   (global-prettier-mode 1))
 
+(with-eval-after-load 'json-mode
+  (with-eval-after-load 'flymake
+    (defun my/json-flymake (report-fn &rest _args)
+      "Flymake backend that checks the buffer for JSON parse errors.
+Uses `json-parse-buffer' and reports any `json-parse-error' to Flymake."
+      (save-mark-and-excursion
+        (widen)
+        (goto-char (point-min))
+        (condition-case err
+            (progn
+              (json-parse-buffer :object-type 'alist)
+              (funcall report-fn nil))
+          (json-parse-error
+           (let* ((pos (nth 1 err))
+                  (line (nth 2 err))
+                  (col (nth 3 err))
+                  (msg "JSON parse error")
+                  (region (flymake-diag-region (current-buffer) pos)))
+             (funcall report-fn
+                      (list (flymake-make-diagnostic (current-buffer)
+                                                     (car region)
+                                                     (cdr region)
+                                                     :error
+                                                     msg)))))
+          (error
+           (funcall report-fn nil)))))
+
+    (defun my/json-flymake-setup ()
+      (add-hook 'flymake-diagnostic-functions 'my/json-flymake nil t)
+      (flymake-mode))
+
+    (add-hook 'json-mode-hook #'my/json-flymake-setup)))
+
 (after! ace-window
   (setf aw-dispatch-always t))
 
