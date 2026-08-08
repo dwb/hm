@@ -461,9 +461,9 @@ in
   };
 
   programs.difftastic = {
-    enable = true;
+    enable = false;
     package = pkgsUnstable.difftastic;
-    git.enable = true;
+    git.enable = false;
     options.display = "inline";
   };
 
