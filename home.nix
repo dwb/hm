@@ -337,7 +337,7 @@ in
               exit 1
             fi
           fi
-          exec ${unwrappedGit}/bin/git "$@"
+          exec ${unwrappedGit}/bin/"$0" "$@"
         '';
       in
       pkgs.symlinkJoin {
