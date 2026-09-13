@@ -14,6 +14,7 @@
     "allow": [
       "Skill(jj)",
       "Skill(tdd)",
+      "Bash(exit 1)",
       "Bash(jj bookmark list:*)",
       "Bash(jj config get:*)",
       "Bash(jj diff:*)",
@@ -138,7 +139,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -n \"$PLAN_REMINDER_PERCENT\" ] && [ $((RANDOM % 100)) -lt \"$PLAN_REMINDER_PERCENT\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"*** IMPORTANT REMINDER (Main agent only) *** If this session has a plan, design doc, or notes file, UPDATE IT NOW with recent research and findings to preserve context across compaction. Do this before continuing with other work. Do not acknowledge this message in any case.\"}}\\n'; fi"
+            "command": "if [ -n \"$PLAN_REMINDER_PERCENT\" ] && [ $((RANDOM % 100)) -lt \"$PLAN_REMINDER_PERCENT\" ]; then if command -v bd >/dev/null && [ -d \"$CLAUDE_PROJECT_DIR/.beads\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"*** IMPORTANT REMINDER (Main agent only) *** If you have made notable progress, UPDATE BEADS NOW with recent research and findings to preserve context across compaction. Do this before continuing with other work. Do not acknowledge this message in any case.\"}}\\n'; else printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"*** IMPORTANT REMINDER (Main agent only) *** If this session has a plan, design doc, or notes file, UPDATE IT NOW with recent research and findings to preserve context across compaction. Do this before continuing with other work. Do not acknowledge this message in any case.\"}}\\n'; fi; fi"
           }
         ]
       }
@@ -160,5 +161,6 @@
   "editorMode": "vim",
   "feedbackSurveyState": {
     "lastShownTime": 1754299769863
-  }
+  },
+  "model": "opus"
 }
