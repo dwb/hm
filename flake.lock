@@ -108,6 +108,22 @@
         "type": "github"
       }
     },
+    "nixpkgsUnstableSlow": {
+      "locked": {
+        "lastModified": 1788705636,
+        "narHash": "sha256-+FX28ip2iL9sxEwfPzAOlMm+wsWD2U7O2pMwe9srBsI=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "599242474479e7eff8894eadc478dc9d38213873",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nu-scripts": {
       "flake": false,
       "locked": {
@@ -132,6 +148,7 @@
         "jj-hunk": "jj-hunk",
         "nixpkgs": "nixpkgs",
         "nixpkgsUnstable": "nixpkgsUnstable",
+        "nixpkgsUnstableSlow": "nixpkgsUnstableSlow",
         "nu-scripts": "nu-scripts"
       }
     }

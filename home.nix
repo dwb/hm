@@ -236,10 +236,6 @@ in
     '';
   };
 
-  xdg.configFile."zellij/config.kdl" = {
-    source = ./conf/zellij/config.kdl;
-  };
-
   home.file.".config/ghostty/config" = {
     text = ''
       font-family = "Iosevka DWB Term"
@@ -887,5 +883,13 @@ description(\"\")" ];
     package = pkgsUnstable.wezterm;
     extraConfig = builtins.readFile ./conf/wezterm.lua;
   };
+
+  programs.zellij = {
+    enable = true;
+    extraConfig = builtins.readFile ./conf/zellij/config.kdl;
+  };
+  # xdg.configFile."zellij/config.kdl" = {
+  #   source = ./conf/zellij/config.kdl;
+  # };
 
 }

@@ -8,6 +8,9 @@
     nixpkgsUnstable = {
       url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     };
+    nixpkgsUnstableSlow = {
+      url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    };
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -37,6 +40,7 @@
     inputs@{
       nixpkgs,
       nixpkgsUnstable,
+      nixpkgsUnstableSlow,
       home-manager,
       ...
     }:
@@ -112,6 +116,7 @@
         inputs
         // {
           pkgsUnstable = importPkgs nixpkgsUnstable pkgs.stdenv.hostPlatform.system;
+          pkgsUnstableSlow = importPkgs nixpkgsUnstableSlow pkgs.stdenv.hostPlatform.system;
         }
       );
 

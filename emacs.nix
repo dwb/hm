@@ -2,7 +2,7 @@
   config,
   lib,
   pkgs,
-  pkgsUnstable,
+  pkgsUnstableSlow,
   guiEnabled,
   doomemacs,
   doomemacs-modules,
@@ -10,12 +10,12 @@
 }:
 let
   configDir = ".emacs.d";
-  # emacsPkgs = pkgsUnstable.callPackage (import "${nixpkgsUnstable}/pkgs/applications/editors/emacs");
+  # emacsPkgs = pkgsUnstableSlow.callPackage (import "${nixpkgsUnstable}/pkgs/applications/editors/emacs");
   # emacsGuiPkg =
 
   baseEmacs =
     if guiEnabled then
-      (pkgsUnstable.emacs31-pgtk.override {
+      (pkgsUnstableSlow.emacs31-pgtk.override {
         withNativeCompilation = true;
       }).overrideAttrs
         (old: {
@@ -27,14 +27,14 @@ let
           ];
         })
     else
-      pkgsUnstable.emacs31-nox;
+      pkgsUnstableSlow.emacs31-nox;
 
   # `programs.emacs` is not used: the module wraps `package` with
   # `emacsWithPackages` unconditionally, and a second wrap would produce a
   # second Emacs.app that `exec`s into the first. See ./pkgs/emacs-app-wrapper.nix.
-  emacsPackages = (pkgsUnstable.emacsPackagesFor baseEmacs).overrideScope (
+  emacsPackages = (pkgsUnstableSlow.emacsPackagesFor baseEmacs).overrideScope (
     final: _prev: {
-      emacsWithPackages = pkgsUnstable.callPackage ./pkgs/emacs-app-wrapper.nix { } final;
+      emacsWithPackages = pkgsUnstableSlow.callPackage ./pkgs/emacs-app-wrapper.nix { } final;
       withPackages = final.emacsWithPackages;
     }
   );
@@ -91,7 +91,7 @@ in
 
   home.packages = [
     emacsPackage
-    # pkgsUnstable.claude-agent-acp
+    # pkgsUnstableSlow.claude-agent-acp
   ];
 
   home.file.".emacs.d/.local/cache/debug-adapters/js-debug" =
