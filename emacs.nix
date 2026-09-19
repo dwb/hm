@@ -122,7 +122,7 @@ in
       run $RSYNC -rlp --delete --chmod=+w --exclude=/.local/ $VERBOSE_ARG ${doomemacs}/ ~/${configDir}/
       run $RSYNC -rlp --delete --chmod=+w $VERBOSE_ARG ${doomemacs-modules}/ ~/${configDir}/sources/doom+
 
-      if [[ -n $checkout ]]; then
+      if [[ -n $checkout ]] && [[ ! -d ~/.doom.d ]]; then
         ln -snf "$checkout" ~/.doom.d
       else
         run $RSYNC -r --delete $VERBOSE_ARG ${src}/ ~/.doom.d
