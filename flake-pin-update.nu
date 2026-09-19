@@ -40,10 +40,11 @@ def main [
         let ref_display = $ref | default "default branch"
         print $"  ($it.name): ($owner)/($repo) \(($ref_display)\)"
 
-        let commits = http get -H [
-            Accept 'application/vnd.github+json'
-            X-GitHub-Api-Version '2022-11-28'
-        ] $url
+#         let commits = http get -H [
+#             Accept 'application/vnd.github+json'
+#             X-GitHub-Api-Version '2022-11-28'
+#         ] $url
+        let commits = (curl -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' $url | from json)
 
         if ($commits | is-empty) {
             error make { msg: $"No commits found for ($owner)/($repo) before ($target)" }
