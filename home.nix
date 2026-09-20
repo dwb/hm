@@ -175,6 +175,7 @@ in
       })
       jjui
       sandbox-runtime
+      tailcat
     ])
     ++ lib.optionals stdenv.hostPlatform.isDarwin (
       (with pkgs; [
