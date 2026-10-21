@@ -57,17 +57,17 @@
         let
           pkgs = import nixpkgsUnstable { inherit system; };
           overlay = final: prev: {
-            version = "0.115.1";
+            version = "0.116.1";
 
             src = pkgs.fetchFromGitHub {
               owner = "nushell";
               repo = "nushell";
               tag = final.version;
-              hash = "sha256-qndvtW1yD4n++LpGp+ucQVNqIm8jgcrM3M4O5q5WDgk=";
+              hash = "sha256-b62ICCP7Li88obcju4xBNVw7D+6TtRURrOUvzqcjHis=";
             };
 
             cargoPatches = [ ./nushell-crossterm-fix.patch ];
-            cargoHash = "sha256-y4nH2uzxJJpjk2HWLL1PIanoSnOlR/BbUL5lX1jVpII=";
+            cargoHash = "sha256-9SDMd21Z0z7RgnYizn/EvXMUbnMIXG40GqJjW4BnYN4=";
 
             doCheck = false;
           };
@@ -197,9 +197,12 @@
         system:
         let
           pkgs = importPkgs nixpkgs system;
+          nushell = nushellPatched system;
         in
         {
           homeConfigurations = homeConfigurationsFor system;
+
+          inherit nushell;
 
           iosevkaDWB = (
             pkgs.iosevka.override {
