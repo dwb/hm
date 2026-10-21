@@ -42,6 +42,9 @@ let
       clutch = final.callPackage ./pkgs/emacs-clutch.nix { };
       mysql = final.callPackage ./pkgs/emacs-mysql.nix { };
       pgsql = final.callPackage ./pkgs/emacs-pgsql.nix { };
+
+      # Not in nixpkgs.
+      pretty-tables = final.callPackage ./pkgs/emacs-pretty-tables.nix { };
     }
   );
 
@@ -70,6 +73,7 @@ let
       pgsql
       posframe
       prettier
+      pretty-tables
       protobuf-mode
       s
       track-changes
