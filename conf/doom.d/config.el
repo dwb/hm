@@ -292,6 +292,12 @@ buffer list remain reachable."
 
 (add-to-list 'auto-mode-alist `(,(rx ".mts" (? "x") eos) . typescript-ts-mode))
 
+;; line numbers in variable-pitch mode give a wobbly indent without this
+(defun my/fix-line-number-face (&rest _args)
+  (set-face-attribute 'line-number nil :inherit 'fixed-pitch)
+  (set-face-attribute 'line-number-current-line nil :inherit '(bold fixed-pitch)))
+(add-to-list 'enable-theme-functions #'my/fix-line-number-face)
+
 (when (fboundp 'system-taskbar-mode)
   (system-taskbar-mode))
 
@@ -615,6 +621,50 @@ OS-level focus; we only need to update Emacs's internal state."
 (use-package! visual-fill-column
   :config
   (global-visual-fill-column-mode 1))
+
+;; Workaround for a bug in `+word-wrap-adapt-to-line-numbers-h' (Doom
+;; :editor word-wrap, added in doomemacs/modules 56a849d6a3, unreported
+;; as of 2026-10-24).
+;;
+;; That hook runs from `visual-fill-column-mode-hook' and
+;; `display-line-numbers-mode-hook' and widens the text area by the
+;; width of the line numbers, via `visual-fill-column-extra-text-width'.
+;; It measures that width with `line-number-display-width', which
+;; reports the width from the last redisplay of the selected window.
+;; When a file is first visited, the mode hooks run before the buffer
+;; has been displayed, so the width is 0 and the hook leaves the
+;; allowance unset.  The text area is then exactly `fill-column' wide,
+;; the line numbers take part of it, and anything `fill-column' wide
+;; (such as `pretty-tables' tables) wraps at the window edge.
+;; `revert-buffer' runs the hooks again while the buffer is displayed,
+;; which hides the problem.  The hook also adjusts the selected window,
+;; which at that point shows a different buffer.
+;;
+;; This version calculates the width from the buffer instead, and
+;; adjusts only windows showing the buffer; visual-fill-column adjusts
+;; the others when the buffer is displayed in them.
+(defun my/line-number-columns ()
+  "Return the columns `display-line-numbers' needs in the current buffer.
+This is the number of digits in the last line number, or
+`display-line-numbers-width' if larger, plus the two blanks Emacs
+draws around the number.  Emacs sizes the field from the line numbers
+that fit in the window, so near the top of a large buffer this can be
+a column or so wider than what is drawn."
+  (+ 2 (max (or display-line-numbers-width 1)
+            (length (number-to-string
+                     (line-number-at-pos (point-max)
+                                         display-line-numbers-widen))))))
+
+(when (modulep! :editor word-wrap)
+  (define-advice +word-wrap-adapt-to-line-numbers-h
+      (:override () my/measure-from-buffer)
+    "Make room for line numbers in the `visual-fill-column' text area."
+    (setq-local visual-fill-column-extra-text-width
+                (and (bound-and-true-p display-line-numbers)
+                     (cons 0 (my/line-number-columns))))
+    (when (bound-and-true-p visual-fill-column-mode)
+      (dolist (window (get-buffer-window-list nil nil t))
+        (visual-fill-column--adjust-window window)))))
 
 ;; (use-package! vundo
 ;;   :bind (("<f7>" . vundo))
@@ -1487,6 +1537,19 @@ end of the workspace list."
   (put 'evil-echo-state 'permanent-local t)
 
   (setf evil-undo-system 'undo-redo)
+
+  (defun my/evil-update-cursor-color-h (_theme)
+    "Store the cursor colour of the theme just enabled, for evil to use.
+Doom stores it from `doom-load-theme-hook', but by then other
+`enable-theme-functions' (e.g. `ghostel--on-theme-change') may have
+selected windows, making evil reapply the previous theme's colour to
+the `cursor' face, which Doom then reads back.  Running first, also
+for the nested (enable-theme \\='user) call, reads the face before that."
+    ;; As in `doom-enable-theme-h', avoid buffer-local face remaps.
+    (with-temp-buffer
+      (+evil-update-cursor-color-h)))
+
+  (add-hook 'enable-theme-functions #'my/evil-update-cursor-color-h -100)
 
   (defmacro my/define-and-bind-text-object (key sym desc start-regex end-regex)
     (let ((inner-name (make-symbol (concat "my/evil-i-" sym)))
@@ -3582,6 +3645,12 @@ NULL value is copied as \"NULL\"."
 
 (use-package zig-mode
   :mode ("\\.\\(zig\\|zon\\)\\'" . zig-mode))
+
+(use-package pretty-tables-for-markdown
+  :hook (markdown-ts-mode-hook . pretty-tables-for-markdown-mode))
+
+(use-package pretty-tables-for-org
+  :hook (org-mode-hook . pretty-tables-for-org-mode))
 
 (defun my/editing-area-window (&rest _)
   "Return the most recently used live window that is not a side window.
